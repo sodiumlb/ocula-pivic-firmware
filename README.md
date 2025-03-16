@@ -1,13 +1,16 @@
-# Rumbledethumps' Picocomputer 6502
+# Oric OCULA and VIC-20 PIVIC Firmware
 
-The Picocomputer explores retro computing and game development by removing the barrier between genuine 8-bit hardware and modern devices. It can be built entirely with through-hole components, compactly using surface mount devices, or even on a breadboard. No programming devices need to be purchased and the only component used that wasn't available in the 1980s is the $4/€4 Raspberry Pi Pico.
+This is the firmware source for two related video replacement devices. It is using the Rumbledethumps' Picocomputer 6502 (RP6502) https://picocomputer.github.io/ as a starting point, framework, and some modules. 
 
-Read the documentation:<br>
-https://picocomputer.github.io/
+## Oric OCULA
+A modern implementation of the HCS10017 ULA, used in Oric 8-bit computers like the Oric-1, Atmos and clones.
+
+## VIC-20 PIVIC
+A modern implementation of the MOS VIC 6560 and 6561, used in Commodore VIC-20 8-bit computers.
 
 ## Dev Setup
 
-This is only for building the Pi Pico software. For writing 6502 software, see [rp6502-vscode](https://github.com/picocomputer/rp6502-vscode).
+This is only for building the LOCI firmware.
 
 Install the C/C++ toolchain for the Raspberry Pi Pico. For more information, read [Getting started with the Raspberry Pi Pico](https://rptl.io/pico-get-started).
 ```
@@ -22,33 +25,10 @@ git submodule update --init
 cd ../..
 ```
 
-The Pi Pico VGA is no longer a Picoprobe. It remains a CDC for console access. To debug Pico RIA or Pico VGA code, you need a Debug Probe or a third Pi Pico as a Picoprobe.
-
-The VSCode launch settings connect to a remote debug session. I use multiple terminals for the debugger and console. You'll also want to add a udev rule to avoid a sudo nightmare. The following are rough notes, you may need to install software which is beyond the scope of this README.
-
-Create `/etc/udev/rules.d/99-pico.rules` with:
+To build from the command line in a separate build directory:
 ```
-#Picoprobe
-SUBSYSTEM=="usb", ATTRS{idVendor}=="2e8a", MODE="0666"
-```
-Debug terminal:
-```
-$ openocd -f interface/cmsis-dap.cfg -c "adapter speed 5000" -f target/rp2040.cfg -s tcl
-```
-Console terminal:
-```
-$ minicom -c on -b 115200 -o -D /dev/ttyACM0
-```
-WSL (Windows Subsystem for Linux) can forward the Picoprobe to Linux:
-```
-PS> usbipd list
-BUSID  DEVICE
-7-4    CMSIS-DAP v2 Interface, USB Serial Device (COM6)
-
-PS> usbipd wsl attach --busid 7-4
-```
-WSL needs udev started. Create `/etc/wsl.conf` with:
-```
-[boot]
-command="service udev start"
+mkdir build
+cd build
+cmake ../
+make
 ```
