@@ -20,7 +20,6 @@
 // Pin aliases
 
 // --- UART ---
-// Note, conflicts with HSTX range
 #ifndef PICO_DEFAULT_UART
 #define PICO_DEFAULT_UART 0
 #endif

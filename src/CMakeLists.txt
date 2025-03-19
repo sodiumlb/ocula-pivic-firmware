@@ -87,8 +87,8 @@ set_property(TARGET ocula
 
 # If no version set, touch the file that provides a dev timestamp for the version.
 
-get_target_property(RP6502_VGA_COMPILE_DEFINITIONS ocula COMPILE_DEFINITIONS)
-if(RP6502_VGA_COMPILE_DEFINITIONS MATCHES "RP6502_VERSION=\"\"")
+get_target_property(OCULA-PIVIC_COMPILE_DEFINITIONS ocula COMPILE_DEFINITIONS)
+if(OCULA-PIVIC_COMPILE_DEFINITIONS MATCHES "RP6502_VERSION=\"\"")
     add_custom_command(TARGET ocula
         COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_LIST_DIR}/ocula/main.c
     )

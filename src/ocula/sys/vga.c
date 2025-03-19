@@ -5,7 +5,7 @@
  */
 
 #include "main.h"
-#include "sys/ria.h"
+//#include "sys/ria.h"
 #include "sys/vga.h"
 #include "sys/mem.h"
 #include "term/term.h"
@@ -329,7 +329,7 @@ vga_render_loop(void)
                     scanvideo_begin_scanline_generation(true);
                 if (scanvideo_scanline_number(scanline_buffer0->scanline_id) == 0)
                 {
-                    ria_vsync();
+                    //ria_vsync();
                     busy_wait_us_32(VGA_VSYNC_BUSY_WAIT_HACK_US);
                 }
                 while (vga_scanline_buffer_core0)
@@ -343,7 +343,7 @@ vga_render_loop(void)
                     scanvideo_begin_scanline_generation(true);
                 if (scanvideo_scanline_number(scanline_buffer1->scanline_id) == 0)
                 {
-                    ria_vsync();
+                    //ria_vsync();
                     busy_wait_us_32(VGA_VSYNC_BUSY_WAIT_HACK_US);
                 }
                 vga_render_scanline(scanline_buffer1);
