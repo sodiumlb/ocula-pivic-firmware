@@ -9,9 +9,6 @@
 #include "modes/mode2.h"
 #include "modes/mode3.h"
 #include "modes/mode4.h"
-#include "sys/led.h"
-#include "sys/pix.h"
-#include "sys/ria.h"
 #include "sys/std.h"
 #include "sys/vga.h"
 #include "term/font.h"
@@ -29,9 +26,6 @@ static void init(void)
     term_init();
     serno_init(); // before tusb
     tusb_init();
-    led_init();
-    ria_init();
-    pix_init();
 }
 
 static void task(void)
@@ -40,20 +34,16 @@ static void task(void)
     term_task();
     tud_task();
     cdc_task();
-    pix_task();
-    ria_task();
     std_task();
 }
 
 void main_flush(void)
 {
-    ria_flush();
 }
 
 void main_reclock(void)
 {
     std_reclock();
-    ria_reclock();
 }
 
 bool main_prog(uint16_t *xregs)
