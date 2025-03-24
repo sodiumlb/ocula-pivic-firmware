@@ -5,6 +5,7 @@
  */
 
 #include "str.h"
+#include "littlefs/lfs.h"
 
 bool char_is_hex(char ch)
 {

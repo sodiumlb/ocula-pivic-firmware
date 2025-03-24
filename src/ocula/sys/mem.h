@@ -11,13 +11,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// 64KB Extended RAM
-#ifdef NDEBUG
-extern uint8_t xram[0x10000];
-#else
+// 256KB Extended RAM
 extern uint8_t *const xram;
-#endif
-
+asm(".equ xram, 0x20000000");
 // The xstack is:
 // 512 bytes, enough to hold a CC65 stack frame, two strings for a
 // file rename, or a disk sector
@@ -32,7 +28,7 @@ extern volatile size_t xstack_ptr;
 extern uint8_t regs[0x20];
 #define REGS(addr) regs[(addr) & 0x1F]
 #define REGSW(addr) ((uint16_t *)&REGS(addr))[0]
-asm(".equ regs, 0x20040000");
+asm(".equ regs, 0x20080000");
 
 // Misc memory buffer for moving things around.
 // 6502 <-> RAM, USB <-> RAM, UART <-> RAM, etc.

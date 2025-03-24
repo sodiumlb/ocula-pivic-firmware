@@ -9,7 +9,14 @@
 #include "modes/mode2.h"
 #include "modes/mode3.h"
 #include "modes/mode4.h"
+#include "mon/mon.h"
+#include "mon/ram.h"
+#include "sys/com.h"
+#include "sys/cfg.h"
+#include "sys/cpu.h"
+#include "sys/lfs.h"
 #include "sys/std.h"
+#include "sys/sys.h"
 #include "sys/vga.h"
 #include "term/font.h"
 #include "term/term.h"
@@ -20,7 +27,16 @@
 
 static void init(void)
 {
+    cpu_init();
     std_init();
+    com_init();
+
+    // Print startup message
+    sys_init();
+
+    // Load config before we continue
+    lfs_init();
+    cfg_init();
     vga_init();
     font_init();
     term_init();
@@ -30,11 +46,16 @@ static void init(void)
 
 static void task(void)
 {
+    cpu_task();
     vga_task();
     term_task();
     tud_task();
     cdc_task();
     std_task();
+
+    com_task();
+    mon_task();
+    ram_task();
 }
 
 void main_flush(void)

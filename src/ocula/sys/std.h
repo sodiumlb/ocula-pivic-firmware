@@ -10,9 +10,9 @@
 #include <pico/stdlib.h>
 #include <stdbool.h>
 
-#define STD_UART_TX 4
-#define STD_UART_RX 5
-#define STD_UART_INTERFACE uart1
+#define STD_UART_TX 0
+#define STD_UART_RX 1
+#define STD_UART_INTERFACE uart0
 #define STD_UART_BAUDRATE 115200
 // STD IN Buffering is handled by 32 byte UART FIFO
 #define STD_IN_BUF_SIZE 8

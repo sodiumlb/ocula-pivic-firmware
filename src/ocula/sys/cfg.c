@@ -5,7 +5,6 @@
  */
 
 #include "str.h"
-#include "api/oem.h"
 #include "sys/cfg.h"
 #include "sys/cpu.h"
 #include "sys/lfs.h"
@@ -16,7 +15,6 @@
 // +V1         | Version - Must be first
 // +P8000      | PHI2
 // +C0         | Caps
-// +R0         | RESB
 // +S437       | Code Page
 // +D0         | VGA display type
 // BASIC       | Boot ROM - Must be last
@@ -25,7 +23,6 @@
 static const char filename[] = "CONFIG.SYS";
 
 static uint32_t cfg_phi2_khz;
-static uint8_t cfg_reset_ms;
 static uint8_t cfg_caps;
 static uint32_t cfg_codepage;
 static uint8_t cfg_vga_display;
@@ -63,14 +60,12 @@ static void cfg_save_with_boot_opt(char *opt_str)
         lfsresult = lfs_printf(&lfs_volume, &lfs_file,
                                "+V%d\n"
                                "+P%d\n"
-                               "+R%d\n"
                                "+C%d\n"
                                "+S%d\n"
                                "+D%d\n"
                                "%s",
                                CFG_VERSION,
                                cfg_phi2_khz,
-                               cfg_reset_ms,
                                cfg_caps,
                                cfg_codepage,
                                cfg_vga_display,
@@ -114,9 +109,6 @@ static void cfg_load_with_boot_opt(bool boot_only)
             {
             case 'P':
                 cfg_phi2_khz = val;
-                break;
-            case 'R':
-                cfg_reset_ms = val;
                 break;
             case 'C':
                 cfg_caps = val;
@@ -176,21 +168,6 @@ uint32_t cfg_get_phi2_khz(void)
     return cpu_validate_phi2_khz(cfg_phi2_khz);
 }
 
-// Specify a minimum time for reset low. 0=auto
-void cfg_set_reset_ms(uint8_t ms)
-{
-    if (cfg_reset_ms != ms)
-    {
-        cfg_reset_ms = ms;
-        cfg_save_with_boot_opt(NULL);
-    }
-}
-
-uint8_t cfg_get_reset_ms(void)
-{
-    return cfg_reset_ms;
-}
-
 void cfg_set_caps(uint8_t mode)
 {
     if (mode <= 2 && cfg_caps != mode)
@@ -205,21 +182,21 @@ uint8_t cfg_get_caps(void)
     return cfg_caps;
 }
 
-bool cfg_set_codepage(uint32_t cp)
-{
-    if (cp > UINT16_MAX)
-        return false;
-    uint32_t old_val = cfg_codepage;
-    cfg_codepage = oem_set_codepage(cp);
-    if (old_val != cfg_codepage)
-        cfg_save_with_boot_opt(NULL);
-    return true;
-}
+// bool cfg_set_codepage(uint32_t cp)
+// {
+//     if (cp > UINT16_MAX)
+//         return false;
+//     uint32_t old_val = cfg_codepage;
+//     cfg_codepage = oem_set_codepage(cp);
+//     if (old_val != cfg_codepage)
+//         cfg_save_with_boot_opt(NULL);
+//     return true;
+// }
 
-uint16_t cfg_get_codepage(void)
-{
-    return cfg_codepage;
-}
+// uint16_t cfg_get_codepage(void)
+// {
+//     return cfg_codepage;
+// }
 
 bool cfg_set_vga(uint8_t disp)
 {
@@ -227,7 +204,7 @@ bool cfg_set_vga(uint8_t disp)
     if (disp <= 2 && cfg_vga_display != disp)
     {
         cfg_vga_display = disp;
-        ok = vga_set_vga(cfg_vga_display);
+        //ok = vga_set_vga(cfg_vga_display);
         if (ok)
             cfg_save_with_boot_opt(NULL);
     }

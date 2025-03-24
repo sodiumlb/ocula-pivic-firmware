@@ -6,7 +6,6 @@
 
 #include "str.h"
 #include "mon/hlp.h"
-#include "mon/rom.h"
 #include "mon/vip.h"
 #include "sys/lfs.h"
 
@@ -16,19 +15,9 @@ static const char __in_flash("helptext") hlp_text_help[] =
     "HELP ABOUT|SYSTEM   - About includes credits. System for general usage.\n"
     "STATUS              - Show hardware status and USB devices.\n"
     "SET (attr) (value)  - Change or show settings.\n"
-    "LS (dir|drive)      - List contents of directory.\n"
-    "CD (dir)            - Change or show current directory.\n"
-    "MKDIR dir           - Make a new directory.\n"
-    "0:                  - 1:-8: Change current USB drive.\n"
-    "LOAD file           - Load ROM file. Start if contains reset vector.\n"
-    "INFO file           - Show help text, if any, contained in ROM file.\n"
-    "INSTALL file        - Install ROM file on RIA.\n"
-    "REMOVE rom          - Remove ROM from RIA.\n"
     "REBOOT              - Cold start. Load and start selected boot ROM.\n"
     "RESET               - Start 6502 at current reset vector ($FFFC).\n"
-    "rom                 - Load and start an installed ROM.\n"
     "UPLOAD file         - Write file. Binary chunks follow.\n"
-    "UNLINK file|dir     - Delete file or empty directory.\n"
     "BINARY addr len crc - Write memory. Binary data follows.\n"
     "0000 (00 00 ...)    - Read or write memory.";
 
@@ -71,39 +60,6 @@ static const char __in_flash("helptext") hlp_text_system[] =
     "This is useful for some light debugging, but the real power is from the other\n"
     "commands you can explore with this help system. Have fun!";
 
-static const char __in_flash("helptext") hlp_text_dir[] =
-    "LS (also aliased as DIR) and CD are used to navigate USB mass storage\n"
-    "devices. You can change to a different USB device with 1: to 8:. Use the\n"
-    "STATUS command to get a list of mounted drives.";
-
-static const char __in_flash("helptext") hlp_text_mkdir[] =
-    "MKDIR is used to create new directories. Use UNLINK to remove empty directories.";
-
-static const char __in_flash("helptext") hlp_text_load[] =
-    "LOAD and INFO read ROM files from a USB drive. A ROM file contains both\n"
-    "ASCII information for the user, and binary information for the RP6502.\n"
-    "Lines may end with either LF or CRLF. The first line must be:\n"
-    "#!RP6502\n"
-    "This is followed by HELP/INFO lines that begin with a # and a space:\n"
-    "# Cool Game V0.0 by Awesome Dev\n"
-    "After the info lines, binary data is prefixed with ASCII lines containing\n"
-    "hex or decimal numbers indicating the address, length, and CRC-32.\n"
-    "$C000 1024 0x0C0FFEE0\n"
-    "This is followed by the binary data. The maximum length is 1024 bytes, so\n"
-    "repeat as necessary. The CRC-32 is calculated using the same method as zip.\n"
-    "If the ROM file contains data for the reset vector $FFFC-$FFFD then the\n"
-    "6502 will be reset (started) immediately after loading.";
-
-static const char __in_flash("helptext") hlp_text_install[] =
-    "INSTALL and REMOVE manage the ROMs installed in the Pi Pico RIA flash memory.\n"
-    "ROM files must contain a reset vector to be installed. A list of installed\n"
-    "ROMs is shown on the base HELP screen. Once installed, these ROMs become an\n"
-    "integrated part of the system and can be loaded manually by simply using their\n"
-    "name like any other command. The ROM name must not conflict with any other\n"
-    "system command and may only contain up to 16 ASCII letters. If the file\n"
-    "contains an extension, it must be \".rp6502\", which will be stripped upon\n"
-    "install.";
-
 static const char __in_flash("helptext") hlp_text_reboot[] =
     "REBOOT will restart the Pi Pico RIA. It does the same thing as pressing a\n"
     "reset button attached to the Pi Pico or interrupting the power supply.";
@@ -134,12 +90,6 @@ static const char __in_flash("helptext") hlp_text_upload[] =
     "The transfer is completed with the END command or a blank line. Your choice.\n"
     "}END\n"
     "You will return to a \"]\" prompt on success or \"?\" error on failure.";
-
-static const char __in_flash("helptext") hlp_text_unlink[] =
-    "UNLINK removes a file. Its intended use is for scripting on another system\n"
-    "connected to the console. For example, you might want to delete save data\n"
-    "as part of automated testing. You'll probably use this once manually after\n"
-    "attempting to use the UPLOAD command from a keyboard. ;)";
 
 static const char __in_flash("helptext") hlp_text_binary[] =
     "BINARY is the fastest way to get code or data from your build system to the\n"
@@ -220,29 +170,9 @@ static struct
     {6, "system", hlp_text_system},
     {1, "0", hlp_text_system},
     {4, "0000", hlp_text_system},
-    {2, "ls", hlp_text_dir},
-    {3, "dir", hlp_text_dir},
-    {2, "cd", hlp_text_dir},
-    {5, "chdir", hlp_text_dir},
-    {5, "mkdir", hlp_text_mkdir},
-    {2, "0:", hlp_text_dir},
-    {2, "1:", hlp_text_dir},
-    {2, "2:", hlp_text_dir},
-    {2, "3:", hlp_text_dir},
-    {2, "4:", hlp_text_dir},
-    {2, "5:", hlp_text_dir},
-    {2, "6:", hlp_text_dir},
-    {2, "7:", hlp_text_dir},
-    {2, "8:", hlp_text_dir},
-    {2, "9:", hlp_text_dir},
-    {4, "load", hlp_text_load},
-    {4, "info", hlp_text_load},
-    {7, "install", hlp_text_install},
-    {6, "remove", hlp_text_install},
     {6, "reboot", hlp_text_reboot},
     {5, "reset", hlp_text_reset},
     {6, "upload", hlp_text_upload},
-    {6, "unlink", hlp_text_unlink},
     {6, "binary", hlp_text_binary},
 };
 static const size_t COMMANDS_COUNT = sizeof COMMANDS / sizeof *COMMANDS;
@@ -400,10 +330,5 @@ void hlp_mon_help(const char *args, size_t len)
         puts(text);
         if (text == hlp_text_about)
             vip_print();
-    }
-    else
-    {
-        if (!rom_help(args, len))
-            puts("?No help found.");
     }
 }

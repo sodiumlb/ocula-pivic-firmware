@@ -35,7 +35,7 @@ bool cpu_set_phi2_khz(uint32_t freq_khz);
 
 // Return calculated reset time. May be higher than requested
 // to guarantee the 6502 gets two clock cycles during reset.
-uint32_t cpu_get_reset_us();
+//uint32_t cpu_get_reset_us();
 
 // Receive UART and keyboard communications intended for the 6502.
 void cpu_com_rx(uint8_t ch);
@@ -49,6 +49,6 @@ bool cpu_stdin_ready(void);
 size_t cpu_stdin_read(uint8_t *buf, size_t count);
 
 // API sets STDIN options
-void cpu_api_stdin_opt(void);
+// void cpu_api_stdin_opt(void);
 
 #endif /* _CPU_H_ */

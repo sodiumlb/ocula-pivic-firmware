@@ -5,11 +5,12 @@
  */
 
 #include "main.h"
-#include "api/api.h"
 #include "sys/cfg.h"
 #include "sys/com.h"
 #include "sys/cpu.h"
+#include "sys/mem.h"
 #include "pico/stdlib.h"
+#include "hardware/clocks.h"
 
 static bool cpu_run_requested;
 static absolute_time_t cpu_resb_timer;
@@ -31,15 +32,15 @@ static uint32_t cpu_ctrl_bits;
 void cpu_init(void)
 {
     // drive reset pin
-    gpio_init(CPU_RESB_PIN);
-    gpio_put(CPU_RESB_PIN, false);
-    gpio_set_dir(CPU_RESB_PIN, true);
+    // gpio_init(CPU_RESB_PIN);
+    // gpio_put(CPU_RESB_PIN, false);
+    // gpio_set_dir(CPU_RESB_PIN, true);
 }
 
 void cpu_reclock(void)
 {
-    if (!gpio_get(CPU_RESB_PIN))
-        cpu_resb_timer = delayed_by_us(get_absolute_time(), cpu_get_reset_us());
+    // if (!gpio_get(CPU_RESB_PIN))
+    //     cpu_resb_timer = delayed_by_us(get_absolute_time(), cpu_get_reset_us());
 }
 
 static int cpu_caps(int ch)
@@ -69,13 +70,13 @@ static int cpu_getchar_fifo(void)
 
 void cpu_task(void)
 {
-    // Enforce minimum RESB time
-    if (cpu_run_requested && !gpio_get(CPU_RESB_PIN))
-    {
-        absolute_time_t now = get_absolute_time();
-        if (absolute_time_diff_us(now, cpu_resb_timer) < 0)
-            gpio_put(CPU_RESB_PIN, true);
-    }
+    // // Enforce minimum RESB time
+    // if (cpu_run_requested && !gpio_get(CPU_RESB_PIN))
+    // {
+    //     absolute_time_t now = get_absolute_time();
+    //     if (absolute_time_diff_us(now, cpu_resb_timer) < 0)
+    //         gpio_put(CPU_RESB_PIN, true);
+    // }
 
     // Move UART FIFO into action loop
     if (cpu_rx_char < 0)
@@ -105,12 +106,12 @@ void cpu_stop(void)
     cpu_ctrl_bits = 0;
 
     cpu_run_requested = false;
-    if (gpio_get(CPU_RESB_PIN))
-    {
-        gpio_put(CPU_RESB_PIN, false);
-        cpu_resb_timer = delayed_by_us(get_absolute_time(),
-                                       cpu_get_reset_us());
-    }
+    // if (gpio_get(CPU_RESB_PIN))
+    // {
+    //     gpio_put(CPU_RESB_PIN, false);
+    //     cpu_resb_timer = delayed_by_us(get_absolute_time(),
+    //                                    cpu_get_reset_us());
+    // }
 }
 
 bool cpu_active(void)
@@ -118,21 +119,21 @@ bool cpu_active(void)
     return cpu_run_requested;
 }
 
-void cpu_api_phi2(void)
-{
-    return api_return_ax(cfg_get_phi2_khz());
-}
+// void cpu_api_phi2(void)
+// {
+//     return api_return_ax(cfg_get_phi2_khz());
+// }
 
-uint32_t cpu_get_reset_us(void)
-{
-    uint32_t reset_ms = cfg_get_reset_ms();
-    uint32_t phi2_khz = cfg_get_phi2_khz();
-    if (!reset_ms)
-        return (2000000 / phi2_khz + 999) / 1000;
-    if (phi2_khz == 1 && reset_ms == 1)
-        return 2000;
-    return reset_ms * 1000;
-}
+// uint32_t cpu_get_reset_us(void)
+// {
+//     uint32_t reset_ms = cfg_get_reset_ms();
+//     uint32_t phi2_khz = cfg_get_phi2_khz();
+//     if (!reset_ms)
+//         return (2000000 / phi2_khz + 999) / 1000;
+//     if (phi2_khz == 1 && reset_ms == 1)
+//         return 2000;
+//     return reset_ms * 1000;
+// }
 
 static void cpu_compute_phi2_clocks(uint32_t freq_khz,
                                     uint32_t *sys_clk_khz,
@@ -177,7 +178,8 @@ bool cpu_set_phi2_khz(uint32_t phi2_khz)
     com_flush();
     bool ok = set_sys_clock_khz(sys_clk_khz, false);
     if (ok)
-        main_reclock(sys_clk_khz, clkdiv_int, clkdiv_frac);
+        // main_reclock(sys_clk_khz, clkdiv_int, clkdiv_frac);
+        main_reclock();
     return ok;
 }
 
@@ -255,13 +257,13 @@ size_t cpu_stdin_read(uint8_t *buf, size_t count)
     return i;
 }
 
-void cpu_api_stdin_opt(void)
-{
-    uint8_t str_length = API_A;
-    uint32_t ctrl_bits;
-    if (!api_pop_uint32_end(&ctrl_bits))
-        return api_return_errno(API_EINVAL);
-    cpu_str_length = str_length;
-    cpu_ctrl_bits = ctrl_bits;
-    return api_return_ax(0);
-}
+// void cpu_api_stdin_opt(void)
+// {
+//     uint8_t str_length = API_A;
+//     uint32_t ctrl_bits;
+//     if (!api_pop_uint32_end(&ctrl_bits))
+//         return api_return_errno(API_EINVAL);
+//     cpu_str_length = str_length;
+//     cpu_ctrl_bits = ctrl_bits;
+//     return api_return_ax(0);
+// }

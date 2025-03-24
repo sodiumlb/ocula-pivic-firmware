@@ -5,10 +5,11 @@
  */
 
 #include "str.h"
-#include "api/api.h"
+//#include "api/api.h"
 #include "sys/com.h"
-#include "sys/pix.h"
-#include "sys/ria.h"
+//#include "sys/pix.h"
+//#include "sys/ria.h"
+#include "sys/mem.h"
 #include <stdio.h>
 
 #define TIMEOUT_MS 200
@@ -29,8 +30,8 @@ static uint32_t rw_crc;
 static void cmd_ria_read(void)
 {
     cmd_state = SYS_IDLE;
-    if (ria_print_error_message())
-        return;
+    //if (ria_print_error_message())
+    //    return;
     printf("%04lX", rw_addr);
     for (size_t i = 0; i < mbuf_len; i++)
         printf(" %02X", mbuf[i]);
@@ -40,16 +41,16 @@ static void cmd_ria_read(void)
 static void cmd_ria_write(void)
 {
     cmd_state = SYS_IDLE;
-    if (ria_print_error_message())
-        return;
+    //if (ria_print_error_message())
+    //    return;
     cmd_state = SYS_VERIFY;
-    ria_verify_buf(rw_addr);
+    //ria_verify_buf(rw_addr);
 }
 
 static void cmd_ria_verify(void)
 {
     cmd_state = SYS_IDLE;
-    ria_print_error_message();
+    //ria_print_error_message();
 }
 
 // Commands that start with a hex address. Read or write memory.
@@ -86,7 +87,7 @@ void ram_mon_address(const char *args, size_t len)
             printf("\n");
             return;
         }
-        ria_read_buf(rw_addr);
+        //ria_read_buf(rw_addr);
         cmd_state = SYS_READ;
         return;
     }
@@ -125,13 +126,13 @@ void ram_mon_address(const char *args, size_t len)
         for (size_t i = 0; i < mbuf_len; i++)
         {
             xram[rw_addr + i] = mbuf[i];
-            while (!pix_ready())
-                tight_loop_contents();
-            PIX_SEND_XRAM(rw_addr + i, mbuf[i]);
+            //while (!pix_ready())
+            //    tight_loop_contents();
+            //PIX_SEND_XRAM(rw_addr + i, mbuf[i]);
         }
         return;
     }
-    ria_write_buf(rw_addr);
+    //ria_write_buf(rw_addr);
     cmd_state = SYS_WRITE;
 }
 
@@ -145,11 +146,11 @@ static void sys_com_rx_mbuf(bool timeout, const char *buf, size_t length)
         puts("?timeout");
         return;
     }
-    if (ria_buf_crc32() != rw_crc)
-    {
-        puts("?CRC does not match");
-        return;
-    }
+    // if (ria_buf_crc32() != rw_crc)
+    // {
+    //     puts("?CRC does not match");
+    //     return;
+    // }
 
     if (rw_addr >= 0x10000)
     {
@@ -160,7 +161,7 @@ static void sys_com_rx_mbuf(bool timeout, const char *buf, size_t length)
     else
     {
         cmd_state = SYS_WRITE;
-        ria_write_buf(rw_addr);
+        //ria_write_buf(rw_addr);
     }
 }
 
@@ -168,10 +169,10 @@ static void cmd_xram()
 {
     while (rw_len)
     {
-        if (!pix_ready())
-            return;
+        // if (!pix_ready())
+        //     return;
         uint32_t addr = rw_addr + --rw_len - 0x10000;
-        PIX_SEND_XRAM(addr, xram[addr]);
+        // PIX_SEND_XRAM(addr, xram[addr]);
     }
     cmd_state = SYS_IDLE;
 }
@@ -204,8 +205,8 @@ void ram_mon_binary(const char *args, size_t len)
 
 void ram_task(void)
 {
-    if (ria_active())
-        return;
+    // if (ria_active())
+    //     return;
     switch (cmd_state)
     {
     case SYS_IDLE:

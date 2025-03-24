@@ -31,12 +31,24 @@ target_include_directories(ocula PRIVATE
 
 target_sources(ocula PRIVATE
     ocula/main.c
+    ocula/str.c
     ocula/modes/mode1.c
     ocula/modes/mode2.c
     ocula/modes/mode3.c
     ocula/modes/mode4.c
     ocula/modes/mode4.S
+    ocula/mon/hlp.c
+    ocula/mon/mon.c
+    ocula/mon/ram.c
+    ocula/mon/set.c
+    ocula/mon/vip.c
+    ocula/sys/cfg.c
+    ocula/sys/com.c
+    ocula/sys/cpu.c
+    ocula/sys/lfs.c
+    ocula/sys/mem.c
     ocula/sys/std.c
+    ocula/sys/sys.c
     ocula/sys/vga.c
     ocula/term/color.c
     ocula/term/font.c
@@ -44,6 +56,8 @@ target_sources(ocula PRIVATE
     ocula/usb/cdc.c
     ocula/usb/descriptors.c
     ocula/usb/serno.c
+    littlefs/lfs.c
+    littlefs/lfs_util.c
 )
 
 target_link_libraries(ocula PRIVATE
@@ -51,7 +65,13 @@ target_link_libraries(ocula PRIVATE
     pico_multicore
     pico_unique_id
     pico_scanvideo_dpi
+    pico_rand
     hardware_interp
+    hardware_pio
+    hardware_dma
+    hardware_pwm
+    hardware_clocks
+    hardware_flash
     tinyusb_ocula
 )
 

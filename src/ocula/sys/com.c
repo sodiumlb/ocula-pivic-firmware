@@ -7,8 +7,8 @@
 #include "main.h"
 #include "sys/com.h"
 #include "sys/cpu.h"
-#include "sys/pix.h"
-#include "sys/ria.h"
+// #include "sys/pix.h"
+// #include "sys/ria.h"
 #include "sys/vga.h"
 #include "pico/stdlib.h"
 #include "pico/stdio/driver.h"
@@ -47,16 +47,12 @@ volatile uint8_t com_tx_buf[32];
 static void com_tx_task(void)
 {
     // We sacrifice the UART TX FIFO so PIX STDOUT can keep pace.
-    // 115_200 baud doesn't need flow control, but PIX will send
-    // 16_000_000 bps if we don't throttle it.
     if (uart_get_hw(COM_UART)->fr & UART_UARTFR_TXFE_BITS)
     {
         if (&COM_TX_BUF(com_tx_head) != &COM_TX_BUF(com_tx_tail))
         {
             char ch = COM_TX_BUF(++com_tx_tail);
             uart_putc_raw(COM_UART, ch);
-            if (vga_backchannel())
-                pix_send_blocking(PIX_DEVICE_VGA, 0xF, 0x03, ch);
         }
     }
 }
@@ -418,13 +414,13 @@ void com_task(void)
     uint32_t current_break = uart_get_hw(COM_UART)->rsr & UART_UARTRSR_BE_BITS;
     if (current_break)
         hw_clear_bits(&uart_get_hw(COM_UART)->rsr, UART_UARTRSR_BITS);
-    else if (break_detect)
-        main_break();
+    // else if (break_detect)
+    //     main_break();
     break_detect = current_break;
 
     // Allow UART RX FIFO to fill during RIA actions.
     // At all other times the FIFO must be emptied to detect breaks.
-    if (!ria_active())
+    //if (!ria_active())
     {
         if (com_callback && com_timeout_ms && absolute_time_diff_us(get_absolute_time(), com_timer) < 0)
         {
@@ -436,7 +432,7 @@ void com_task(void)
         else
         {
             int ch;
-            if (cpu_active() && com_callback)
+            if (/*cpu_active() && */ com_callback)
                 ch = cpu_getchar();
             else
                 ch = getchar_timeout_us(0);
@@ -450,10 +446,10 @@ void com_task(void)
                     else
                         com_line_rx(ch);
                 }
-                else if (cpu_active())
+                else //if (cpu_active())
                     cpu_com_rx(ch);
-                if (ria_active()) // why?
-                    break;
+                // if (ria_active()) // why?
+                //     break;
                 ch = getchar_timeout_us(0);
             }
         }

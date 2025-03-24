@@ -6,12 +6,9 @@
 
 #include "main.h"
 #include "str.h"
-#include "api/std.h"
-#include "mon/fil.h"
 #include "mon/hlp.h"
 #include "mon/mon.h"
 #include "mon/ram.h"
-#include "mon/rom.h"
 #include "mon/set.h"
 #include "sys/com.h"
 #include "sys/mem.h"
@@ -35,19 +32,8 @@ static struct
     {1, "?", hlp_mon_help},
     {6, "status", sys_mon_status},
     {3, "set", set_mon_set},
-    {2, "ls", fil_mon_ls},
-    {3, "dir", fil_mon_ls},
-    {2, "cd", fil_mon_chdir},
-    {5, "chdir", fil_mon_chdir},
-    {5, "mkdir", fil_mon_mkdir},
-    {4, "load", rom_mon_load},
-    {4, "info", rom_mon_info},
-    {7, "install", rom_mon_install},
-    {6, "remove", rom_mon_remove},
     {6, "reboot", sys_mon_reboot},
     {5, "reset", sys_mon_reset},
-    {6, "upload", fil_mon_upload},
-    {6, "unlink", fil_mon_unlink},
     {6, "binary", ram_mon_binary},
 };
 static const size_t COMMANDS_COUNT = sizeof COMMANDS / sizeof *COMMANDS;
@@ -89,12 +75,6 @@ static mon_function mon_command_lookup(const char **buf, uint8_t buflen)
         *buf = cmd;
         return ram_mon_address;
     }
-    // 0:-9: is chdrive
-    if (cmd_len == 2 && cmd[1] == ':' && cmd[0] >= '0' && cmd[0] <= '9')
-    {
-        *buf = cmd;
-        return fil_mon_chdrive;
-    }
     *buf += i;
     for (i = 0; i < COMMANDS_COUNT; i++)
     {
@@ -119,13 +99,12 @@ static void mon_enter(bool timeout, const char *buf, size_t length)
     mon_function func = mon_command_lookup(&args, length);
     if (!func)
     {
-        if (!rom_load(buf, length))
-            for (const char *b = buf; b < args; b++)
-                if (b[0] != ' ')
-                {
-                    printf("?unknown command\n");
-                    break;
-                }
+        for (const char *b = buf; b < args; b++)
+            if (b[0] != ' ')
+            {
+                printf("?unknown command\n");
+                break;
+            }
         return;
     }
     size_t args_len = length - (args - buf);
@@ -135,12 +114,11 @@ static void mon_enter(bool timeout, const char *buf, size_t length)
 // Anything that suspends the monitor.
 static bool mon_suspended(void)
 {
-    return main_active() ||
-           ram_active() ||
-           rom_active() ||
-           vga_active() ||
-           fil_active() ||
-           std_active();
+    return //main_active() ||
+           ram_active()// ||
+           //vga_active() ||
+           //std_active()
+           ;
 }
 
 void mon_task(void)

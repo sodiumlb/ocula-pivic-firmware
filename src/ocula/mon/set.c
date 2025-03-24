@@ -6,7 +6,7 @@
 
 #include "str.h"
 #include "sys/cfg.h"
-#include "sys/cpu.h"
+//#include "sys/cpu.h"
 #include "sys/lfs.h"
 
 static void set_print_phi2(void)
@@ -36,42 +36,6 @@ static void set_phi2(const char *args, size_t len)
         }
     }
     set_print_phi2();
-}
-
-static void set_print_resb(void)
-{
-    uint8_t reset_ms = cfg_get_reset_ms();
-    float reset_us = cpu_get_reset_us();
-    if (!reset_ms)
-        printf("RESB: %.3f ms (auto)\n", reset_us / 1000.f);
-    else if (reset_ms * 1000 == reset_us)
-        printf("RESB: %d ms\n", reset_ms);
-    else
-        printf("RESB: %.0f ms (%d ms requested)\n", reset_us / 1000.f, reset_ms);
-}
-
-static void set_resb(const char *args, size_t len)
-{
-    uint32_t val;
-    if (len)
-    {
-        if (parse_uint32(&args, &len, &val) &&
-            parse_end(args, len))
-        {
-            if (val > 255)
-            {
-                printf("?invalid duration\n");
-                return;
-            }
-            cfg_set_reset_ms(val);
-        }
-        else
-        {
-            printf("?invalid argument\n");
-            return;
-        }
-    }
-    set_print_resb();
 }
 
 static void set_print_boot(void)
@@ -136,30 +100,30 @@ static void set_caps(const char *args, size_t len)
     set_print_caps();
 }
 
-static void set_print_code_page()
-{
-#if (RP6502_CODE_PAGE)
-    printf("CP  : %d (dev)\n", RP6502_CODE_PAGE);
-#else
-    printf("CP  : %d\n", cfg_get_codepage());
-#endif
-}
+// static void set_print_code_page()
+// {
+// #if (RP6502_CODE_PAGE)
+//     printf("CP  : %d (dev)\n", RP6502_CODE_PAGE);
+// #else
+//     printf("CP  : %d\n", cfg_get_codepage());
+// #endif
+// }
 
-static void set_code_page(const char *args, size_t len)
-{
-    uint32_t val;
-    if (len)
-    {
-        if (!parse_uint32(&args, &len, &val) ||
-            !parse_end(args, len) ||
-            !cfg_set_codepage(val))
-        {
-            printf("?invalid argument\n");
-            return;
-        }
-    }
-    set_print_code_page();
-}
+// static void set_code_page(const char *args, size_t len)
+// {
+//     uint32_t val;
+//     if (len)
+//     {
+//         if (!parse_uint32(&args, &len, &val) ||
+//             !parse_end(args, len) ||
+//             !cfg_set_codepage(val))
+//         {
+//             printf("?invalid argument\n");
+//             return;
+//         }
+//     }
+//     set_print_code_page();
+// }
 
 static void set_print_vga(void)
 {
@@ -195,9 +159,7 @@ static struct
 } const SETTERS[] = {
     {4, "caps", set_caps},
     {4, "phi2", set_phi2},
-    {4, "resb", set_resb},
     {4, "boot", set_boot},
-    {2, "cp", set_code_page},
     {3, "vga", set_vga},
 };
 static const size_t SETTERS_COUNT = sizeof SETTERS / sizeof *SETTERS;
@@ -205,10 +167,8 @@ static const size_t SETTERS_COUNT = sizeof SETTERS / sizeof *SETTERS;
 static void set_print_all(void)
 {
     set_print_phi2();
-    set_print_resb();
     set_print_caps();
     set_print_boot();
-    set_print_code_page();
     set_print_vga();
 }
 
