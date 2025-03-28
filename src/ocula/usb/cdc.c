@@ -5,19 +5,20 @@
  */
 
 #include "tusb.h"
-#include "sys/std.h"
+//#include "sys/std.h"
 #include "usb/cdc.h"
+#include "pico/stdio/driver.h"
 
 static absolute_time_t break_timer;
 static absolute_time_t faux_break_timer;
 static bool is_breaking = false;
-static uint8_t read_buf[STD_IN_BUF_SIZE];
+//static uint8_t read_buf[STD_IN_BUF_SIZE];
 
 static void send_break_ms(uint16_t duration_ms)
 {
     break_timer = make_timeout_time_ms(duration_ms);
     is_breaking = true;
-    std_set_break(true);
+    //std_set_break(true);
 }
 
 void tud_cdc_send_break_cb(uint8_t itf, uint16_t duration_ms)
@@ -37,8 +38,62 @@ void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const *p_line_coding)
         faux_break_timer = make_timeout_time_ms(100);
 }
 
+void cdc_stdio_out_chars(const char *buf, int length);
+void cdc_stdio_out_flush(void);
+static int cdc_stdio_in_chars(char *buf, int length);
+
+static stdio_driver_t cdc_stdio_app = {
+    .out_chars = cdc_stdio_out_chars,
+    .out_flush = cdc_stdio_out_flush,
+    .in_chars = cdc_stdio_in_chars,
+#if PICO_STDIO_ENABLE_CRLF_SUPPORT
+    .crlf_enabled = PICO_STDIO_DEFAULT_CRLF
+#endif
+};
+
+void cdc_stdio_out_chars(const char *buf, int length)
+{
+
+    if(tud_cdc_connected()){
+        //tuh_cdc_write(i, buf, length);
+        
+        int sent = 0;
+        do {
+            sent += tud_cdc_write((const char *)(buf+sent),length-sent);
+            if(sent < length)
+                tud_task();     //TODO This is brute force. Any nicer options?
+        } while(sent < length);
+        
+    }
+}
+
+void cdc_stdio_out_flush(void)
+{
+    if(tud_cdc_connected()){
+        tud_cdc_write_flush();
+    }
+}
+
+static int cdc_stdio_in_chars(char *buf, int length)
+{
+    int ret = 0;
+    if(tud_cdc_available()){
+        ret = tud_cdc_read(buf,length);
+    }
+    return ret;
+}
+
+
+void cdc_init(void)
+{
+    stdio_set_driver_enabled(&cdc_stdio_app, true);
+}
+
+
 void cdc_task(void)
 {
+    cdc_stdio_out_flush();
+    /*
 
     if (is_breaking && absolute_time_diff_us(get_absolute_time(), break_timer) < 0)
     {
@@ -81,4 +136,5 @@ void cdc_task(void)
                     std_in_write(read_buf[i]);
         }
     }
+    */
 }

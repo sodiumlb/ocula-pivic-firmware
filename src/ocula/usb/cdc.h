@@ -7,6 +7,7 @@
 #ifndef CDC_H
 #define CDC_H
 
+void cdc_init(void);
 void cdc_task(void);
 
 #endif

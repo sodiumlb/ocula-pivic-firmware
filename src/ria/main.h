@@ -61,7 +61,7 @@ bool main_api(uint8_t operation);
 /* All resource assignments
  */
 
-#define AUD_PWM_IRQ_PIN 14 /* No IO */
+//#define AUD_PWM_IRQ_PIN 14 /* No IO */
 
 #define COM_UART uart1
 #define COM_UART_BAUD_RATE 115200

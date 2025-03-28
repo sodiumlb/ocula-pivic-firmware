@@ -28,7 +28,7 @@
 static void init(void)
 {
     cpu_init();
-    std_init();
+    //std_init();
     com_init();
 
     // Print startup message
@@ -37,25 +37,27 @@ static void init(void)
     // Load config before we continue
     lfs_init();
     cfg_init();
-    vga_init();
-    font_init();
-    term_init();
+    //vga_init();
+    //font_init();
+    //term_init();
     serno_init(); // before tusb
     tusb_init();
+    cdc_init();
+    mon_reset();
 }
 
 static void task(void)
 {
     cpu_task();
-    vga_task();
-    term_task();
+    //vga_task();
+    //term_task();
     tud_task();
     cdc_task();
-    std_task();
+    //std_task();
 
     com_task();
     mon_task();
-    ram_task();
+    //ram_task();
 }
 
 void main_flush(void)
