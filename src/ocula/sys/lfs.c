@@ -7,14 +7,8 @@
 #include "sys/lfs.h"
 #include "pico/printf.h"
 
-// 1MB for ROM storage, 512K for Pico W
-// TODO Pico W now using some of this flash for bluetooth
-//      see PICO_FLASH_BANK_STORAGE_OFFSET and github issue#19
-#ifdef RASPBERRYPI_PICO_W
-#define LFS_DISK_BLOCKS 128
-#else
-#define LFS_DISK_BLOCKS 256
-#endif
+// 2MB for LFS filesystem storage,
+#define LFS_DISK_BLOCKS 512
 static_assert(!(LFS_DISK_BLOCKS % 8));
 
 static int lfs_read(const struct lfs_config *c, lfs_block_t block,
@@ -28,9 +22,9 @@ static int lfs_sync(const struct lfs_config *c);
 #define LFS_LOOKAHEAD_SIZE LFS_DISK_BLOCKS / 8
 
 lfs_t lfs_volume;
-static char lfs_read_buffer[FLASH_PAGE_SIZE];
-static char lfs_prog_buffer[FLASH_PAGE_SIZE];
-static char lfs_lookahead_buffer[LFS_LOOKAHEAD_SIZE];
+static char lfs_read_buffer[FLASH_PAGE_SIZE] __attribute__((aligned (4)));
+static char lfs_prog_buffer[FLASH_PAGE_SIZE] __attribute__((aligned (4)));
+static char lfs_lookahead_buffer[LFS_LOOKAHEAD_SIZE] __attribute__((aligned (4)));
 static const struct lfs_config cfg = {
     .read = lfs_read,
     .prog = lfs_prog,
