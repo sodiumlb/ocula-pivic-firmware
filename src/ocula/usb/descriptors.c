@@ -109,7 +109,7 @@ char const *string_desc_arr[] =
     {
         (const char[]){0x09, 0x04}, // 0: is supported language is English (0x0409)
         "Raspberry Pi",             // 1: Manufacturer
-        "RP6502 Console",           // 2: Product
+        "OCULA/PIVIC Console",      // 2: Product
         serno,                      // 3: Serial, uses flash unique ID
 };
 
