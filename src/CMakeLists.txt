@@ -45,10 +45,11 @@ target_sources(ocula PRIVATE
     ocula/sys/cfg.c
     ocula/sys/com.c
     ocula/sys/cpu.c
+    ocula/sys/dvi.c
     ocula/sys/lfs.c
     ocula/sys/mem.c
     ocula/sys/sys.c
-    ocula/sys/vga.c
+#    ocula/sys/vga.c
     ocula/term/color.c
     ocula/term/font.c
     ocula/term/term.c

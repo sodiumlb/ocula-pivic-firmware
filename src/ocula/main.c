@@ -14,6 +14,7 @@
 #include "sys/com.h"
 #include "sys/cfg.h"
 #include "sys/cpu.h"
+#include "sys/dvi.h"
 #include "sys/lfs.h"
 #include "sys/sys.h"
 #include "sys/vga.h"
@@ -41,12 +42,13 @@ static void init(void)
     serno_init(); // before tusb
     tusb_init();
     cdc_init();
-    mon_reset();
+    dvi_init();
 }
 
 static void task(void)
 {
     cpu_task();
+    dvi_task();
     //vga_task();
     //term_task();
     tud_task();
