@@ -15,7 +15,6 @@
 #include "sys/cfg.h"
 #include "sys/cpu.h"
 #include "sys/lfs.h"
-#include "sys/std.h"
 #include "sys/sys.h"
 #include "sys/vga.h"
 #include "term/font.h"
@@ -28,7 +27,6 @@
 static void init(void)
 {
     cpu_init();
-    //std_init();
     com_init();
 
     // Print startup message
@@ -53,7 +51,6 @@ static void task(void)
     //term_task();
     tud_task();
     cdc_task();
-    //std_task();
 
     com_task();
     mon_task();
@@ -66,7 +63,6 @@ void main_flush(void)
 
 void main_reclock(void)
 {
-    std_reclock();
 }
 
 bool main_prog(uint16_t *xregs)

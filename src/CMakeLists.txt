@@ -47,7 +47,6 @@ target_sources(ocula PRIVATE
     ocula/sys/cpu.c
     ocula/sys/lfs.c
     ocula/sys/mem.c
-    ocula/sys/std.c
     ocula/sys/sys.c
     ocula/sys/vga.c
     ocula/term/color.c
