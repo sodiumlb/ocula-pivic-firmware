@@ -22,9 +22,11 @@ bool main_prog(uint16_t *xregs);
 #define COM_UART_RX_PIN 1
 
 //PIVIC CVBS aka luma/chroma DAC
+#ifdef PIVIC
 #define CVBS_PIO pio0
 #define CVBS_SM 0
 #define CVBS_PIN_BANK 0
 #define CVBS_PIN_BASE 3
+#endif
 
 #endif /* _MAIN_H_ */
