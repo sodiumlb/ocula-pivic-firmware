@@ -14,6 +14,7 @@
 #include "hardware/dma.h"
 #include "hardware/pio.h"
 #include <string.h>
+#include <stdio.h>
 
 //TODO Currently delay is static and need to be balanced across commands to keep total timing. Should be fixed
 //Static delay is 8 cycles. For PAL 7 cycles delay is thus nominal half period delay (15)
@@ -31,41 +32,44 @@ const uint8_t rev5bit[32] = {
 };
 
 // DAC driving logic is using oversampling
-//L0 and L2 levels are asserted for a single cycle
-//L1 and L3 levels are asserted for half periods
-#define CVBS_CMD(L0,L1,L2,L3,delay,repeat) \
-         (((L3&0x1F)<<27) | ((L2&0x1F)<<22) | ((L1&0x1F)<<17) | ((L0&0x1F)<<12) | ((repeat&0xFF)<<4) | ((delay&0x0F)))
+//L0 and L1 levels are asserted for a single cycle
+//DC level is asserted for half periods
+//Delay is used to shift the phase a number of cycles. 
+//CVBS_DELAY_CONST assures the period is constant. Delay must be less or equal to this value
+//Repeat is the number of iterations of the signal to generate
+#define CVBS_DELAY_CONST (15-9)
+#define CVBS_CMD(L0,L1,DC,delay,repeat) \
+         ((((CVBS_DELAY_CONST-delay)&0xF)<<28) | ((L1&0x1F)<<23) | ((L0&0x1F)<<18) | ((DC&0x1F)<<13) | ((repeat&0x3FF)<<3) | ((delay&0x07)))
 
 //Experimental timings (eyeballing + exerimenting)
 //Levels bit-reverse hard-coded
-#define PAL_HSYNC       CVBS_CMD( 0, 0, 0, 0, 6,19)
-#define PAL_BLANK       CVBS_CMD(18,18,18,18, 6,48)
-#define PAL_FRONTPORCH  CVBS_CMD(18,18,18,18, 6,18)
-#define PAL_BACKPORCH   CVBS_CMD(18,18,18,18, 6, 9)
-#define PAL_COLORBURST  CVBS_CMD(26,18,28,18, 6,30)
-#define PAL_VSYNC_PART  CVBS_CMD( 0, 0, 0, 0, 6,255)
-#define PAL_BAR_BLK     CVBS_CMD(18,18,18,18, 6,40)
-#define PAL_BAR_WHT     CVBS_CMD(23,23,23,23, 6,40)
-#define PAL_BAR_COL1    CVBS_CMD( 5,30,10,30, 0,40)
-#define PAL_BAR_COL2    CVBS_CMD(19, 5,30, 5, 2,40)
-#define PAL_BAR_COL3    CVBS_CMD( 5,30,10,30, 4,40)
-#define PAL_BAR_COL4    CVBS_CMD(19, 5,30, 5, 6,40)
-#define PAL_BAR_COL5    CVBS_CMD( 5,30,10,30, 8,40)
-#define PAL_BAR_COL6    CVBS_CMD(19, 5,30, 5, 6,40)
-#define PAL_BAR_COL7    CVBS_CMD( 5,30,10,30, 8,40)
-#define PAL_BAR_COL8    CVBS_CMD(19, 5,30, 5,10,40)
-#define PAL_BAR_COL9    CVBS_CMD( 5,30,10,30,12,40)
-#define PAL_BAR_COL10   CVBS_CMD(19, 5,30, 5,14,40)
-#define PAL_BAR_COL11   CVBS_CMD( 5,30,10,30, 0,40)
-#define PAL_BAR_COL12   CVBS_CMD(19, 5,30, 5, 2,40)
-#define PAL_BAR_COL13   CVBS_CMD( 5,30,10,30, 4,40)
-#define PAL_BAR_COL14   CVBS_CMD(19, 5,30, 5, 6,40)
-#define PAL_BAR_COL15   CVBS_CMD( 5,30,10,30, 8,40)
-#define PAL_BAR_COL16   CVBS_CMD(19, 5,30, 5, 6,40)
-#define PAL_BAR_COL17   CVBS_CMD( 5,30,10,30, 8,40)
-#define PAL_BAR_COL18   CVBS_CMD(19, 5,30, 5,10,40)
-#define PAL_BAR_COL19   CVBS_CMD( 5,30,10,30,12,40)
-#define PAL_BAR_COL20   CVBS_CMD(19, 5,30, 5,14,40)
+#define PAL_HSYNC       CVBS_CMD( 0, 0, 0, 0,19)
+#define PAL_BLANK       CVBS_CMD(18,18,18, 0,48)
+#define PAL_FRONTPORCH  CVBS_CMD(18,18,18, 0,18)
+#define PAL_BACKPORCH   CVBS_CMD(18,18,18, 0, 9)
+#define PAL_COLORBURST  CVBS_CMD(26,28,18, 0,30)
+#define PAL_COLORBURST  CVBS_CMD(26,28,18, 0,30)
+#define PAL_COLORBURST  CVBS_CMD(26,28,18, 0,30)
+#define PAL_COLORBURST  CVBS_CMD(26,28,18, 0,30)
+#define PAL_VSYNC_PART  CVBS_CMD( 0, 0, 0, 0,255)
+#define PAL_BAR_BLK     CVBS_CMD(18,18,18, 0,40)
+#define PAL_BAR_WHT     CVBS_CMD(23,23,23, 0,40)
+#define PAL_BAR_COL1    CVBS_CMD( 5,10,30, 0,40)
+#define PAL_BAR_COL2    CVBS_CMD(19,30, 5, 6,40)
+#define PAL_BAR_COL3    CVBS_CMD( 5,10,30, 1,40)
+#define PAL_BAR_COL4    CVBS_CMD(19,30, 5, 2,40)
+#define PAL_BAR_COL5    CVBS_CMD( 5,10,30, 3,40)
+#define PAL_BAR_COL6    CVBS_CMD(19,30, 5, 4,40)
+#define PAL_BAR_COL7    CVBS_CMD( 5,10,30, 5,40)
+#define PAL_BAR_COL8    CVBS_CMD(19,30, 5, 6,40)
+#define PAL_BAR_COL9    CVBS_CMD( 5,10,30, 0,40)
+#define PAL_BAR_COL10   CVBS_CMD(19,30, 5, 1,40)
+#define PAL_BAR_COL11   CVBS_CMD( 5,10,30, 2,40)
+#define PAL_BAR_COL12   CVBS_CMD(19,30, 5, 3,40)
+#define PAL_BAR_COL13   CVBS_CMD( 5,10,30, 4,40)
+#define PAL_BAR_COL14   CVBS_CMD(19,30, 5, 5,40)
+#define PAL_BAR_COL15   CVBS_CMD( 5,10,30, 6,40)
+#define PAL_BAR_COL16   CVBS_CMD(19,30, 5, 6,40)
 
 uint32_t test_scanline[] = {
    PAL_HSYNC,
@@ -98,8 +102,9 @@ void cvbs_init(void){
    sm_config_set_out_pins(&config, CVBS_PIN_BASE, 5);             
    sm_config_set_out_shift(&config, true, false, 0); 
    pio_sm_init(CVBS_PIO, CVBS_SM, offset, &config);
-   pio_sm_put(CVBS_PIO, CVBS_SM, 0x84210FFF);    
+   //pio_sm_put(CVBS_PIO, CVBS_SM, 0x84210FFF);    
    pio_sm_set_enabled(CVBS_PIO, CVBS_SM, true);   
+   printf("CVBS init done\n");
 }
 
 void cvbs_task(void){
@@ -107,7 +112,8 @@ void cvbs_task(void){
    while(!pio_sm_is_tx_fifo_full(CVBS_PIO,CVBS_SM)){
       pio_sm_put(CVBS_PIO, CVBS_SM, test_scanline[i++]);
       //pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_CMD(rev5bit[i],rev5bit[i],rev5bit[i],rev5bit[i],6,40));
-      if(i >= count_of(test_scanline))
+      if(i >= count_of(test_scanline)){
          i = 0;
+      }
    }
 }

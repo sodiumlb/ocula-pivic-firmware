@@ -31,6 +31,11 @@ static uint32_t cpu_ctrl_bits;
 
 void cpu_init(void)
 {
+    //Test hack 
+    #ifdef PIVIC
+    set_sys_clock_khz(133000, true);
+    #endif
+
     // drive reset pin
     // gpio_init(CPU_RESB_PIN);
     // gpio_put(CPU_RESB_PIN, false);
@@ -176,7 +181,7 @@ bool cpu_set_phi2_khz(uint32_t phi2_khz)
     uint8_t clkdiv_frac;
     cpu_compute_phi2_clocks(phi2_khz, &sys_clk_khz, &clkdiv_int, &clkdiv_frac);
     com_flush();
-    bool ok = set_sys_clock_khz(sys_clk_khz, false);
+    bool ok = true; //set_sys_clock_khz(sys_clk_khz, false);
     if (ok)
         // main_reclock(sys_clk_khz, clkdiv_int, clkdiv_frac);
         main_reclock();
