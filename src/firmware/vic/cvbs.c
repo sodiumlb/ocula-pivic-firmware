@@ -43,59 +43,92 @@ const uint8_t rev5bit[32] = {
 
 //Experimental timings (eyeballing + exerimenting)
 //Levels bit-reverse hard-coded
-#define PAL_HSYNC       CVBS_CMD( 0, 0, 0, 0,19)
+#define PAL_HSYNC       CVBS_CMD( 0, 0, 0, 0,18)
 #define PAL_BLANK       CVBS_CMD(18,18,18, 0,48)
-#define PAL_FRONTPORCH  CVBS_CMD(18,18,18, 0,18)
-#define PAL_BACKPORCH   CVBS_CMD(18,18,18, 0, 9)
-#define PAL_COLORBURST  CVBS_CMD(26,28,18, 0,30)
-#define PAL_COLORBURST  CVBS_CMD(26,28,18, 0,30)
-#define PAL_COLORBURST  CVBS_CMD(26,28,18, 0,30)
-#define PAL_COLORBURST  CVBS_CMD(26,28,18, 0,30)
-#define PAL_VSYNC_PART  CVBS_CMD( 0, 0, 0, 0,255)
-#define PAL_BAR_BLK     CVBS_CMD(18,18,18, 0,40)
-#define PAL_BAR_WHT     CVBS_CMD(23,23,23, 0,40)
-#define PAL_BAR_COL1    CVBS_CMD( 5,10,30, 0,40)
-#define PAL_BAR_COL2    CVBS_CMD(19,30, 5, 6,40)
-#define PAL_BAR_COL3    CVBS_CMD( 5,10,30, 1,40)
-#define PAL_BAR_COL4    CVBS_CMD(19,30, 5, 2,40)
-#define PAL_BAR_COL5    CVBS_CMD( 5,10,30, 3,40)
-#define PAL_BAR_COL6    CVBS_CMD(19,30, 5, 4,40)
-#define PAL_BAR_COL7    CVBS_CMD( 5,10,30, 5,40)
-#define PAL_BAR_COL8    CVBS_CMD(19,30, 5, 6,40)
-#define PAL_BAR_COL9    CVBS_CMD( 5,10,30, 0,40)
-#define PAL_BAR_COL10   CVBS_CMD(19,30, 5, 1,40)
-#define PAL_BAR_COL11   CVBS_CMD( 5,10,30, 2,40)
-#define PAL_BAR_COL12   CVBS_CMD(19,30, 5, 3,40)
-#define PAL_BAR_COL13   CVBS_CMD( 5,10,30, 4,40)
-#define PAL_BAR_COL14   CVBS_CMD(19,30, 5, 5,40)
-#define PAL_BAR_COL15   CVBS_CMD( 5,10,30, 6,40)
-#define PAL_BAR_COL16   CVBS_CMD(19,30, 5, 6,40)
+#define PAL_FRONTPORCH  CVBS_CMD(18,18,18, 0, 8)
+#define PAL_BACKPORCH   CVBS_CMD(18,18,18, 0,11)
+#define PAL_COLORBURST_E CVBS_CMD(14, 4,18, 0,14)
+#define PAL_COLORBURST_O CVBS_CMD( 4,14,18, 6,14)
+#define PAL_BAR_BLK     CVBS_CMD(26,26,26, 0,42)
+#define PAL_BAR_WHT     CVBS_CMD(23,23,23, 0,42)
+#define PAL_BAR_COL1    CVBS_CMD(19,20,30, 3,42)
+#define PAL_BAR_COL2    CVBS_CMD(19,30, 5, 6,42)
+#define PAL_BAR_COL3    CVBS_CMD( 5,10,30, 1,42)
+#define PAL_BAR_COL4    CVBS_CMD(19,30, 5, 2,42)
+#define PAL_BAR_COL5    CVBS_CMD( 5,10,30, 3,42)
+#define PAL_BAR_COL6    CVBS_CMD(19,30, 5, 4,42)
+#define PAL_BAR_COL7    CVBS_CMD( 5,10,30, 5,42)
+#define PAL_BAR_COL8    CVBS_CMD(19,30, 5, 6,42)
+#define PAL_BAR_COL9    CVBS_CMD( 5,10,30, 0,42)
+#define PAL_BAR_COL10   CVBS_CMD(19,30, 5, 1,42)
+#define PAL_BAR_COL11   CVBS_CMD( 5,10,30, 2,42)
+#define PAL_BAR_COL12   CVBS_CMD(19,30, 5, 3,42)
+#define PAL_BAR_COL13   CVBS_CMD( 5,10,30, 4,42)
+#define PAL_BAR_COL14   CVBS_CMD(19,30, 5, 5,42)
+#define PAL_BAR_COL15   CVBS_CMD( 5,10,30, 6,42)
+#define PAL_BAR_COL16   CVBS_CMD(19,30, 5, 6,42)
+#define PAL_LONG_SYNC_L  CVBS_CMD( 0, 0, 0, 0,126)
+#define PAL_LONG_SYNC_H  CVBS_CMD(18,18,18, 0, 10)
+#define PAL_SHORT_SYNC_L CVBS_CMD( 0, 0, 0, 0, 10)
+#define PAL_SHORT_SYNC_H CVBS_CMD(18,18,18, 0,126)
+#define PAL_BLANKING     CVBS_CMD(18,18,18, 0,210)
 
-uint32_t test_scanline[] = {
+uint32_t test_vsync_p[] = {
+   //Lines 310-312
+   PAL_SHORT_SYNC_L, PAL_SHORT_SYNC_H, PAL_SHORT_SYNC_L, PAL_SHORT_SYNC_H,
+   PAL_SHORT_SYNC_L, PAL_SHORT_SYNC_H, PAL_SHORT_SYNC_L, PAL_SHORT_SYNC_H,
+   PAL_SHORT_SYNC_L, PAL_SHORT_SYNC_H, PAL_SHORT_SYNC_L, PAL_SHORT_SYNC_H,
+
+   //Lines 1-5
+   PAL_LONG_SYNC_L, PAL_LONG_SYNC_H, PAL_LONG_SYNC_L, PAL_LONG_SYNC_H,
+   PAL_LONG_SYNC_L, PAL_LONG_SYNC_H, PAL_LONG_SYNC_L, PAL_LONG_SYNC_H,
+   PAL_LONG_SYNC_L, PAL_LONG_SYNC_H, PAL_SHORT_SYNC_L, PAL_SHORT_SYNC_H,
+   PAL_SHORT_SYNC_L, PAL_SHORT_SYNC_H, PAL_SHORT_SYNC_L, PAL_SHORT_SYNC_H,
+   PAL_SHORT_SYNC_L, PAL_SHORT_SYNC_H, PAL_SHORT_SYNC_L, PAL_SHORT_SYNC_H,
+};
+
+uint32_t test_scanline_odd[] = {
    PAL_HSYNC,
    PAL_BACKPORCH,
-   PAL_COLORBURST,
+   PAL_COLORBURST_O,
    PAL_BACKPORCH,
    PAL_BAR_BLK,
    PAL_BAR_WHT,
    PAL_BAR_COL1,
    PAL_BAR_COL2,
    PAL_BAR_COL3,
-   PAL_BAR_COL4,
-   PAL_BAR_COL5,
-   PAL_BAR_COL6,
-   PAL_BAR_COL7,
-   PAL_BAR_COL8,
-   PAL_BAR_WHT,
-   PAL_BAR_BLK,
    PAL_FRONTPORCH,
 };
 
+uint32_t test_scanline_even[] = {
+   PAL_HSYNC,
+   PAL_BACKPORCH,
+   PAL_COLORBURST_E,
+   PAL_BACKPORCH,
+   PAL_BAR_BLK,
+   PAL_BAR_WHT,
+   PAL_BAR_COL1,
+   PAL_BAR_COL2,
+   PAL_BAR_COL3,
+   PAL_FRONTPORCH,
+};
+
+uint32_t test_blanking_line[] = {
+   PAL_HSYNC,
+   PAL_BACKPORCH,
+   PAL_COLORBURST_O,
+   PAL_BACKPORCH,
+   PAL_BLANKING,
+   PAL_FRONTPORCH,
+};
+
+
 void cvbs_init(void){ 
    pio_set_gpio_base (CVBS_PIO, CVBS_PIN_BANK);
-   for(uint32_t i = 0; i < 5; i++)
+   for(uint32_t i = 0; i < 5; i++){
       pio_gpio_init(CVBS_PIO, CVBS_PIN_BASE+i);
-   
+      gpio_set_drive_strength(CVBS_PIN_BASE, GPIO_DRIVE_STRENGTH_2MA);
+   }
    pio_sm_set_consecutive_pindirs(CVBS_PIO, CVBS_SM, CVBS_PIN_BASE, 5, true);
    uint offset = pio_add_program(CVBS_PIO, &cvbs_program);
    pio_sm_config config = cvbs_program_get_default_config(offset);
@@ -109,11 +142,35 @@ void cvbs_init(void){
 
 void cvbs_task(void){
    static uint32_t i = 0;
+   static uint32_t lines = 0;
    while(!pio_sm_is_tx_fifo_full(CVBS_PIO,CVBS_SM)){
-      pio_sm_put(CVBS_PIO, CVBS_SM, test_scanline[i++]);
       //pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_CMD(rev5bit[i],rev5bit[i],rev5bit[i],rev5bit[i],6,40));
-      if(i >= count_of(test_scanline)){
+      if(lines < 285){  
+         //if(lines & 1u){
+            pio_sm_put(CVBS_PIO, CVBS_SM, test_scanline_odd[i++]);
+         //}else{
+         //   pio_sm_put(CVBS_PIO, CVBS_SM, test_scanline_even[i++]);
+         //}
+         if(i >= count_of(test_scanline_odd)){  //Assuming same length
+            i = 0;
+            lines++;
+         }
+      }else if(lines < 293){ 
+         //8 lines block
+         pio_sm_put(CVBS_PIO, CVBS_SM, test_vsync_p[i++]);
+         if(i >= count_of(test_vsync_p)){
+            i = 0;
+            lines+=8;
+         }
+      }else if(lines < 312){
+         pio_sm_put(CVBS_PIO, CVBS_SM, test_blanking_line[i++]);
+         if(i >= count_of(test_blanking_line)){
+            i = 0;
+            lines++;
+         }
+      }else{
          i = 0;
+         lines = 0;
       }
    }
 }
