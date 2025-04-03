@@ -25,6 +25,8 @@
 #include "pico/stdlib.h"
 #include "tusb.h"
 
+#include "vic/cvbs.h"
+
 static void init(void)
 {
     cpu_init();
@@ -43,12 +45,14 @@ static void init(void)
     tusb_init();
     cdc_init();
     dvi_init();
+    cvbs_init();
 }
 
 static void task(void)
 {
     cpu_task();
     dvi_task();
+    cvbs_task();
     //vga_task();
     //term_task();
     tud_task();

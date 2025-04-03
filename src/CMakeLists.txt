@@ -58,6 +58,8 @@ target_sources(ocula PRIVATE
     ocula/usb/serno.c
     littlefs/lfs.c
     littlefs/lfs_util.c
+    #Testing PIVIC parts
+    ocula/vic/cvbs.c
 )
 
 target_link_libraries(ocula PRIVATE
@@ -75,9 +77,9 @@ target_link_libraries(ocula PRIVATE
     tinyusb_ocula
 )
 
-#pico_generate_pio_header(ocula
-#    ${CMAKE_CURRENT_LIST_DIR}/vga/sys/ocula.pio
-#)
+pico_generate_pio_header(ocula
+    ${CMAKE_CURRENT_LIST_DIR}/ocula/vic/cvbs.pio
+)
 
 target_compile_definitions(ocula PRIVATE
     PICO_SCANVIDEO_PLANE_COUNT=3
@@ -87,6 +89,8 @@ target_compile_definitions(ocula PRIVATE
     PICO_SCANVIDEO_SYNC_PIN_BASE=26
     PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
     PICO_RP2040_USB_DEVICE_UFRAME_FIX=1
+    RP6502_NAME="Oric OCULA"
+    OCULA=1
 )
 
 
@@ -94,9 +98,8 @@ target_compile_definitions(ocula PRIVATE
 # Please change name for hardware forks.
 # For release, set version string and set code page to 0.
 
-set_property(TARGET ocula
+set_property(TARGET ocula #pivic
     APPEND PROPERTY COMPILE_DEFINITIONS
-    RP6502_NAME="Oric OCULA"
     RP6502_VERSION=""
     RP6502_CODE_PAGE=850
     RP6502_KEYBOARD=EN_US

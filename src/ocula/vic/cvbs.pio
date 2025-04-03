@@ -1,0 +1,40 @@
+/*
+ * Copyright (c) 2025 Sodiumlightbaby
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+; Composite video synthesizer
+; Assumes 5 bit DAC output
+; Running frequency needs to be a multiple of the colour burst frequency and
+; with enough over-sampling to implement the phase shifts needed
+; PAL timing: clk_sys=133MHz colour burst=clk_sys/30=4.433333MHz
+; Commands pulled from the fifo
+; 31                       0 
+; |L3|L2|L1|L0|Repeat|Delay|
+;   5  5  5  5   8      4    bits
+; L0-L3 are DAC levels to output
+; Assuming over-sampling - L0 and L2 asserted only for one cycle typically representing HF peaks
+; L1 and L3 typically representing DC levels
+; TODO - make cycle accurate and period configurable
+; Currently repeat loop tuned for 30 cycle period
+.program cvbs
+
+.wrap_target
+    pull noblock
+    mov x osr
+    out y 4             ;get delay value (for phase change)
+dly:
+    jmp y-- dly
+    out y 8             ;get repeat count
+    mov isr osr         ;Keep copy of Levels in isr 
+    jmp first           ;Skip L3 delay on first period
+repeat:
+    mov osr isr     [13];Prepare osr for new iteration + L3 delay
+first:
+    out pins 5          ;L0 out 
+    out pins 5      [15];L1 out + L1 delay
+    out pins 5          ;L2 out
+    out pins 5          ;L3 out
+    jmp y-- repeat
+.wrap
