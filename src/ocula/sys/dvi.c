@@ -204,29 +204,17 @@ void dvi_init(void){
     // If we want the exact rate then we'll have to reconfigure PLLs.
 
     // HSTX outputs 0 through 7 appear on GPIO 12 through 19.
-    // Pinout on Pico DVI sock:
-    //
-    //   GP12 D0+  GP13 D0-
-    //   GP14 CK+  GP15 CK-
-    //   GP16 D2+  GP17 D2-
-    //   GP18 D1+  GP19 D1-
+
+    // Assign expanded/raw data bits to TMDS lanes on HSTX pins:
+    #define hstx_map_lane_p(lane) ( (lane * 10) << HSTX_CTRL_BIT0_SEL_P_LSB | (lane * 10 + 1) << HSTX_CTRL_BIT0_SEL_N_LSB )
+    #define hstx_map_lane_n(lane) ( hstx_map_lane_p(lane) | HSTX_CTRL_BIT0_INV_BITS )
 
     // OCULA HSTX mapping
     //   GP12 D1-  GP13 D1+
     //   GP14 D2+  GP15 D2-
     //   GP16 CK+  GP17 CK-
     //   GP18 D0-  DP19 D0+
-
-    // PIVIC HSTX mapping
-    //   GP12 CK-  GP13 CK+
-    //   GP14 D0-  GP15 D0+
-    //   GP16 D2+  GP17 D2-
-    //   GP18 D1+  DP19 D1+
-
-    // Assign expanded/raw data bits to TMDS lanes on HSTX pins:
-    #define hstx_map_lane_p(lane) ( (lane * 10) << HSTX_CTRL_BIT0_SEL_P_LSB | (lane * 10 + 1) << HSTX_CTRL_BIT0_SEL_N_LSB )
-    #define hstx_map_lane_n(lane) ( hstx_map_lane_p(lane) | HSTX_CTRL_BIT0_INV_BITS )
-
+#ifdef OCULA 
     hstx_ctrl_hw->bit[0] = hstx_map_lane_n(1);
     hstx_ctrl_hw->bit[1] = hstx_map_lane_p(1);
     hstx_ctrl_hw->bit[2] = hstx_map_lane_p(2);
@@ -235,6 +223,22 @@ void dvi_init(void){
     hstx_ctrl_hw->bit[5] = HSTX_CTRL_BIT0_CLK_BITS | HSTX_CTRL_BIT0_INV_BITS;
     hstx_ctrl_hw->bit[6] = hstx_map_lane_n(0);
     hstx_ctrl_hw->bit[7] = hstx_map_lane_p(0);
+#endif
+    // PIVIC HSTX mapping
+    //   GP12 CK-  GP13 CK+
+    //   GP14 D0-  GP15 D0+
+    //   GP16 D2+  GP17 D2-
+    //   GP18 D1+  DP19 D1+
+#ifdef PIVIC 
+    hstx_ctrl_hw->bit[0] = HSTX_CTRL_BIT0_CLK_BITS | HSTX_CTRL_BIT0_INV_BITS;
+    hstx_ctrl_hw->bit[1] = HSTX_CTRL_BIT0_CLK_BITS;
+    hstx_ctrl_hw->bit[2] = hstx_map_lane_n(0);
+    hstx_ctrl_hw->bit[3] = hstx_map_lane_p(0);
+    hstx_ctrl_hw->bit[4] = hstx_map_lane_p(2);
+    hstx_ctrl_hw->bit[5] = hstx_map_lane_n(2);
+    hstx_ctrl_hw->bit[6] = hstx_map_lane_p(1);
+    hstx_ctrl_hw->bit[7] = hstx_map_lane_n(1);
+#endif
 
     for (int i = 12; i <= 19; ++i) {
         gpio_set_function(i, GPIO_FUNC_HSTX); // HSTX
