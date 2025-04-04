@@ -157,19 +157,6 @@ static void dma_irq_handler() {
     }
 }
 
-void dvi_loop(void){
-    irq_set_exclusive_handler(DMA_IRQ_1, dma_irq_handler);
-    irq_set_enabled(DMA_IRQ_1, true);
-
-    bus_ctrl_hw->priority = BUSCTRL_BUS_PRIORITY_DMA_W_BITS | BUSCTRL_BUS_PRIORITY_DMA_R_BITS;
-
-    dma_channel_start(DMACH_PING);
-
-    while(1){
-        __wfi();
-    }
-}
-
 void dvi_init(void){
         // Configure HSTX's TMDS encoder for RGB332
         hstx_ctrl_hw->expand_tmds =
@@ -275,7 +262,12 @@ void dvi_init(void){
     dma_hw->ints1 = (1u << DMACH_PING) | (1u << DMACH_PONG);
     dma_hw->inte1 = (1u << DMACH_PING) | (1u << DMACH_PONG);
 
-    multicore_launch_core1(dvi_loop);
+    irq_set_exclusive_handler(DMA_IRQ_1, dma_irq_handler);
+    irq_set_enabled(DMA_IRQ_1, true);
+
+    bus_ctrl_hw->priority = BUSCTRL_BUS_PRIORITY_DMA_W_BITS | BUSCTRL_BUS_PRIORITY_DMA_R_BITS;
+
+    dma_channel_start(DMACH_PING);
 }
 
 void dvi_task(void){
