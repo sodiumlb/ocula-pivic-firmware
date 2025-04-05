@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) 2025 Sodiumlightbaby
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+; Oric ULA PHI0 clock driver output
+; Assuming 138MHz sys_clk - 46 cycles per phase for 1MHz 3-phase clock
+; Using 2x clock divider for SM = sys_clk/2 -> 23 cycles per phase
+; Each phase asserts a PIO IRQ flag for system synchronization
+.program phi0
+.side_set 1
+.clock_div 2.0
+
+.wrap_target
+ irq 0   side 0 [15]
+ nop     side 0 [ 6]
+ irq 1   side 0 [15]
+ nop     side 0 [ 6]
+ irq 2   side 1 [15]
+ nop     side 1 [ 6]
+.wrap
+
+; Oric RGB+Sync output driver
+; Assuming 138MHz sys_clk - 23 cycles periodes for 6MHz pixel clock
+.program rgbs
+
+.wrap_target
+    pull noblock
+    out y 10            ;get repeat value 
+repeat:
+    out pins 4    
+    jmp y-- repeat
+.wrap
+
+; RAM emulation read & write
+
+.program xram_read
+.wrap_target
+    mov isr x           ; Base address to fetch from in the system
+    wait irq 0 [30]     ; sample address ca 200ns after phi0
+    in pins 16          ; Pull in rest of address from 6502
+    out pins 8          ; Blocking till data returns. pindirs set elsewhere
+.wrap
+
+.program xram_write
+.wrap_target
+start:
+    wait irq 2          ; Wait for PHI rising edge
+    jmp pin start       ; If read, go back to start
+    mov osr pins        ; Capture D[7:0],PHI,A[15:0],RnW,nMAP
+    out y 8             ; Temporary store data in y
+    out null 1          ; Spool out PHI
+    mov isr x           ; System top address bits
+    in osr 16           ; shift in bottom address
+    push                ; Send address to FIFO
+    mov isr y           ; 
+    push                ; Send data to FIFO
+.wrap

@@ -42,6 +42,7 @@ target_sources(ocula PRIVATE
     firmware/mon/ram.c
     firmware/mon/set.c
     firmware/mon/vip.c
+    firmware/oric/ula.c
     firmware/sys/cfg.c
     firmware/sys/com.c
     firmware/sys/cpu.c
@@ -73,6 +74,10 @@ target_link_libraries(ocula PRIVATE
     hardware_clocks
     hardware_flash
     tinyusb_firmware
+)
+
+pico_generate_pio_header(ocula
+    ${CMAKE_CURRENT_LIST_DIR}/firmware/oric/ula.pio
 )
 
 target_compile_definitions(ocula PRIVATE

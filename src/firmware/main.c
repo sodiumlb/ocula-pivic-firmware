@@ -25,6 +25,10 @@
 #include "pico/stdlib.h"
 #include "tusb.h"
 
+#ifdef OCULA
+#include "oric/ula.h"
+#endif
+
 #ifdef PIVIC
 #include "vic/cvbs.h"
 #endif
@@ -50,6 +54,9 @@ static void init(void)
 #ifdef PIVIC
     cvbs_init();
 #endif
+#ifdef OCULA
+    ula_init();
+#endif
 }
 
 static void task(void)
@@ -59,6 +66,9 @@ static void task(void)
 #ifdef PIVIC
     cvbs_task();
 #endif
+#ifdef OCULA
+    ula_task();
+#endif 
     //vga_task();
     //term_task();
     tud_task();
