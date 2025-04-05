@@ -25,22 +25,7 @@ lfs_t lfs_volume;
 static char lfs_read_buffer[FLASH_PAGE_SIZE] __attribute__((aligned (4)));
 static char lfs_prog_buffer[FLASH_PAGE_SIZE] __attribute__((aligned (4)));
 static char lfs_lookahead_buffer[LFS_LOOKAHEAD_SIZE] __attribute__((aligned (4)));
-static const struct lfs_config cfg = {
-    .read = lfs_read,
-    .prog = lfs_prog,
-    .erase = lfs_erase,
-    .sync = lfs_sync,
-    .read_size = 1,
-    .prog_size = FLASH_PAGE_SIZE,
-    .block_size = FLASH_SECTOR_SIZE,
-    .block_count = LFS_DISK_SIZE / FLASH_SECTOR_SIZE,
-    .cache_size = FLASH_PAGE_SIZE,
-    .lookahead_size = LFS_LOOKAHEAD_SIZE,
-    .block_cycles = 100,
-    .read_buffer = lfs_read_buffer,
-    .prog_buffer = lfs_prog_buffer,
-    .lookahead_buffer = lfs_lookahead_buffer,
-};
+static struct lfs_config cfg;
 
 static int lfs_read(const struct lfs_config *c, lfs_block_t block,
                     lfs_off_t off, void *buffer, lfs_size_t size)
@@ -83,12 +68,30 @@ static int lfs_sync(const struct lfs_config *c)
 
 void lfs_init(void)
 {
+    memset((void *)&cfg, 0, sizeof(cfg));
+    cfg = (struct lfs_config) {
+        .read = lfs_read,
+        .prog = lfs_prog,
+        .erase = lfs_erase,
+        .sync = lfs_sync,
+        .read_size = 1,
+        .prog_size = FLASH_PAGE_SIZE,
+        .block_size = FLASH_SECTOR_SIZE,
+        .block_count = LFS_DISK_SIZE / FLASH_SECTOR_SIZE,
+        .cache_size = FLASH_PAGE_SIZE,
+        .lookahead_size = LFS_LOOKAHEAD_SIZE,
+        .block_cycles = 100,
+        .read_buffer = lfs_read_buffer,
+        .prog_buffer = lfs_prog_buffer,
+        .lookahead_buffer = lfs_lookahead_buffer,
+    };
     // mount the filesystem
     int err = lfs_mount(&lfs_volume, &cfg);
     if (err)
     {
         // Maybe first boot. Attempt format.
         // lfs_format returns -84 here, but still succeeds
+        printf("Formatting - please wait\n");
         lfs_format(&lfs_volume, &cfg);
         err = lfs_mount(&lfs_volume, &cfg);
         if (err)
