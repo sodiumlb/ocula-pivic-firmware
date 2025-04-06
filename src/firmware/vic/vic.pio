@@ -23,12 +23,12 @@
 .side_set 1
 
 .wrap_target
-irq 0   side 0 [14]
-irq 1   side 0 [14]
-irq 2   side 0 [14]
-irq 3   side 0 [14]
-irq 4   side 1 [14]
-irq 5   side 1 [14]
-irq 6   side 1 [14]
-irq 7   side 1 [14]
+irq 0   side 1 [14]
+irq 1   side 1 [14]
+irq 2   side 1 [14]
+irq 3   side 1 [14]
+irq 4   side 0 [14]
+irq 5   side 0 [14]
+irq 6   side 0 [14]
+irq 7   side 0 [14]
 .wrap
