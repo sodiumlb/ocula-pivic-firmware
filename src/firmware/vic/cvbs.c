@@ -68,8 +68,8 @@ const uint8_t rev5bit[32] = {
 #define PAL_BLANKING     CVBS_CMD(18,18,18, 0,230)
 
 //"Tobias" colours - approximated
-#define PAL_BURST_O	   CVBS_CMD(22,20,9,11,11)
-#define PAL_BURST_E	   CVBS_CMD(20,22,9,4,11)
+#define PAL_BURST_O	   CVBS_CMD(6,12,9,11,11)
+#define PAL_BURST_E	   CVBS_CMD(12,6,9,4,11)
 
 #define PAL_BLACK	      CVBS_CMD(18,18,9,0,0)
 #define PAL_WHITE	      CVBS_CMD(23,23,29,0,0)
