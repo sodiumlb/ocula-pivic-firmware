@@ -38,10 +38,10 @@ const uint8_t rev5bit[32] = {
 //Delay is used to shift the phase a number of cycles. 
 //CVBS_DELAY_CONST assures the period is constant. Delay must be less or equal to this value
 //Count is the number of iterations of the signal to generate. NB minimum count is 2
-#define CVBS_DELAY_CONST_POST (15-5)
+#define CVBS_DELAY_CONST_POST (15-3)
 #define CVBS_CMD(L0,L1,DC,delay,count) \
-         ((((CVBS_DELAY_CONST_POST-delay)&0xF)<<23) |  ((L1&0x1F)<<18) | (((count-2)&0x1FF)<<9) |((L0&0x1F)<<4) | ((delay&0x0F)))
-
+         ((((CVBS_DELAY_CONST_POST-delay)&0xF)<<23) |  ((L1&0x1F)<<18) | (((count-3)&0x1FF)<<9) |((L0&0x1F)<<4) | ((delay&0x0F)))
+#define CVBS_REP(cmd,count) ((cmd & ~(0x1FF<<9)) | ((count-3) & 0x1FF)<<9)
 //Experimental timings (eyeballing + experimenting)
 //Levels bit-reverse hard-coded
 #define PAL_HSYNC       CVBS_CMD( 0, 0, 0, 0,21)
@@ -49,37 +49,58 @@ const uint8_t rev5bit[32] = {
 #define PAL_FRONTPORCH  CVBS_CMD(18,18,18, 0, 7)
 #define PAL_BACKPORCH1   CVBS_CMD(18,18,18, 0,4)
 #define PAL_BACKPORCH2   CVBS_CMD(18,18,18, 0,11)
+/* Depricated
 #define PAL_COLORBURST_E CVBS_CMD(12, 6,18, 0,11)
 #define PAL_COLORBURST_O CVBS_CMD( 6,12,18, 7,11)
 #define PAL_BAR_BLK     CVBS_CMD(18,18,18, 0,46)
 #define PAL_BAR_WHT     CVBS_CMD(23,23,23, 0,46)
-#define PAL_BAR_COL1    CVBS_CMD(19,20,30, 3,46)
-#define PAL_BAR_COL2    CVBS_CMD(19,30, 5, 6,46)
-#define PAL_BAR_COL3    CVBS_CMD( 5,10,30, 1,46)
-#define PAL_BAR_COL4    CVBS_CMD(19,30, 5, 2,46)
-#define PAL_BAR_COL5    CVBS_CMD( 5,10,30, 3,46)
-#define PAL_BAR_COL6    CVBS_CMD(19,30, 5, 4,46)
-#define PAL_BAR_COL7    CVBS_CMD( 5,10,30, 5,46)
-#define PAL_BAR_COL8    CVBS_CMD(19,30, 5, 6,46)
-#define PAL_BAR_COL9    CVBS_CMD( 5,10,30, 0,46)
-#define PAL_BAR_COL10   CVBS_CMD(19,30, 5, 1,46)
-#define PAL_BAR_COL11   CVBS_CMD( 5,10,30, 2,46)
-#define PAL_BAR_COL12   CVBS_CMD(19,30, 5, 3,46)
-#define PAL_BAR_COL13   CVBS_CMD( 5,10,30, 4,46)
-#define PAL_BAR_COL14   CVBS_CMD(19,30, 5, 5,46)
-#define PAL_BAR_COL15   CVBS_CMD( 5,10,30, 6,46)
-#define PAL_BAR_COL16   CVBS_CMD(19,30, 5, 6,46)
 #define PAL_BAR_RED_O   CVBS_CMD(21,18,30, 5,46)
 #define PAL_BAR_RED_E   CVBS_CMD(18,21,30, 4,46)
 #define PAL_BAR_GREEN_E CVBS_CMD( 1, 7,13, 1,46)
 #define PAL_BAR_GREEN_O CVBS_CMD( 1, 7,13, 2,46)
 #define PAL_BAR_BLUE_E  CVBS_CMD(18,25,14,10,46)
 #define PAL_BAR_BLUE_O  CVBS_CMD(18,25,14, 9,46)
+*/
 #define PAL_LONG_SYNC_L  CVBS_CMD( 0, 0, 0, 0,133)
 #define PAL_LONG_SYNC_H  CVBS_CMD(18,18,18, 0,  9)
 #define PAL_SHORT_SYNC_L CVBS_CMD( 0, 0, 0, 0,  9)
 #define PAL_SHORT_SYNC_H CVBS_CMD(18,18,18, 0,133)
 #define PAL_BLANKING     CVBS_CMD(18,18,18, 0,230)
+
+//"Tobias" colours - approximated
+#define PAL_BURST_O	   CVBS_CMD(22,20,9,11,11)
+#define PAL_BURST_E	   CVBS_CMD(20,22,9,4,11)
+
+#define PAL_BLACK	      CVBS_CMD(18,18,9,0,0)
+#define PAL_WHITE	      CVBS_CMD(23,23,29,0,0)
+#define PAL_RED_O	      CVBS_CMD(5,10,15,9,0)
+#define PAL_RED_E	      CVBS_CMD(10,5,15,6,0)
+#define PAL_CYAN_O	   CVBS_CMD(9,15,24,9,0)
+#define PAL_CYAN_E	   CVBS_CMD(15,9,24,7,0)
+#define PAL_PURPLE_O	   CVBS_CMD(29,22,18,5,0)
+#define PAL_PURPLE_E	   CVBS_CMD(22,29,18,10,0)
+#define PAL_GREEN_O	   CVBS_CMD(1,7,22,5,0)
+#define PAL_GREEN_E	   CVBS_CMD(7,1,22,10,0)
+#define PAL_BLUE_O	   CVBS_CMD(9,10,14,0,0)
+#define PAL_BLUE_E	   CVBS_CMD(9,10,14,0,0)
+#define PAL_YELLOW_O	   CVBS_CMD(5,15,25,0,0)
+#define PAL_YELLOW_E	   CVBS_CMD(5,15,25,0,0)
+#define PAL_ORANGE_O	   CVBS_CMD(19,22,19,11,0)
+#define PAL_ORANGE_E	   CVBS_CMD(22,19,19,4,0)
+#define PAL_LORANGE_O	CVBS_CMD(27,21,24,11,0)
+#define PAL_LORANGE_E	CVBS_CMD(21,27,24,4,0)
+#define PAL_PINK_O	   CVBS_CMD(11,5,23,9,0)
+#define PAL_PINK_E	   CVBS_CMD(5,11,23,6,0)
+#define PAL_LCYAN_O	   CVBS_CMD(3,15,27,9,0)
+#define PAL_LCYAN_E	   CVBS_CMD(15,3,27,7,0)
+#define PAL_LPURPLE_O	CVBS_CMD(27,21,24,5,0)
+#define PAL_LPURPLE_E	CVBS_CMD(21,27,24,10,0)
+#define PAL_LGREEN_O	   CVBS_CMD(29,23,26,5,0)
+#define PAL_LGREEN_E	   CVBS_CMD(23,29,26,10,0)
+#define PAL_LBLUE_O	   CVBS_CMD(3,5,22,0,0)
+#define PAL_LBLUE_E	   CVBS_CMD(3,5,22,0,0)
+#define PAL_LYELLOW_O	CVBS_CMD(19,31,28,0,0)
+#define PAL_LYELLOW_E	CVBS_CMD(19,31,28,0,0)
 
 uint32_t test_vsync_p[] = {
    //Lines 310-312
@@ -99,33 +120,55 @@ uint32_t test_scanline_odd[] = {
    PAL_FRONTPORCH,
    PAL_HSYNC,
    PAL_BACKPORCH1,
-   PAL_COLORBURST_O,
+   PAL_BURST_O,
    PAL_BACKPORCH2,
-   PAL_BAR_BLK,
-   PAL_BAR_WHT,
-   PAL_BAR_RED_O,
-   PAL_BAR_GREEN_O,
-   PAL_BAR_BLUE_O,
+   CVBS_REP(PAL_BLACK, 10),
+   CVBS_REP(PAL_WHITE, 10),
+   CVBS_REP(PAL_RED_O, 15),
+   CVBS_REP(PAL_CYAN_O, 15),
+   CVBS_REP(PAL_PURPLE_O, 15),
+   CVBS_REP(PAL_GREEN_O, 15),
+   CVBS_REP(PAL_BLUE_O, 15),
+   CVBS_REP(PAL_YELLOW_O, 15),
+   CVBS_REP(PAL_ORANGE_O, 15),
+   CVBS_REP(PAL_LORANGE_O, 15),
+   CVBS_REP(PAL_PINK_O, 15),
+   CVBS_REP(PAL_LCYAN_O, 15),
+   CVBS_REP(PAL_LPURPLE_O, 15),
+   CVBS_REP(PAL_LGREEN_O, 15),
+   CVBS_REP(PAL_LBLUE_O, 15),
+   CVBS_REP(PAL_LYELLOW_O, 15),
 };
 
 uint32_t test_scanline_even[] = {
    PAL_FRONTPORCH,
    PAL_HSYNC,
    PAL_BACKPORCH1,
-   PAL_COLORBURST_E,
+   PAL_BURST_E,
    PAL_BACKPORCH2,
-   PAL_BAR_BLK,
-   PAL_BAR_WHT,
-   PAL_BAR_RED_E,
-   PAL_BAR_GREEN_E,
-   PAL_BAR_BLUE_E,
+   CVBS_REP(PAL_BLACK, 10),
+   CVBS_REP(PAL_WHITE, 10),
+   CVBS_REP(PAL_RED_E, 15),
+   CVBS_REP(PAL_CYAN_E, 15),
+   CVBS_REP(PAL_PURPLE_E, 15),
+   CVBS_REP(PAL_GREEN_E, 15),
+   CVBS_REP(PAL_BLUE_E, 15),
+   CVBS_REP(PAL_YELLOW_E, 15),
+   CVBS_REP(PAL_ORANGE_E, 15),
+   CVBS_REP(PAL_LORANGE_E, 15),
+   CVBS_REP(PAL_PINK_E, 15),
+   CVBS_REP(PAL_LCYAN_E, 15),
+   CVBS_REP(PAL_LPURPLE_E, 15),
+   CVBS_REP(PAL_LGREEN_E, 15),
+   CVBS_REP(PAL_LBLUE_E, 15),
+   CVBS_REP(PAL_LYELLOW_E, 15),
 };
 
 uint32_t test_blanking_line_odd[] = {
    PAL_FRONTPORCH,
    PAL_HSYNC,
    PAL_BACKPORCH1,
-   PAL_COLORBURST_O,
+   PAL_BURST_O,
    PAL_BACKPORCH2,
    PAL_BLANKING,
 };
@@ -133,7 +176,7 @@ uint32_t test_blanking_line_even[] = {
    PAL_FRONTPORCH,
    PAL_HSYNC,
    PAL_BACKPORCH1,
-   PAL_COLORBURST_E,
+   PAL_BURST_E,
    PAL_BACKPORCH2,
    PAL_BLANKING,
 };
