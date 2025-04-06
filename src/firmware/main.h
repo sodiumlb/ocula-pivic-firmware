@@ -27,6 +27,10 @@ bool main_prog(uint16_t *xregs);
 #define CVBS_SM 0
 #define CVBS_PIN_BANK 0
 #define CVBS_PIN_BASE 3
+#define VIC_PIO pio1
+#define VIC_SM 0
+#define VIC_PIN_BANK 0
+#define VIC_PIN_BASE 8
 #endif
 
 #endif /* _MAIN_H_ */

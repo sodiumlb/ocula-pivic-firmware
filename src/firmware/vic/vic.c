@@ -16,14 +16,31 @@
 #include <string.h>
 #include <stdio.h>
 
-void core1_loop(void){
-    __wfe();    //Just placeholder.
+void core1_entry(void) {
+    // Set up VIC PIO.
+    pio_set_gpio_base(VIC_PIO, VIC_PIN_BANK);
+    // TODO: We might add the second output clock in the future.
+    pio_gpio_init(VIC_PIO, VIC_PIN_BASE);
+    // TODO: Check if the drive strength is appropriate for the clock.
+    gpio_set_drive_strength(VIC_PIN_BASE, GPIO_DRIVE_STRENGTH_2MA);
+    // TODO: We don't need to use the multiple set function at present.
+    pio_sm_set_consecutive_pindirs(VIC_PIO, VIC_SM, VIC_PIN_BASE, 1, true);
+    uint offset = pio_add_program(VIC_PIO, &clkgen_program);
+    pio_sm_config config = clkgen_program_get_default_config(offset);
+    sm_config_set_out_pins(&config, VIC_PIN_BASE, 1);
+    pio_sm_init(VIC_PIO, VIC_SM, offset, &config);
+    pio_sm_set_enabled(VIC_PIO, VIC_SM, true);   
+    printf("VIC init done\n");
+
+    while (1) {
+
+    }
 }
 
-void vic_init(void){
-    multicore_launch_core1(core1_loop);
-
+void vic_init(void) {
+    multicore_launch_core1(core1_entry);
 }
-void vic_task(void){
-    
+
+void vic_task(void) {
+    // TODO: This is where core0 would process something from core1, if required.
 }
