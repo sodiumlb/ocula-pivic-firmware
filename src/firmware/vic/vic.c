@@ -23,7 +23,6 @@ void core1_entry(void) {
     pio_gpio_init(VIC_PIO, VIC_PIN_BASE);
     // TODO: Check if the drive strength is appropriate for the clock.
     gpio_set_drive_strength(VIC_PIN_BASE, GPIO_DRIVE_STRENGTH_2MA);
-    // TODO: We don't need to use the multiple set function at present.
     pio_sm_set_consecutive_pindirs(VIC_PIO, VIC_SM, VIC_PIN_BASE, 1, true);
     uint offset = pio_add_program(VIC_PIO, &clkgen_program);
     pio_sm_config config = clkgen_program_get_default_config(offset);
@@ -33,6 +32,12 @@ void core1_entry(void) {
     printf("VIC init done\n");
 
     while (1) {
+        // Poll for PIO IRQ 0. This is the rising edge of F1.
+        while (!pio_interrupt_get(VIC_PIO, 0)) {
+            tight_loop_contents();
+        }
+
+
 
     }
 }
