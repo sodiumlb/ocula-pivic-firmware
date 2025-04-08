@@ -33,12 +33,11 @@ void core1_entry(void) {
     printf("VIC init done\n");
 
     // DEBUGGING variables
-    //uint32_t calls = 0;
     uint32_t frames = 0;
 
     // Hard coded control registers for now (from default PAL VIC).
     uint8_t screenOriginX = 12;         // 7-bit horiz counter value to match for left of video matrix
-    uint8_t screenOriginY = 38;         // 8-bit vert counter value x 2 to match for top of video matrix
+    uint8_t screenOriginY = 38 * 2;     // 8-bit vert counter value (x 2) to match for top of video matrix
     uint8_t numOfColumns = 22;          // 7-bit number of video matrix columns
     uint8_t numOfRows = 23;             // 6-bit number of video matrix rows
     uint8_t lastCellLine = 7;           // Last Cell Depth Counter value. Depends on double height mode.
@@ -70,6 +69,12 @@ void core1_entry(void) {
     // - Used by Vertical Cell Counter to reload value to count down from.
     bool lastLine = false;
 
+    // CDC Last Value: Triggered when Cell Depth Counter contains its last value before reset.
+    // - Active for the whole line.
+    // - Used to store Video Matrix Counter in its internal latch.
+    // - Used when resetting Cell Depth Counter, which in turn triggers Vertical Cell Counter increment.
+    bool cdcLastValue = false;
+
     // In Matrix Y: 
     // - Set when Screen Origin Y matches current Vertical Counter x 2 (2 pixel granularity)
     // - Cleared when Vert Cell Counter has counted down, or its the last line.
@@ -84,13 +89,19 @@ void core1_entry(void) {
     // - Used by Cell Depth Counter increment logic. Only increments if line was a matrix line.
     bool matrixLine = false;
 
+    bool vblank = false;
+    bool vblankPulse = false;
+    bool vsync = false;
+    bool vsyncPulse = false;
+
     while (1) {
         // Poll for PIO IRQ 0. This is the rising edge of F1.
         while (!pio_interrupt_get(VIC_PIO, 0)) {
             tight_loop_contents();
         }
 
-        // NOTE: THE SEQUENCE OF ALL THESE CODE BLOCKS IS IMPORTANT. 
+        // IMPORTANT NOTE: THE SEQUENCE OF ALL THESE CODE BLOCKS IS IMPORTANT, e.g.
+        // THE VALUE OF SOME COUNTERS ARE CHECKED BEFORE THE VALUE CHANGES.
 
 
         // *************************** PHASE 1 (F1) *****************************
@@ -109,10 +120,10 @@ void core1_entry(void) {
         //   ...unless the vert counter was 311, in which case we reset to 0.
         // - Vertical Counter value is only used by Y Decoder and Screen Y comparator during F2.
         if (horizontalCounter == 0) {
-            if (verticalCounter == 311) {
+            if (lastLine) {
                 verticalCounter = 0;
 
-                // DEBUG:
+                // DEBUG: Should print every second, due to PAL 50Hz.
                 frames++;
                 if (frames == 50) {
                     frames = 0;
@@ -152,14 +163,11 @@ void core1_entry(void) {
 
         if (newLine) {
             // Check for Cell Depth Counter reset
-            if (cellDepthCounter == lastCellLine) {
+            if (cdcLastValue) {
                 cellDepthCounter = 0;
                 if (!lastLine) {
                     // Vertical Cell Counter decrements when CDC resets, unless its the last line.
                     verticalCellCounter--;
-                    if (verticalCellCounter == 0) {
-                        inMatrixY = false;
-                    }
                 }
             }
             else if (matrixLine) {
@@ -171,7 +179,8 @@ void core1_entry(void) {
             horizontalCellCounter = (numOfColumns << 1);
         }
         else if (inMatrix) {
-            // Horizontal Cell Counter decrements on every cycle while in matrix (unless loading)
+            // Horizontal Cell Counter decrements on every cycle while in matrix (unless loading).
+            // Note: In Matrix turned off when horizontal cell counter hits zero. No need to check that here.
             horizontalCellCounter--;
         }
 
@@ -189,14 +198,32 @@ void core1_entry(void) {
         // - When In Matrix, it increments on every cycle, unless loading or resetting.
         // - Comes with an associated latch that it both stores to and loads from.
         // - Stores counter into latch on every cycle of last Cell Depth Counter line (probably an optimisation)
+        // - Store takes the value of counter BEFORE increment.
         // - Counter is loaded from the latch on new line signal.
-        // - Latch is cleared on VSYNC.
-        // - Value is halved during address calculation, i.e. only top 11 bits used, bit-0 ignored.
+        // - Latch is cleared to 0 on each VSYNC equalisation pulse, i.e. 2 times each on lines 4, 5 and 6.
+        //   (probably an optimisation and not strictly required)
+        // - Counter value is halved during address calculation, i.e. only top 11 bits used, bit-0 ignored.
+        if (vsyncPulse) { 
+            videoMatrixLatch = 0;
+        }
+        else if (newLine) {
+            videoMatrixCounter = videoMatrixLatch;
+        }
+        else if (inMatrix) {
+            // Important: Latch store happens BEFORE increment.
+            if (cdcLastValue) {
+                videoMatrixLatch = videoMatrixCounter;
+            }
+            // Always incremenets when in matrix, and is not loading from latch.
+            videoMatrixCounter++;
+        }
 
 
+        // TODO: Should we poll here for phase 2 via another interrupt? e.g. irq 1
 
 
-        // *************************** PHASE 2 (F2) *****************************
+        // ***************************** PHASE 2 (F2) *******************************
+        // Everything calculated below can only happen in F2 and are static during F1.
 
         // X Decoder - Phase 2 updates:
         // - Since horiz counter only exposes a new value on F2, then most X decoder values update in F2.
@@ -211,27 +238,38 @@ void core1_entry(void) {
         // Y Decoder - Phase 2 updates
         // -
 
-        // Re-calculated every cycle.
+        // Re-calculated in F2 of every cycle. These are each checked in F1 multiple times.
         newLine = (horizontalCounter == 0);
         lastLine = (verticalCounter == 311);
+        cdcLastValue = (cellDepthCounter == lastCellLine);
 
-        // Screen X and Screen Y comparators
-        // - Takes values at end of F1 to use in F2.
+        // Screen origin X/Y comparators are done as part of In Matrix calculations below.
 
-
-        // 'In Matrix' calculation, i.e. are we within the video matrix at the moment.
-
-
+        // 'In Matrix' calculations, i.e. are we within the video matrix at the moment?
+        // 'In Matrix Y' cleared on either last line or vert cell counter reaching it last value.
+        if (lastLine || (verticalCellCounter == 0)) {
+            // Note that these two flags are subtly and deliberately different.
+            inMatrixY = false;
+            matrixLine = false;
+        }
+        // Otherwise, 'In Matrix Y' set on vertical counter matching screen origin Y.
+        else if (verticalCounter == screenOriginY) {
+            inMatrixY = true;
+        }
+        // 'In Matrix' is cleared on either a new line or on horiz cell counter reaching its last value.
+        if (newLine || (horizontalCellCounter == 0)) {
+            inMatrix = false;
+        }
+        // Otherwise 'In Matrix' set on horiz counter matching screen origin X, also 'In Matrix Y'
+        else if (inMatrixY && (horizontalCounter == screenOriginX)) {
+            inMatrix = true;
+            matrixLine = true;
+        }
 
         // TODO: Calculate address to fetch in next F1.
 
 
-        //calls++;
-        //if (calls > 1108333) {
-        //    calls = 0;
-        //    printf(".|");
-        //}
-
+        // TODO: Should this be cleared at end of loop? Or immediately after polling?
         pio_interrupt_clear(VIC_PIO, 0);
     }
 }
