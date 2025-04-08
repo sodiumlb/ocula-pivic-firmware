@@ -290,14 +290,14 @@ void core1_entry(void) {
             }
         }
 
-        // All this seems to do is clear video matrix latch, on each long sync during vsync.
+        // Clears video matrix latch, on each of the long syncs during vsync (see code above)
         vsyncPulse = (vsync && vblankPulse);
 
         // Sync level output is triggered in three scenarios:
         // - When hsync is true and vblank is not true (i.e. hsync doesn't happen during vertical blanking)
         // - When vblank is true and vblankPulse is not true (short syncs during lines 1-3 and 7-9)
         // - When vsync is true and vblankPulse is also true (long syncs during lines 4-6)
-        sync = (hsync || (vblank && !vblankPulse) || (vsync && vblankPulse));
+        sync = (hsync || (vblank && !vblankPulse) || vsyncPulse);
 
         // Blanking is much simpler by comparison.
         blanking = (vblank || hblank);
