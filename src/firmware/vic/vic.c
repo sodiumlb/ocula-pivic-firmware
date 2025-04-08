@@ -89,10 +89,18 @@ void core1_entry(void) {
     // - Used by Cell Depth Counter increment logic. Only increments if line was a matrix line.
     bool matrixLine = false;
 
+    // Signals that control video events during blanking.
+    bool hblank = false;
+    bool hsync = false;
+    bool colourBurst = false;
     bool vblank = false;
     bool vblankPulse = false;
     bool vsync = false;
     bool vsyncPulse = false;
+    bool sync = false;
+    bool blanking = false;
+    bool colourEnable = false;
+    bool blackOrWhite = false;
 
     while (1) {
         // Poll for PIO IRQ 0. This is the rising edge of F1.
@@ -100,18 +108,23 @@ void core1_entry(void) {
             tight_loop_contents();
         }
 
-        // IMPORTANT NOTE: THE SEQUENCE OF ALL THESE CODE BLOCKS IS IMPORTANT, e.g.
-        // THE VALUE OF SOME COUNTERS ARE CHECKED BEFORE THE VALUE CHANGES.
-
+        // IMPORTANT NOTE: THE SEQUENCE OF ALL THESE CODE BLOCKS BELOW IS IMPORTANT.
 
         // *************************** PHASE 1 (F1) *****************************
 
         // X Decoder - Phase 1 updates
         // - Some X decoder NORs include F1, so don't update until now.
-        // TODO: Check colour burst end
-        // TODO: Check horiz blanking end
-        // TODO: Check some vert sync pulse logic
-
+        switch (horizontalCounter) {
+            case 11:
+                colourBurst = false;
+                break;
+            case 12:
+                hblank = false;
+                break;
+            case 38:
+                vblankPulse = false;
+                break;
+        }
 
         // Vertical Counter (VC):
         // - During F1, it will either retain value, reset to 0, or increment.
@@ -223,28 +236,77 @@ void core1_entry(void) {
 
 
         // ***************************** PHASE 2 (F2) *******************************
-        // Everything calculated below can only happen in F2 and are static during F1.
+        // Everything calculated below this line can only happen in F2 and are static during F1.
+
+        // Re-calculated in F2 of every cycle (not F1). The values are however tested in F1 multiple times.
+        newLine = (horizontalCounter == 0);
+        lastLine = (verticalCounter == 311);
+        cdcLastValue = (cellDepthCounter == lastCellLine);
 
         // X Decoder - Phase 2 updates:
         // - Since horiz counter only exposes a new value on F2, then most X decoder values update in F2.
         // - This isn't true for all cases, as some include F1 in the NOR, so don't change until F1.
         // - This is why some X decoding is also done at the start of F1.
-        // TODO: Check colour burst start
-        // TODO: Check horiz blanking start
-        // TODO: Check some vert sync pulse logic
-        // TODO: Calculate x_0, x_35, and x_70. Can we use actual HC value?
-
+        switch (horizontalCounter) {
+            case 1:
+                hsync = true;
+                break;
+            case 2:
+                vblankPulse = false;
+                break;
+            case 6:
+                hsync = false;
+                vblankPulse = true;
+                break;
+            case 7:
+                colourBurst = true;
+                break;
+            case 41:
+                vblankPulse = true;
+                break;
+            case 70:
+                hblank = true;
+                break;
+        }
 
         // Y Decoder - Phase 2 updates
         // -
+        if (newLine) {
+            switch (verticalCounter) {
+                case 1:
+                    vblank = true;
+                    break;
+                case 4:
+                    vsync = true;
+                    break;
+                case 7:
+                    vsync = false;
+                    break;
+                case 10:
+                    vblank = false;
+                    break;
+            }
+        }
 
-        // Re-calculated in F2 of every cycle. These are each checked in F1 multiple times.
-        newLine = (horizontalCounter == 0);
-        lastLine = (verticalCounter == 311);
-        cdcLastValue = (cellDepthCounter == lastCellLine);
+        // All this seems to do is clear video matrix latch, on each long sync during vsync.
+        vsyncPulse = (vsync && vblankPulse);
+
+        // Sync level output is triggered in three scenarios:
+        // - When hsync is true and vblank is not true (i.e. hsync doesn't happen during vertical blanking)
+        // - When vblank is true and vblankPulse is not true (short syncs during lines 1-3 and 7-9)
+        // - When vsync is true and vblankPulse is also true (long syncs during lines 4-6)
+        sync = ((hsync && !vblank) || (vblank && !vblankPulse) || (vsync && vblankPulse));
+
+        // Blanking is much simpler by comparison.
+        blanking = (vblank || hblank);
+
+        // Colour Enable controls whether chroma output pin outputs anything.
+        // - Chroma output is not enabled for B/W and blanking, unless colour burst is active.
+        // TODO: Not entirely sure we need this one. If we know the colour, we just lookup the CVBS data.
+        //colourEnable = ((blackOrWhite || blanking) && !colourBurst);
+
 
         // Screen origin X/Y comparators are done as part of In Matrix calculations below.
-
         // 'In Matrix' calculations, i.e. are we within the video matrix at the moment?
         // 'In Matrix Y' cleared on either last line or vert cell counter reaching it last value.
         if (lastLine || (verticalCellCounter == 0)) {
