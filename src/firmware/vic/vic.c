@@ -249,7 +249,8 @@ void core1_entry(void) {
         // - This is why some X decoding is also done at the start of F1.
         switch (horizontalCounter) {
             case 1:
-                hsync = true;
+                // Horizontal sync is only triggered when vertical blanking is not active.
+                hsync = !vblank;
                 break;
             case 2:
                 vblankPulse = false;
@@ -259,7 +260,8 @@ void core1_entry(void) {
                 vblankPulse = true;
                 break;
             case 7:
-                colourBurst = true;
+                // Colour burst is only triggered when vertical blanking is not active.
+                colourBurst = !vblank;
                 break;
             case 41:
                 vblankPulse = true;
@@ -295,7 +297,7 @@ void core1_entry(void) {
         // - When hsync is true and vblank is not true (i.e. hsync doesn't happen during vertical blanking)
         // - When vblank is true and vblankPulse is not true (short syncs during lines 1-3 and 7-9)
         // - When vsync is true and vblankPulse is also true (long syncs during lines 4-6)
-        sync = ((hsync && !vblank) || (vblank && !vblankPulse) || (vsync && vblankPulse));
+        sync = (hsync || (vblank && !vblankPulse) || (vsync && vblankPulse));
 
         // Blanking is much simpler by comparison.
         blanking = (vblank || hblank);
