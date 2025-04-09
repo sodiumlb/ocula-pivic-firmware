@@ -233,6 +233,9 @@ void core1_entry(void) {
 
         // At the end of F1, if 'In Matrix', then the data read from memory arrives.
         if (inMatrix) {
+
+            // TODO: Shift out two pixels somewhere around here.
+
             if (horizontalCellCounter & 1) {
                 // TODO: This is where we read the cell index from VIC PIO.
                 cellIndex = 0;
@@ -240,12 +243,11 @@ void core1_entry(void) {
             else {
                 // TODO: This is where we read the char data from VIC PIO.
                 charData = 0b10101011;
+
+                // TODO: Load the pixel shift register.
+
             }
         }
-
-        // TODO: Top bit of pixel shift register comes out immediately.
-
-
 
         // TODO: Should we poll here for phase 2 via another interrupt? e.g. irq 1
 
@@ -346,6 +348,9 @@ void core1_entry(void) {
         }
 
         // TODO: If 'In Matrix', calculate address to fetch in next F1.
+
+
+        // TODO: Shift out two more pixels somewhere around here.
 
 
         // TODO: Should this be cleared at end of loop? Or immediately after polling?
