@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 dreamsel
+* Copyright (c) 2025 dreamseal
 *
 * SPDX-License-Identifier: BSD-3-Clause
 */
