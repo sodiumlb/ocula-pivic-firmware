@@ -55,6 +55,7 @@ void core1_entry(void) {
     // Values normally fetched externally, from screen mem and char mem.
     uint8_t  cellIndex = 0;
     uint8_t  charData = 0;
+    uint8_t  colourData = 0;
 
     // New Line: Triggered when horiz counter resets during F1, but only exposed during F2, then used in next F1.
     // - Active for only that one cycle.
@@ -74,6 +75,14 @@ void core1_entry(void) {
     // - Used to store Video Matrix Counter in its internal latch.
     // - Used when resetting Cell Depth Counter, which in turn triggers Vertical Cell Counter increment.
     bool cdcLastValue = false;
+
+    // Screen Origin X Comparator:
+    // - Active for the one cycle when the horizontal counter matches the screen origin X value.
+    bool screenXComp = false;
+
+    // Screen Origin Y Comparator:
+    // - Active for the whole line when the vertical counter matches the screen origin Y value.
+    bool screenYComp = false;
 
     // In Matrix Y: 
     // - Set when Screen Origin Y matches current Vertical Counter x 2 (2 pixel granularity)
@@ -197,7 +206,7 @@ void core1_entry(void) {
             horizontalCellCounter--;
         }
 
-        // Vertical Cell Counter
+        // Vertical Cell Counter (VCC):
         // Purpose: To count down the rows of the video matrix.
         // - Loaded on every cycle of last line (311) with the number of rows value (probably an optimisation)
         // - Decrements on Cell Depth Counter reset, unless its loading (see implementation above)
@@ -213,7 +222,7 @@ void core1_entry(void) {
         // - Stores counter into latch on every cycle of last Cell Depth Counter line (probably an optimisation)
         // - Store takes the value of counter BEFORE increment.
         // - Counter is loaded from the latch on new line signal.
-        // - Latch is cleared to 0 on each VSYNC equalisation pulse, i.e. 2 times each on lines 4, 5 and 6.
+        // - Latch is cleared to 0 on each long VSYNC pulse, i.e. 2 times each on lines 4, 5 and 6.
         //   (probably an optimisation and not strictly required)
         // - Counter value is halved during address calculation, i.e. only top 11 bits used, bit-0 ignored.
         if (vsyncPulse) { 
@@ -238,16 +247,23 @@ void core1_entry(void) {
 
             if (horizontalCellCounter & 1) {
                 // TODO: This is where we read the cell index from VIC PIO.
+                // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
                 cellIndex = 0;
+                colourData = 3;
             }
             else {
                 // TODO: This is where we read the char data from VIC PIO.
+                // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
                 charData = 0b10101011;
 
                 // TODO: Load the pixel shift register.
 
             }
         }
+
+        // TODO: Top bit of pixel shift register comes out immediately.
+
+
 
         // TODO: Should we poll here for phase 2 via another interrupt? e.g. irq 1
 
@@ -305,6 +321,9 @@ void core1_entry(void) {
                     vblank = false;
                     break;
             }
+
+            // Screen Origin Y comparator is also here for efficency.
+            screenYComp = (verticalCounter == screenOriginY);
         }
 
         // Clears video matrix latch, on each of the long syncs during vsync (see code above)
@@ -334,7 +353,7 @@ void core1_entry(void) {
             matrixLine = false;
         }
         // Otherwise, 'In Matrix Y' set on vertical counter matching screen origin Y.
-        else if (verticalCounter == screenOriginY) {
+        else if (screenYComp) {
             inMatrixY = true;
         }
         // 'In Matrix' is cleared on either a new line or on horiz cell counter reaching its last value.
@@ -342,15 +361,20 @@ void core1_entry(void) {
             inMatrix = false;
         }
         // Otherwise 'In Matrix' set on horiz counter matching screen origin X, also 'In Matrix Y'
-        else if (inMatrixY && (horizontalCounter == screenOriginX)) {
+        else if (inMatrixY && screenXComp) {
             inMatrix = true;
             matrixLine = true;
         }
 
-        // TODO: If 'In Matrix', calculate address to fetch in next F1.
+        // Screen origin X comparator:
+        // - We do screen origin X comparator after 'In Matrix' checks because of a 1 cycle gap 
+        //   between the comparison result and internal changes to 'In Matrix' state.
+        screenXComp = (horizontalCounter == screenOriginX);
+        
 
 
         // TODO: Shift out two more pixels somewhere around here.
+        // TODO: If 'In Matrix', calculate address to fetch in next F1.
 
 
         // TODO: Should this be cleared at end of loop? Or immediately after polling?
