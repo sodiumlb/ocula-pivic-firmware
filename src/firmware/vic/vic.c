@@ -97,18 +97,34 @@ void core1_entry(void) {
     //   - 2nd cycle: Internal (i.e. not yet available to other components) "In Matrix" state changes.
     //   - 3rd cycle: Bus Available signal goes LOW (intended for special "option" version of VIC chip)
     //   - 4th cycle: 'In Matrix' state broadcast to counters, e.g. VMC, HCC.
-    //   - 5th cycle: Address Output signal enabled (could first fetch be a throwaway bitmap fetch?)
+    //   - 5th cycle: Address Output signal enabled (Could the first fetch be a throwaway bitmap fetch?)
     //   - 6th cycle: Cell Index fetched from screen memory.
     //   - 7th cycle: Character Bitmap data fetched from char memory, loaded into pixel shift register.
     // - SUMMARY: It takes 7 cycles from screen origin X match until pixels for first char are generated.
     //   This is why a screen origin X value of 5 is the first useful value, since horizonal blanking ends
-    //   at 12, and 5 + 7 cycles = 12.
-    uint8_t inMatrixDelay = 0;
+    //   at 12, and 5 + 7 = 12.
     bool inMatrix = false;
+
+    // In Matrix Delay:
+    // Purpose: To reproduce the behaviour mentioned above in relation to the timing of In Matrix 
+    // propagation and events either side.
+    // - Set to 1 and counts up to 7 when entering the matrix. Reset to 0 when it reaches 7.
+    // - Set to 8 and counts up to 11 when leaving the matrix. Reset to 0 when it reaches 11.
+    uint8_t inMatrixDelay = 0;
 
     // Matrix Line:
     // - Used by Cell Depth Counter increment logic. Only increments if line was a matrix line.
     bool matrixLine = false;
+
+    // Address Output Enabled: 
+    // - Turned on to allow memory fetches 2 cycles before pixel output starts.
+    // - Turned off 2 cycles before pixel output stops.
+    bool addressOutputEnabled = false;
+
+    // Pixel Output Enabled:
+    // - Used to determine if pixels from the pixel shift register should go to video or not.
+    // - If false, and blanking isn't active, then current border colour is output instead.
+    bool pixelOutputEnabled = false;
 
     // Signals that control video events during blanking.
     bool hblank = false;
@@ -135,6 +151,54 @@ void core1_entry(void) {
         // IMPORTANT NOTE: THE SEQUENCE OF ALL THESE CODE BLOCKS BELOW IS IMPORTANT.
 
         // *************************** PHASE 1 (F1) *****************************
+
+        // The events that happens as part of entering or leaving the video matrix part
+        // of the screen all take place during F1, despite being triggered in F2. We do
+        // this up front, as other actions that happen during F1 depend on the timing of this.
+        if (inMatrixDelay) {
+            inMatrixDelay++;
+
+            switch (inMatrixDelay) {
+                case 1: break; // This is just the half cycle between inMatrixDely being set and now.
+                case 2: break; // 1 cycle delay before Bus Available signal change (reason unknown).
+                case 3: break; // Bus Available signal goes LOW here.
+                case 4: 
+                    // This is when the HCC and VMC counters are told they're now in the matrix.
+                    inMatrix = true;
+                    break;
+                case 5: 
+                    // This is when Address Output is enabled, allowing the first memory fetch for this line.
+                    addressOutputEnabled = true;
+                    break;
+                case 6:
+                    // Delay to allow time for both the cell index and char data to be fetched.
+                    break;
+                case 7:
+                    // And finally the pixel output starts.
+                    pixelOutputEnabled = true;
+                    inMatrixDelay = 0;
+                    break;
+
+                // While we're in the matrix, and outputting pixels, nothing for inMatrixDelay to do.
+
+                case 8:
+                    // We're now leaving the matrix. It happens immediately. HCC/VMC counters stop.
+                    inMatrix = false;
+                    break;
+                case 9:
+                    // Address Output disabled a cycle later.
+                    addressOutputEnabled = false;
+                    break;
+                case 10:
+                    // Additional 1 cycle delay to allow pixel shift register to unload last 4 bits.
+                    break;
+                case 11:
+                    // And finally, pixel output turned off.
+                    pixelOutputEnabled = false;
+                    inMatrixDelay = 0;
+                    break;
+            }
+        }
 
         // X Decoder - Phase 1 updates
         // - Some X decoder NORs include F1, so don't update until now.
@@ -374,11 +438,11 @@ void core1_entry(void) {
         }
         // 'In Matrix' is cleared on either a new line or on horiz cell counter reaching its last value.
         if (newLine || (horizontalCellCounter == 0)) {
-            inMatrix = false;
+            inMatrixDelay = 8;
         }
         // Otherwise 'In Matrix' set on horiz counter matching screen origin X, also 'In Matrix Y'
         else if (inMatrixY && screenXComp) {
-            inMatrix = true;
+            inMatrixDelay = 1;
             matrixLine = true;
         }
 
