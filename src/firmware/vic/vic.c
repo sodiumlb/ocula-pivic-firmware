@@ -378,7 +378,7 @@ void core1_entry(void) {
 
 
         // TODO: Should this be cleared at end of loop? Or immediately after polling?
-        pio_interrupt_clear(VIC_PIO, 0);
+        pio_interrupt_clear(VIC_PIO, 1);
     }
 }
 
