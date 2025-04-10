@@ -92,6 +92,18 @@ void core1_entry(void) {
     // In Matrix:
     // - Set when inMatrixY is true and Screen Origin X matches Horizontal Counter
     // - Cleared when Horiz Cell Counter has counted down, or its a new line.
+    // - Several cycles pass before different parts of the VIC chip become aware of a change to In Matrix.
+    //   - 1st cycle: Screen origin X comparator matches horizontal counter.
+    //   - 2nd cycle: Internal (i.e. not yet available to other components) "In Matrix" state changes.
+    //   - 3rd cycle: Bus Available signal goes LOW (intended for special "option" version of VIC chip)
+    //   - 4th cycle: 'In Matrix' state broadcast to counters, e.g. VMC, HCC.
+    //   - 5th cycle: Address Output signal enabled (could first fetch be a throwaway bitmap fetch?)
+    //   - 6th cycle: Cell Index fetched from screen memory.
+    //   - 7th cycle: Character Bitmap data fetched from char memory, loaded into pixel shift register.
+    // - SUMMARY: It takes 7 cycles from screen origin X match until pixels for first char are generated.
+    //   This is why a screen origin X value of 5 is the first useful value, since horizonal blanking ends
+    //   at 12, and 5 + 7 cycles = 12.
+    uint8_t inMatrixDelay = 0;
     bool inMatrix = false;
 
     // Matrix Line:
