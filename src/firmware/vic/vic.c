@@ -117,6 +117,10 @@ void core1_entry(void) {
             tight_loop_contents();
         }
 
+        // Clear the IRQ flag immediately for now. 
+        // TODO: Move this lower once the critical parts have been decided on.
+        pio_interrupt_clear(VIC_PIO, 1);
+
         // IMPORTANT NOTE: THE SEQUENCE OF ALL THESE CODE BLOCKS BELOW IS IMPORTANT.
 
         // *************************** PHASE 1 (F1) *****************************
@@ -376,9 +380,6 @@ void core1_entry(void) {
         // TODO: Shift out two more pixels somewhere around here.
         // TODO: If 'In Matrix', calculate address to fetch in next F1.
 
-
-        // TODO: Should this be cleared at end of loop? Or immediately after polling?
-        pio_interrupt_clear(VIC_PIO, 1);
     }
 }
 
