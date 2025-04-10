@@ -118,7 +118,6 @@ void core1_entry(void) {
         }
 
         // Clear the IRQ flag immediately for now. 
-        // TODO: Move this lower once the critical parts have been decided on.
         pio_interrupt_clear(VIC_PIO, 1);
 
         // IMPORTANT NOTE: THE SEQUENCE OF ALL THESE CODE BLOCKS BELOW IS IMPORTANT.
@@ -153,6 +152,7 @@ void core1_entry(void) {
                 frames++;
                 if (frames == 50) {
                     frames = 0;
+                    // NOTE: This printf takes a LOT of cycles, so remember that when debugging.
                     printf(".|");
                 }
 
@@ -380,6 +380,12 @@ void core1_entry(void) {
         // TODO: Shift out two more pixels somewhere around here.
         // TODO: If 'In Matrix', calculate address to fetch in next F1.
 
+
+        // DEBUG: Temporary check to see if we've overshot the 120 cycle allowance.
+        if (pio_interrupt_get(VIC_PIO, 1) && (frames != 0)) {
+            // An overrun when frames isn't 0 (i.e. when it didn't print the .|) is of concern.
+            printf("X[%d]", frames);
+        }
     }
 }
 
