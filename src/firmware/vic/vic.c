@@ -113,7 +113,7 @@ void core1_entry(void) {
 
     while (1) {
         // Poll for PIO IRQ 0. This is the rising edge of F1.
-        while (!pio_interrupt_get(VIC_PIO, 0)) {
+        while (!pio_interrupt_get(VIC_PIO, 1)) {
             tight_loop_contents();
         }
 

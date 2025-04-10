@@ -23,7 +23,8 @@
 .side_set 1
 
 .wrap_target
-irq 0   side 1 [14]
+irq 0   side 1 [0]       ; Signals start of phase 1 internal to the PIO.
+irq 1   side 1 [13]      ; Signals start of phase 1 external to the PIO, i.e. to the main C program.
 nop     side 1 [14]
 nop     side 1 [14]
 nop     side 1 [14]
