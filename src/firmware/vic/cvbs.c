@@ -44,11 +44,11 @@ const uint8_t rev5bit[32] = {
 #define CVBS_REP(cmd,count) ((cmd & ~(0x1FF<<9)) | ((count-3) & 0x1FF)<<9)
 //Experimental timings (eyeballing + experimenting)
 //Levels bit-reverse hard-coded
-#define PAL_HSYNC       CVBS_CMD( 0, 0, 0, 0,21)
-#define PAL_BLANK       CVBS_CMD(18,18,18, 0,53)
-#define PAL_FRONTPORCH  CVBS_CMD(18,18,18, 0, 7)
-#define PAL_BACKPORCH1   CVBS_CMD(18,18,18, 0,4)
-#define PAL_BACKPORCH2   CVBS_CMD(18,18,18, 0,11)
+#define PAL_HSYNC       CVBS_CMD( 0, 0, 0, 0,20)
+#define PAL_BLANK       CVBS_CMD(18,18,18, 0,50)
+#define PAL_FRONTPORCH  CVBS_CMD(18,18,18, 0, 8)
+#define PAL_BREEZEWAY   CVBS_CMD(18,18,18, 0,4)
+#define PAL_BACKPORCH   CVBS_CMD(18,18,18, 0,4)
 /* Depricated
 #define PAL_COLORBURST_E CVBS_CMD(12, 6,18, 0,11)
 #define PAL_COLORBURST_O CVBS_CMD( 6,12,18, 7,11)
@@ -65,11 +65,11 @@ const uint8_t rev5bit[32] = {
 #define PAL_LONG_SYNC_H  CVBS_CMD(18,18,18, 0,  9)
 #define PAL_SHORT_SYNC_L CVBS_CMD( 0, 0, 0, 0,  9)
 #define PAL_SHORT_SYNC_H CVBS_CMD(18,18,18, 0,133)
-#define PAL_BLANKING     CVBS_CMD(18,18,18, 0,230)
+#define PAL_BLANKING     CVBS_CMD(18,18,18, 0,234)
 
 //"Tobias" colours - approximated
-#define PAL_BURST_O	   CVBS_CMD(6,12,9,11,11)
-#define PAL_BURST_E	   CVBS_CMD(12,6,9,4,11)
+#define PAL_BURST_O	   CVBS_CMD(6,12,9,11,14)
+#define PAL_BURST_E	   CVBS_CMD(12,6,9,4,14)
 
 #define PAL_BLACK	      CVBS_CMD(18,18,9,0,0)
 #define PAL_WHITE	      CVBS_CMD(23,23,29,0,0)
@@ -119,11 +119,11 @@ uint32_t test_vsync_p[] = {
 uint32_t test_scanline_odd[] = {
    PAL_FRONTPORCH,
    PAL_HSYNC,
-   PAL_BACKPORCH1,
+   PAL_BREEZEWAY,
    PAL_BURST_O,
-   PAL_BACKPORCH2,
-   CVBS_REP(PAL_BLACK, 10),
-   CVBS_REP(PAL_WHITE, 10),
+   PAL_BACKPORCH,
+   CVBS_REP(PAL_BLACK, 12),
+   CVBS_REP(PAL_WHITE, 12),
    CVBS_REP(PAL_RED_O, 15),
    CVBS_REP(PAL_CYAN_O, 15),
    CVBS_REP(PAL_PURPLE_O, 15),
@@ -143,11 +143,11 @@ uint32_t test_scanline_odd[] = {
 uint32_t test_scanline_even[] = {
    PAL_FRONTPORCH,
    PAL_HSYNC,
-   PAL_BACKPORCH1,
+   PAL_BREEZEWAY,
    PAL_BURST_E,
-   PAL_BACKPORCH2,
-   CVBS_REP(PAL_BLACK, 10),
-   CVBS_REP(PAL_WHITE, 10),
+   PAL_BACKPORCH,
+   CVBS_REP(PAL_BLACK, 12),
+   CVBS_REP(PAL_WHITE, 12),
    CVBS_REP(PAL_RED_E, 15),
    CVBS_REP(PAL_CYAN_E, 15),
    CVBS_REP(PAL_PURPLE_E, 15),
@@ -167,17 +167,17 @@ uint32_t test_scanline_even[] = {
 uint32_t test_blanking_line_odd[] = {
    PAL_FRONTPORCH,
    PAL_HSYNC,
-   PAL_BACKPORCH1,
+   PAL_BREEZEWAY,
    PAL_BURST_O,
-   PAL_BACKPORCH2,
+   PAL_BACKPORCH,
    PAL_BLANKING,
 };
 uint32_t test_blanking_line_even[] = {
    PAL_FRONTPORCH,
    PAL_HSYNC,
-   PAL_BACKPORCH1,
+   PAL_BREEZEWAY,
    PAL_BURST_E,
-   PAL_BACKPORCH2,
+   PAL_BACKPORCH,
    PAL_BLANKING,
 };
 
