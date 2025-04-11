@@ -40,8 +40,8 @@ const uint8_t rev5bit[32] = {
 //Count is the number of iterations of the signal to generate. NB minimum count is 2
 #define CVBS_DELAY_CONST_POST (15-3)
 #define CVBS_CMD(L0,L1,DC,delay,count) \
-         ((((CVBS_DELAY_CONST_POST-delay)&0xF)<<23) |  ((L1&0x1F)<<18) | (((count-3)&0x1FF)<<9) |((L0&0x1F)<<4) | ((delay&0x0F)))
-#define CVBS_REP(cmd,count) ((cmd & ~(0x1FF<<9)) | ((count-3) & 0x1FF)<<9)
+         ((((CVBS_DELAY_CONST_POST-delay)&0xF)<<23) |  ((L1&0x1F)<<18) | (((count-1)&0x1FF)<<9) |((L0&0x1F)<<4) | ((delay&0x0F)))
+#define CVBS_REP(cmd,count) ((cmd & ~(0x1FF<<9)) | ((count-1) & 0x1FF)<<9)
 //Experimental timings (eyeballing + experimenting)
 //Levels bit-reverse hard-coded
 #define PAL_HSYNC       CVBS_CMD( 0, 0, 0, 0,21)
