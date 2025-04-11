@@ -193,6 +193,7 @@ void cvbs_init(void){
    pio_sm_config config = cvbs_program_get_default_config(offset);
    sm_config_set_out_pins(&config, CVBS_PIN_BASE, 5);             
    sm_config_set_out_shift(&config, true, true, 27); 
+   sm_config_set_fifo_join(&config, PIO_FIFO_JOIN_TX);
    pio_sm_init(CVBS_PIO, CVBS_SM, offset, &config);
    //pio_sm_put(CVBS_PIO, CVBS_SM, 0x84210FFF);    
    pio_sm_set_enabled(CVBS_PIO, CVBS_SM, true);   
