@@ -35,6 +35,9 @@ void cpu_init(void)
     #ifdef PIVIC
     set_sys_clock_khz(133000, true);
     #endif
+    #ifdef OCULA
+    set_sys_clock_khz(138000, true);
+    #endif
 
     // drive reset pin
     // gpio_init(CPU_RESB_PIN);
