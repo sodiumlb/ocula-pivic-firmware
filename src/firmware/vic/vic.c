@@ -7,6 +7,7 @@
 #include "main.h"
 //#include "sys/ria.h"
 #include "vic/vic.h"
+#include "vic/cvbs.h"
 #include "sys/mem.h"
 #include "vic.pio.h"
 #include "pico/stdlib.h"
@@ -16,7 +17,53 @@
 #include <string.h>
 #include <stdio.h>
 
+// EXPERIMENTAL TEST DEFINES:
+// TODO: Decide where to put these.
+#define CVBS_DELAY_CONST_POST (15-3)
+#define CVBS_CMD(L0,L1,DC,delay,count) \
+         ((((CVBS_DELAY_CONST_POST-delay)&0xF)<<23) |  ((L1&0x1F)<<18) | (((count-3)&0x1FF)<<9) |((L0&0x1F)<<4) | ((delay&0x0F)))
+#define CVBS_REP(cmd,count) ((cmd & ~(0x1FF<<9)) | ((count-3) & 0x1FF)<<9)
+// As an experiement, everything is currently set to repeat of 4 (i.e. duration of one F1/F2 cycle)
+#define PAL_SYNC        CVBS_CMD( 0, 0, 0, 0,4)
+#define PAL_BLANK       CVBS_CMD(18,18,18, 0,4)
+#define PAL_BURST_O     CVBS_CMD(6,12,9,11,4)
+#define PAL_BURST_E     CVBS_CMD(12,6,9,4,4)
+#define PAL_BLACK       CVBS_CMD(18,18,9,0,4)
+#define PAL_WHITE       CVBS_CMD(23,23,29,0,4)
+#define PAL_RED_O       CVBS_CMD(5,10,15,9,4)
+#define PAL_RED_E       CVBS_CMD(10,5,15,6,4)
+#define PAL_CYAN_O      CVBS_CMD(9,15,24,9,4)
+#define PAL_CYAN_E      CVBS_CMD(15,9,24,7,4)
+#define PAL_PURPLE_O    CVBS_CMD(29,22,18,5,4)
+#define PAL_PURPLE_E    CVBS_CMD(22,29,18,10,4)
+#define PAL_GREEN_O     CVBS_CMD(1,7,22,5,4)
+#define PAL_GREEN_E     CVBS_CMD(7,1,22,10,4)
+#define PAL_BLUE_O      CVBS_CMD(9,10,14,0,4)
+#define PAL_BLUE_E      CVBS_CMD(9,10,14,0,4)
+#define PAL_YELLOW_O    CVBS_CMD(5,15,25,0,4)
+#define PAL_YELLOW_E    CVBS_CMD(5,15,25,0,4)
+#define PAL_ORANGE_O    CVBS_CMD(19,22,19,11,4)
+#define PAL_ORANGE_E    CVBS_CMD(22,19,19,4,4)
+#define PAL_LORANGE_O   CVBS_CMD(27,21,24,11,4)
+#define PAL_LORANGE_E   CVBS_CMD(21,27,24,4,4)
+#define PAL_PINK_O      CVBS_CMD(11,5,23,9,4)
+#define PAL_PINK_E      CVBS_CMD(5,11,23,6,4)
+#define PAL_LCYAN_O	    CVBS_CMD(3,15,27,9,4)
+#define PAL_LCYAN_E     CVBS_CMD(15,3,27,7,4)
+#define PAL_LPURPLE_O   CVBS_CMD(27,21,24,5,4)
+#define PAL_LPURPLE_E   CVBS_CMD(21,27,24,10,4)
+#define PAL_LGREEN_O    CVBS_CMD(29,23,26,5,4)
+#define PAL_LGREEN_E    CVBS_CMD(23,29,26,10,4)
+#define PAL_LBLUE_O     CVBS_CMD(3,5,22,0,4)
+#define PAL_LBLUE_E     CVBS_CMD(3,5,22,0,4)
+#define PAL_LYELLOW_O   CVBS_CMD(19,31,28,0,4)
+#define PAL_LYELLOW_E   CVBS_CMD(19,31,28,0,4)
+// END OF EXPERIMENTAL DEFINES>
+
 void core1_entry(void) {
+
+    // TODO: Decide where it makes sense to initialise the CVBS PIO.
+    cvbs_init();
 
     // Set up VIC PIO.
     pio_set_gpio_base(VIC_PIO, VIC_PIN_BANK);
@@ -174,7 +221,7 @@ void core1_entry(void) {
                     // Delay to allow time for both the cell index and char data to be fetched.
                     break;
                 case 7:
-                    // And finally the pixel output starts.
+                    // And finally the pixel output starts (from start of F2)
                     pixelOutputEnabled = true;
                     inMatrixDelay = 0;
                     break;
@@ -194,6 +241,7 @@ void core1_entry(void) {
                     break;
                 case 11:
                     // And finally, pixel output turned off.
+                    // TODO: The timing of the pixel output disable doesn't seem to quite match up.
                     pixelOutputEnabled = false;
                     inMatrixDelay = 0;
                     break;
@@ -225,12 +273,12 @@ void core1_entry(void) {
                 verticalCounter = 0;
 
                 // DEBUG: Should print every second, due to PAL 50Hz.
-                frames++;
-                if (frames == 50) {
-                    frames = 0;
+                //frames++;
+                //if (frames == 50) {
+                //    frames = 0;
                     // NOTE: This printf takes a LOT of cycles, so remember that when debugging.
-                    printf(".|");
-                }
+                    //printf(".|");
+                //}
 
             } else {
                 verticalCounter++;
@@ -305,44 +353,49 @@ void core1_entry(void) {
         // - Latch is cleared to 0 on each long VSYNC pulse, i.e. 2 times each on lines 4, 5 and 6.
         //   (probably an optimisation and not strictly required)
         // - Counter value is halved during address calculation, i.e. only top 11 bits used, bit-0 ignored.
-        if (vsyncPulse) { 
-            videoMatrixLatch = 0;
-        }
-        else if (newLine) {
-            videoMatrixCounter = videoMatrixLatch;
-        }
-        else if (inMatrix) {
-            // Important: Latch store happens BEFORE increment.
-            if (cdcLastValue) {
-                videoMatrixLatch = videoMatrixCounter;
-            }
-            // Always incremenets when in matrix, and is not loading from latch.
-            videoMatrixCounter++;
-        }
+        // if (vsyncPulse) { 
+        //     videoMatrixLatch = 0;
+        // }
+        // else if (newLine) {
+        //     videoMatrixCounter = videoMatrixLatch;
+        // }
+        // else if (inMatrix) {
+        //     // Important: Latch store happens BEFORE increment.
+        //     if (cdcLastValue) {
+        //         videoMatrixLatch = videoMatrixCounter;
+        //     }
+        //     // Always incremenets when in matrix, and is not loading from latch.
+        //     videoMatrixCounter++;
+        // }
 
-        // At the end of F1, if 'In Matrix', then the data read from memory arrives.
-        if (inMatrix) {
+        // // If pixel output is enabled, then we shift out two pixels in F1. We do 
+        // // this before fetching the data below, because char data fetched in F1
+        // // doesn't get output until start of F2.
+        // if (pixelOutputEnabled) {
 
-            // TODO: Shift out two pixels somewhere around here.
+        // }
 
-            if (horizontalCellCounter & 1) {
-                // TODO: This is where we read the cell index from VIC PIO.
-                // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
-                cellIndex = 0;
-                colourData = 3;
-            }
-            else {
-                // TODO: This is where we read the char data from VIC PIO.
-                // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
-                charData = 0b10101011;
+        // // At the end of F1, if 'In Matrix', then the data read from memory arrives.
+        // if (addressOutputEnabled) {
 
-                // TODO: Load the pixel shift register.
+        //     // TODO: Shift out two pixels somewhere around here.
 
-            }
-        }
+        //     if (horizontalCellCounter & 1) {
+        //         // TODO: This is where we read the cell index from VIC PIO.
+        //         // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
+        //         cellIndex = 0;
+        //         colourData = 3;
+        //     }
+        //     else {
+        //         // TODO: This is where we read the char data from VIC PIO.
+        //         // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
+        //         charData = 0b10101011;
 
-        // TODO: Top bit of pixel shift register comes out immediately.
-
+        //         // TODO: Load the pixel shift register.
+        //         // TODO: In the real chip, the shift register is loaded at the exact start of F2.
+        //         pixelShiftRegister = charData;
+        //     }
+        // }
 
 
         // TODO: Should we poll here for phase 2 via another interrupt? e.g. irq 1
@@ -457,11 +510,50 @@ void core1_entry(void) {
         // TODO: If 'In Matrix', calculate address to fetch in next F1.
 
 
-        // DEBUG: Temporary check to see if we've overshot the 120 cycle allowance.
-        if (pio_interrupt_get(VIC_PIO, 1) && (frames != 0)) {
-            // An overrun when frames isn't 0 (i.e. when it didn't print the .|) is of concern.
-            printf("X[%d]", frames);
+        // TEST CODE:
+        if (verticalCounter % 1) {
+            // Odd
+            if (sync) {
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
+            }
+            else if (colourBurst) {
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BURST_O);
+            }
+            else if (blanking) {
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLANK);
+            }
+            else if (pixelOutputEnabled) {
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
+            }
+            else {
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
+            }
+        } else {
+            // Even
+            if (sync) {
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
+            }
+            else if (colourBurst) {
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BURST_E);
+            }
+            else if (blanking) {
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLANK);
+            }
+            else if (pixelOutputEnabled) {
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
+            }
+            else {
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
+            }
         }
+        // END OF TEST CODE:
+
+
+        // DEBUG: Temporary check to see if we've overshot the 120 cycle allowance.
+        //if (pio_interrupt_get(VIC_PIO, 1) && (frames != 0)) {
+        //   // An overrun when frames isn't 0 (i.e. when it didn't print the .|) is of concern.
+        //    printf("X[%d]", frames);
+        //}
     }
 }
 
