@@ -4,32 +4,45 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-; Oric ULA PHI0 clock driver output
+; Oric ULA PHI clock driver output
 ; Assuming 138MHz sys_clk - 46 cycles per phase for 1MHz 3-phase clock
 ; Using 2x clock divider for SM = sys_clk/2 -> 23 cycles per phase
 ; Each phase asserts a PIO IRQ flag for system synchronization
-.program phi0
+.program phi
 .side_set 1
 .clock_div 2.0
 
 .wrap_target
- irq 0   side 0 [15]
- nop     side 0 [ 6]
- irq 1   side 0 [15]
- nop     side 0 [ 6]
- irq 2   side 1 [15]
- nop     side 1 [ 6]
+ irq 0      side 0
+ irq prev 0 side 0 [14]     ;sync RGBS PIO program in pio#-1
+ nop        side 0 [ 6]
+ irq 1      side 0 [15]
+ nop        side 0 [ 6]
+ irq 2      side 1 [15]
+ nop        side 1 [ 6]
 .wrap
 
 ; Oric RGB+Sync output driver
 ; Assuming 138MHz sys_clk - 23 cycles periodes for 6MHz pixel clock
+; Outputs 6 4-bits value in series. The series can run up to 256 times
+; repeat = 0 => one pass of values output, 1 => two passes of values output
+; |repeat|v0|v1|v2|v3|v4|v5|
+;     8    4  4  4  4  4  4 
 .program rgbs
+.out 32 left
 
 .wrap_target
-    pull noblock
-    out y 10            ;get repeat value 
+    pull ;noblock
+    out y 8             ;get repeat value
+    mov isr osr         ;keep copy of values in isr
 repeat:
-    out pins 4    
+    set x 4             ;6 values -1 -1 count down
+    mov osr isr         ;restore values in osr
+    wait 1 irq 0        ;sync start of series with phi
+series:
+    out pins 4     [21]
+    jmp x-- series
+    out pins 4          ;last in series w/o delay
     jmp y-- repeat
 .wrap
 

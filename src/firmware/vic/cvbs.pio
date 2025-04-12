@@ -17,7 +17,7 @@
 ; Assuming square wave output - L0 and L1 are asserted for half periods each
 ; Set both to same level to represents a DC level
 ; Currently repeat loop tuned for 30 cycle period
-; Repeat is repeat-2, so 0 equals 3 periods, 1 equals 4 periods etc
+; Repeat is exact so 0 equals 1 periods, 1 equals 2 periods etc
 .program cvbs
 
 ; autopull required
@@ -27,19 +27,21 @@
     jmp x-- predelay
     ; first cycle has value extraction integrated
     mov pins osr        ;L0 out
-    out x 5        [11] ;Keep L0 in x
+    out x 5        [ 8] ;Keep L0 in x
     out y 9             ;Keep repeat in y
-    out isr 5           ;Keep L1 in isr   
-    mov pins isr   [ 1] ;L1 out
+    out isr 5           ;Keep L1 in isr
+    jmp !y bypass       ;Bypass repeat if zero
+    jmp y-- first  [ 1] ;Decrement y (always taken), balance branches
     ; repeat loop
 repeat:
-    nop            [12]
-    mov pins x     [14] ;L0 out
-    mov pins isr        ;L1 out
-    jmp y-- repeat
+    nop            [ 1]
+first:
+    mov pins isr   [14] ;L1 out
+    mov pins x          ;L0 out
+    jmp y-- repeat [11]
     ;last cycle has value extraction integrated
-    out y 4        [12] ;get post delay <- autopull after here
-    mov pins x     [13] ;L0 out
+bypass:
+    out y 4             ;get post delay <- autopull after here
     out x 4             ;get next pre-delay
     mov pins isr        ;L1 out
 postdelay:

@@ -51,9 +51,14 @@ bool main_prog(uint16_t *xregs);
 #endif
 
 #ifdef OCULA
+#define RGBS_PIN_OFFS 0
 #define RGBS_PIO pio0
 #define RGBS_SM 0
-#define RGBS_PIN_BANK 0
+
+#define PHI_PIN_OFFS 16
+#define PHI_PIO pio1
+#define PHI_SM 0
+
 #define RGBS_PIN_BASE 2
 #define SYNC_PIN 2
 #define R_PIN 3

@@ -12,7 +12,7 @@
 #include <stdbool.h>
 
 // 256KB Extended RAM
-extern uint8_t *const xram;
+extern volatile uint8_t xram[0x40000];
 asm(".equ xram, 0x20000000");
 // The xstack is:
 // 512 bytes, enough to hold a CC65 stack frame, two strings for a

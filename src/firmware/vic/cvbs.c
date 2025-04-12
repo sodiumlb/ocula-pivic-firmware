@@ -40,8 +40,8 @@ const uint8_t rev5bit[32] = {
 //Count is the number of iterations of the signal to generate. NB minimum count is 2
 #define CVBS_DELAY_CONST_POST (15-3)
 #define CVBS_CMD(L0,L1,DC,delay,count) \
-         ((((CVBS_DELAY_CONST_POST-delay)&0xF)<<23) |  ((L1&0x1F)<<18) | (((count-3)&0x1FF)<<9) |((L0&0x1F)<<4) | ((delay&0x0F)))
-#define CVBS_REP(cmd,count) ((cmd & ~(0x1FF<<9)) | ((count-3) & 0x1FF)<<9)
+         ((((CVBS_DELAY_CONST_POST-delay)&0xF)<<23) |  ((L1&0x1F)<<18) | (((count-1)&0x1FF)<<9) |((L0&0x1F)<<4) | ((delay&0x0F)))
+#define CVBS_REP(cmd,count) ((cmd & ~(0x1FF<<9)) | ((count-1) & 0x1FF)<<9)
 //Experimental timings (eyeballing + experimenting)
 //Levels bit-reverse hard-coded
 #define PAL_HSYNC       CVBS_CMD( 0, 0, 0, 0,20)
@@ -193,6 +193,7 @@ void cvbs_init(void){
    pio_sm_config config = cvbs_program_get_default_config(offset);
    sm_config_set_out_pins(&config, CVBS_PIN_BASE, 5);             
    sm_config_set_out_shift(&config, true, true, 27); 
+   sm_config_set_fifo_join(&config, PIO_FIFO_JOIN_TX);
    pio_sm_init(CVBS_PIO, CVBS_SM, offset, &config);
    //pio_sm_put(CVBS_PIO, CVBS_SM, 0x84210FFF);    
    pio_sm_set_enabled(CVBS_PIO, CVBS_SM, true);   
