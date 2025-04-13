@@ -18,10 +18,11 @@
 #include <string.h>
 #include <stdio.h>
 
-#define ULA_MASK_ATTRIB 0x78
-#define ULA_MASK_VALUE  0x07
-#define ULA_MASK_CHAR   0x7F
-#define ULA_INVERT      0x80
+#define ULA_MASK_ATTRIB_MARK  0x60
+#define ULA_MASK_ATTRIB_INDEX 0x18
+#define ULA_MASK_ATTRIB_VALUE 0x07
+#define ULA_MASK_CHAR         0x7F
+#define ULA_INVERT            0x80
 //Styles
 #define ULA_FLASH  0x04
 #define ULA_DOUBLE 0x02
@@ -35,10 +36,26 @@
 #define ULA_ATTRIB_PAPER (0x02<<3)
 #define ULA_ATTRIB_MODE  (0x03<<3)
 
-uint8_t ula_ink;
-uint8_t ula_style;
-uint8_t ula_paper;
-uint8_t ula_mode;
+union {
+    struct { 
+        uint8_t ink;
+        uint8_t style;
+        uint8_t paper;
+        uint8_t mode;
+    };
+    uint8_t attrib[4];
+} ula;
+
+const uint32_t pixel2mask[64] = {
+    0x00000000, 0x00000002, 0x00000020, 0x00000022, 0x00000200, 0x00000202, 0x00000220, 0x00000222,
+    0x00002000, 0x00002002, 0x00002020, 0x00002022, 0x00002200, 0x00002202, 0x00002220, 0x00002222,
+    0x00020000, 0x00020002, 0x00020020, 0x00020022, 0x00020200, 0x00020202, 0x00020220, 0x00020222,
+    0x00022000, 0x00022002, 0x00022020, 0x00022022, 0x00022200, 0x00022202, 0x00022220, 0x00022222,
+    0x00200000, 0x00200002, 0x00200020, 0x00200022, 0x00200200, 0x00200202, 0x00200220, 0x00200222,
+    0x00202000, 0x00202002, 0x00202020, 0x00202022, 0x00202200, 0x00202202, 0x00202220, 0x00202222,
+    0x00220000, 0x00220002, 0x00220020, 0x00220022, 0x00220200, 0x00220202, 0x00220220, 0x00220222,
+    0x00222000, 0x00222002, 0x00222020, 0x00222022, 0x00222200, 0x00222202, 0x00222220, 0x00222222,
+};
 
 uint16_t verticalCounter = 0;
 uint8_t horizontalCounter = 0;
@@ -54,29 +71,72 @@ uint8_t horizontalCounter = 0;
 // NB colour mapping is B[3] G[2] R[1] S[0]
 #define RGBS_CMD(v0,v1,v2,v3,v4,v5,count) (((count-1)&0xFF)<<24 | (v0&0xF)<<20 | (v1&0xF)<<16 | (v2&0xF)<<12 | (v3&0xF)<<8 | (v4&0xF)<<4 | (v5&0xF))
 #define RGBS_CMD1(v,count) RGBS_CMD(v,v,v,v,v,v,count)
-#define VAL_BLANK 0x0E
-#define VAL_SYNC 0x01
+#define VAL_BLANK 0x1
+#define VAL_SYNC 0x0
+#define VAL_BLACK 0x1
+#define VAL_WHITE 0xF
+#define VAL_BLUE  0x9
+#define VAL_GREEN 0x5
+#define VAL_RED   0x3
 #define CMD_BLANK9 RGBS_CMD1(VAL_BLANK,9)
 #define CMD_BLANK11 RGBS_CMD1(VAL_BLANK,11)
 #define CMD_BLANK40 RGBS_CMD1(VAL_BLANK,40)
 #define CMD_HSYNC RGBS_CMD1(VAL_SYNC,4)
 #define CMD_VSYNC RGBS_CMD1(VAL_SYNC,64)
 
-void rgbs_out(uint8_t ink, uint8_t paper, uint8_t data){
-    uint32_t cmd = 0;                   //Default repeat=0
+#define RGBS_TX  RGBS_PIO->txf[RGBS_SM] 
+
+uint32_t inline __attribute__((always_inline)) rgbs_cmd_pixel(uint8_t ink, uint8_t paper, uint8_t data){
+    uint32_t cmd = 0x00111111;                   //Default repeat=0, sync=1 for 6 values
     if(data & ULA_INVERT){
         ink = ~ink & 0x7;
         paper = ~paper & 0x7;
     }
-    for(uint8_t i=0; i<6; i++){
-        if(data & (1u << i)){
-            cmd |= ((ink<<1)) << (i*4);   //Add in sync=0x0
-        }else{
-            cmd |= ((paper<<1)) << (i*4);
-        }
-    }
+    // Lookup table + multiply was faster than this assembly
+    /* Corex-M33 assembly for building the command word
+       tst tests a bit in the data word to see if ink or paper should be inserted, updates Z
+       ite is Arm Thumb IF-THEN block for the two next instructions (T-then E-else)
+       bfi is bit field insert that inserts the 3 bits from ink or paper depending on the test result
+       So if bit==0 paper value is inserted, else ink value is inserted
+       Unrolled for the 6 pixels
+    */
+   /*
+    asm(
+        "tst %[data], 0x01\n\t"
+        "ite eq\n\t"
+        "bfieq %[cmd], %[paper], #1, 3\n\t"
+        "bfine %[cmd], %[ink], #1, 3\n\t"        
+        "tst %[data], 0x02\n\t"
+        "ite eq\n\t"
+        "bfieq %[cmd], %[paper], #5, 3\n\t"
+        "bfine %[cmd], %[ink], #5, 3\n\t"        
+        "tst %[data], 0x04\n\t"
+        "ite eq\n\t"
+        "bfieq %[cmd], %[paper], #9, 3\n\t"
+        "bfine %[cmd], %[ink], #9, 3\n\t"        
+        "tst %[data], 0x08\n\t"
+        "ite eq\n\t"
+        "bfieq %[cmd], %[paper], #13, 3\n\t"
+        "bfine %[cmd], %[ink], #13, 3\n\t"        
+        "tst %[data], 0x10\n\t"
+        "ite eq\n\t"
+        "bfieq %[cmd], %[paper], #17, 3\n\t"
+        "bfine %[cmd], %[ink], #17, 3\n\t"        
+        "tst %[data], 0x20\n\t"
+        "ite eq\n\t"
+        "bfieq %[cmd], %[paper], #21, 3\n\t"
+        "bfine %[cmd], %[ink], #21, 3\n\t"        
+        : [cmd] "+r" (cmd)
+        : [ink] "r"  (ink),
+          [paper] "r" (paper),
+          [data] "r" (data)
+    );
+*/
 
-    pio_sm_put(RGBS_PIO, RGBS_SM, cmd);
+    uint32_t ink_expanded   = pixel2mask[data & 0x3F] * ink;
+    uint32_t paper_expanded = pixel2mask[~data & 0x3F] * paper;
+    cmd = cmd | ink_expanded | paper_expanded;
+    return cmd;
 }
 
 /*
@@ -93,7 +153,6 @@ void core1_loop(void){
     static bool mode_50hz = true;      //Updated only at the end of frame
     static bool force_txt = false;      //Forced text mode at the bottom of hires
 
-
     uint8_t screen_data;
     uint8_t char_data;
     uint8_t pixel_data;     //Monochrome
@@ -102,123 +161,58 @@ void core1_loop(void){
 
     while(1){
         //Wait for falling edge of PHI clock 
-        while (!pio_interrupt_get(PHI_PIO, 0)) {
+        while(!(PHI_PIO->irq & 0x1)){
             tight_loop_contents();
         }
-        pio_interrupt_clear(PHI_PIO, 0);
+        //Clear PIO IRQ flag 0
+        PHI_PIO->irq = 0x1;
 
 
         /* Output data fetched in previous cycle */
         // Active data is output here.
         // Blanking and sync data is output in the counter section
         if(vsync || hsync){
-            pio_sm_put(RGBS_PIO, RGBS_SM, RGBS_CMD1(VAL_SYNC,1));
+            RGBS_TX = RGBS_CMD1(VAL_SYNC,1);
         }else if(hscan && vscan){
             //output pixeldata with invertion
-            //rgbs_out(ula_ink, ula_paper, pixel_data);
-            rgbs_out(0x7, 0x0, 0x15);
+            RGBS_TX = rgbs_cmd_pixel(ula.ink,ula.paper,char_data);
         }else{
-            pio_sm_put(RGBS_PIO, RGBS_SM, RGBS_CMD1(VAL_BLANK,1));
+            RGBS_TX = RGBS_CMD1(VAL_BLANK,1);
         }
         /* Lookups values for output at the beginning of next cycle */
-
         // ULA Phase 1
-        if((ula_mode & ULA_HIRES) && !force_txt){
+        if((ula.mode & ULA_HIRES) && !force_txt){
             screen_data = xram[ADDR_HIRES_SCR + (verticalCounter*40) + horizontalCounter];
         }else{ //LORES
             screen_data = xram[ADDR_LORES_SCR + ((verticalCounter>>3)*40) + horizontalCounter];
         }
         //Check for and update attribute registers
 
-        uint8_t value = screen_data & ULA_MASK_VALUE;
-        switch(screen_data & ULA_MASK_ATTRIB){
-            case(ULA_ATTRIB_INK):
-                ula_ink = value;
-                break;
-            case(ULA_ATTRIB_MODE):
-                ula_mode = value;
-                break;
-            case(ULA_ATTRIB_PAPER):
-                ula_paper = value;
-                break;
-            case(ULA_ATTRIB_STYLE):
-                ula_style = value;
-                break;
-            default:
-                break;
-        }
-
-        // ULA Phase 2
-        if(ula_mode & ULA_HIRES){
-            if(ula_style & ULA_ALTCHR){
-                char_data = xram[ADDR_HIRES_ALT_CHRSET + (screen_data & ULA_MASK_CHAR)];
-            }else{ //STDCHAR
-                char_data = xram[ADDR_HIRES_STD_CHRSET + (screen_data & ULA_MASK_CHAR)];
-            }
-        }else{ //LORES
-            if(ula_style & ULA_ALTCHR){
-                char_data = xram[ADDR_LORES_ALT_CHRSET + ((screen_data & ULA_MASK_CHAR)*8) + (verticalCounter & 0x7)];
-            }else{ //STDCHAR
-                char_data = xram[ADDR_LORES_STD_CHRSET + ((screen_data & ULA_MASK_CHAR)*8) + (verticalCounter & 0x7)];
+        if((screen_data & ULA_MASK_ATTRIB_MARK)==0x00){
+            uint8_t value = screen_data & ULA_MASK_ATTRIB_VALUE;
+            uint8_t index = (screen_data & ULA_MASK_ATTRIB_INDEX)>>3;
+            ula.attrib[index] = value;
+            char_data = 0x00;   //Show paper when on attributes
+        }else{
+            // ULA Phase 2
+            if(ula.mode & ULA_HIRES){
+                if(ula.style & ULA_ALTCHR){
+                    char_data = xram[ADDR_HIRES_ALT_CHRSET + (screen_data & ULA_MASK_CHAR)];
+                }else{ //STDCHAR
+                    char_data = xram[ADDR_HIRES_STD_CHRSET + (screen_data & ULA_MASK_CHAR)];
+                }
+            }else{ //LORES
+                if(ula.style & ULA_ALTCHR){
+                    char_data = xram[ADDR_LORES_ALT_CHRSET + ((screen_data & ULA_MASK_CHAR)*8) + (verticalCounter & 0x7)];
+                }else{ //STDCHAR
+                    char_data = xram[ADDR_LORES_STD_CHRSET + ((screen_data & ULA_MASK_CHAR)*8) + (verticalCounter & 0x7)];
+                }
             }
         }
-        pixel_data = 0x15;//HACK
 
         // Counter updates that will be used in the next cycle
         // This results in some numbers looking off by one,
         // but this follows the actual ULA HW operation
-        if(mode_50hz){
-            switch(verticalCounter){
-                case(0):
-                    vscan = true;
-                    break;
-                case(200):
-                    force_txt = true;
-                    break;
-                case(224):
-                    vscan = false;
-                    break;
-                case(256):
-                    vsync = true;
-                    break;
-                case(260):
-                    vsync = false;
-                    break;
-                case(312):
-                    verticalCounter = 0;
-                    mode_50hz = !!(ula_mode & ULA_50HZ);
-                    force_txt = false;
-                    break;
-                default:
-                    break;
-            }
-        }else{  //60HZ
-            switch(verticalCounter){
-                case(0):
-                    vscan = true;
-                    break;
-                case(200):
-                    force_txt = true;
-                    break;
-                case(224):
-                    vscan = false;
-                    break;
-                case(236):
-                    vsync = true;
-                    break;
-                case(240):
-                    vsync = false;
-                    break;
-                case(264):
-                    verticalCounter = 0;
-                    mode_50hz = !!(ula_mode & ULA_50HZ);
-                    force_txt = false;
-                    break;
-                default:
-                    break;
-            }   
-        }
-
         switch(++horizontalCounter){
             case(1):
                 hscan = true;
@@ -235,12 +229,66 @@ void core1_loop(void){
                 break;
             case(64):
                 horizontalCounter = 0;
-                ula_ink = 0x07;
-                ula_paper = 0x00;
-                ula_style = 0x00;
+                ula.ink = 0x07;
+                ula.paper = 0x00;
+                ula.style = 0x00;
                 break;
             default:    
                 break;
+        }
+
+        if(hsync){
+            if(mode_50hz){
+                switch(verticalCounter){
+                    case(0):
+                        vscan = true;
+                        break;
+                    case(200):
+                        force_txt = true;
+                        break;
+                    case(224):
+                        vscan = false;
+                        break;
+                    case(256):
+                        vsync = true;
+                        break;
+                    case(260):
+                        vsync = false;
+                        break;
+                    case(312):
+                        verticalCounter = 0;
+                        mode_50hz = true; //!!(ula_mode & ULA_50HZ);
+                        force_txt = false;
+                        break;
+                    default:
+                        break;
+                }
+            }else{  //60HZ
+                switch(verticalCounter){
+                    case(0):
+                        vscan = true;
+                        break;
+                    case(200):
+                        force_txt = true;
+                        break;
+                    case(224):
+                        vscan = false;
+                        break;
+                    case(236):
+                        vsync = true;
+                        break;
+                    case(240):
+                        vsync = false;
+                        break;
+                    case(264):
+                        verticalCounter = 0;
+                        mode_50hz = true; //!!(ula_mode & ULA_50HZ);
+                        force_txt = false;
+                        break;
+                    default:
+                        break;
+                }   
+            }
         }
     }
 }
