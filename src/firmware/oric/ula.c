@@ -323,9 +323,15 @@ void rgbs_pio_init(void){
 
 void ula_init(void){
     printf("ula_init()\n");
-    memcpy((void*)(&xram[ADDR_LORES_STD_CHRSET+0x20]), (void*)oric_font, sizeof(oric_font));
-    memset((void*)&xram[ADDR_LORES_STD_CHRSET], 0x20, 40*28);
-    sprintf((char*)(&xram[ADDR_LORES_SCR+1]), "Oric OCULA test");
+    memcpy((void*)(&xram[ADDR_LORES_STD_CHRSET+(0x20*8)]), (void*)oric_font, sizeof(oric_font));
+    memset((void*)&xram[ADDR_LORES_SCR], 0x20, 40*28);
+    sprintf((char*)(&xram[ADDR_LORES_SCR]), "Oric OCULA test " __DATE__);
+    for(uint8_t i=0; i< 40; i++){
+        xram[ADDR_LORES_SCR + 40*2 + i] =  0x10 | (i & 0x7);
+    }
+    for(uint8_t i=0; i<(0x7F-0x20); i++){
+        xram[ADDR_LORES_SCR + 40*4 + i] =  0x20 + i;    
+    }
     printf("PIO inits\n");
     phi_pio_init();
     rgbs_pio_init();
