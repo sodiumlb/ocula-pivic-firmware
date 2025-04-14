@@ -21,6 +21,7 @@
 ; IRQ 7 = F2M2D2
 .program clkgen
 .side_set 1
+.clock_div 2.0
 
 .wrap_target
 irq 0   side 1 [0]       ; Signals start of phase 1 internal to the PIO.

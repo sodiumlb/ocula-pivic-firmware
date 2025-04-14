@@ -19,6 +19,7 @@
 ; Currently repeat loop tuned for 30 cycle period
 ; Repeat is exact so 0 equals 1 periods, 1 equals 2 periods etc
 .program cvbs
+.clock_div 2.0
 
 ; autopull required
     out x 4             ;get delay value (for phase change)

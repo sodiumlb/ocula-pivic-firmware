@@ -21,15 +21,16 @@
 // TODO: Decide where to put these.
 #define CVBS_DELAY_CONST_POST (15-3)
 #define CVBS_CMD(L0,L1,DC,delay,count) \
-         ((((CVBS_DELAY_CONST_POST-delay)&0xF)<<23) |  ((L1&0x1F)<<18) | (((count-3)&0x1FF)<<9) |((L0&0x1F)<<4) | ((delay&0x0F)))
-#define CVBS_REP(cmd,count) ((cmd & ~(0x1FF<<9)) | ((count-3) & 0x1FF)<<9)
-// As an experiement, everything is currently set to repeat of 4 (i.e. duration of one F1/F2 cycle)
-#define PAL_SYNC        CVBS_CMD( 0, 0, 0, 0,4)
-#define PAL_BLANK       CVBS_CMD(18,18,18, 0,4)
-#define PAL_BURST_O     CVBS_CMD(6,12,9,11,4)
-#define PAL_BURST_E     CVBS_CMD(12,6,9,4,4)
-#define PAL_BLACK       CVBS_CMD(18,18,9,0,4)
-#define PAL_WHITE       CVBS_CMD(23,23,29,0,4)
+         ((((CVBS_DELAY_CONST_POST-delay)&0xF)<<23) |  ((L1&0x1F)<<18) | (((count-1)&0x1FF)<<9) |((L0&0x1F)<<4) | ((delay&0x0F)))
+#define CVBS_REP(cmd,count) ((cmd & ~(0x1FF<<9)) | ((count-1) & 0x1FF)<<9)
+// As an experiement, everything is currently set to repeat of 3 (i.e. duration of one F1/F2 cycle)
+#define PAL_SYNC        CVBS_CMD( 0, 0, 0, 0,1)
+#define PAL_BLANK       CVBS_CMD(18,18,18, 0,1)
+#define PAL_BURST_O     CVBS_CMD(6,12,9,11,1)
+#define PAL_BURST_E     CVBS_CMD(12,6,9,4,1)
+#define PAL_BLACK       CVBS_CMD(18,18,9,0,1)
+#define PAL_WHITE       CVBS_CMD(23,23,29,0,1)
+// TESTING: Experimenting with a black and while screen for now, so tweaking the above in testing.
 #define PAL_RED_O       CVBS_CMD(5,10,15,9,4)
 #define PAL_RED_E       CVBS_CMD(10,5,15,6,4)
 #define PAL_CYAN_O      CVBS_CMD(9,15,24,9,4)
@@ -58,7 +59,13 @@
 #define PAL_LBLUE_E     CVBS_CMD(3,5,22,0,4)
 #define PAL_LYELLOW_O   CVBS_CMD(19,31,28,0,4)
 #define PAL_LYELLOW_E   CVBS_CMD(19,31,28,0,4)
+
+
 // END OF EXPERIMENTAL DEFINES>
+
+#define CVBS_TX  CVBS_PIO->txf[CVBS_SM]
+
+uint32_t overruns = 0;
 
 void core1_entry(void) {
 
@@ -78,6 +85,13 @@ void core1_entry(void) {
     pio_sm_init(VIC_PIO, VIC_SM, offset, &config);
     pio_sm_set_enabled(VIC_PIO, VIC_SM, true);   
     printf("VIC init done\n");
+
+    uint32_t pixel = 0;
+
+    uint32_t pixel1 = 0;
+    uint32_t pixel2 = 0;
+    uint32_t pixel3 = 0;
+    uint32_t pixel4 = 0;
 
     // DEBUGGING variables
     uint32_t frames = 0;
@@ -273,12 +287,12 @@ void core1_entry(void) {
                 verticalCounter = 0;
 
                 // DEBUG: Should print every second, due to PAL 50Hz.
-                //frames++;
-                //if (frames == 50) {
-                //    frames = 0;
+                frames++;
+                if (frames == 50) {
+                    frames = 0;
                     // NOTE: This printf takes a LOT of cycles, so remember that when debugging.
                     //printf(".|");
-                //}
+                }
 
             } else {
                 verticalCounter++;
@@ -353,49 +367,49 @@ void core1_entry(void) {
         // - Latch is cleared to 0 on each long VSYNC pulse, i.e. 2 times each on lines 4, 5 and 6.
         //   (probably an optimisation and not strictly required)
         // - Counter value is halved during address calculation, i.e. only top 11 bits used, bit-0 ignored.
-        // if (vsyncPulse) { 
-        //     videoMatrixLatch = 0;
-        // }
-        // else if (newLine) {
-        //     videoMatrixCounter = videoMatrixLatch;
-        // }
-        // else if (inMatrix) {
-        //     // Important: Latch store happens BEFORE increment.
-        //     if (cdcLastValue) {
-        //         videoMatrixLatch = videoMatrixCounter;
-        //     }
-        //     // Always incremenets when in matrix, and is not loading from latch.
-        //     videoMatrixCounter++;
-        // }
+        if (vsyncPulse) { 
+            videoMatrixLatch = 0;
+        }
+        else if (newLine) {
+            videoMatrixCounter = videoMatrixLatch;
+        }
+        else if (inMatrix) {
+            // Important: Latch store happens BEFORE increment.
+            if (cdcLastValue) {
+                videoMatrixLatch = videoMatrixCounter;
+            }
+            // Always incremenets when in matrix, and is not loading from latch.
+            videoMatrixCounter++;
+        }
 
-        // // If pixel output is enabled, then we shift out two pixels in F1. We do 
-        // // this before fetching the data below, because char data fetched in F1
-        // // doesn't get output until start of F2.
-        // if (pixelOutputEnabled) {
+        // If pixel output is enabled, then we shift out two pixels in F1. We do 
+        // this before fetching the data below, because char data fetched in F1
+        // doesn't get output until start of F2.
+        if (pixelOutputEnabled) {
 
-        // }
+        }
 
-        // // At the end of F1, if 'In Matrix', then the data read from memory arrives.
-        // if (addressOutputEnabled) {
+        // At the end of F1, if 'In Matrix', then the data read from memory arrives.
+        if (addressOutputEnabled) {
 
-        //     // TODO: Shift out two pixels somewhere around here.
+            // TODO: Shift out two pixels somewhere around here.
 
-        //     if (horizontalCellCounter & 1) {
-        //         // TODO: This is where we read the cell index from VIC PIO.
-        //         // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
-        //         cellIndex = 0;
-        //         colourData = 3;
-        //     }
-        //     else {
-        //         // TODO: This is where we read the char data from VIC PIO.
-        //         // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
-        //         charData = 0b10101011;
+            if (horizontalCellCounter & 1) {
+                // TODO: This is where we read the cell index from VIC PIO.
+                // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
+                cellIndex = 0;
+                colourData = 3;
+            }
+            else {
+                // TODO: This is where we read the char data from VIC PIO.
+                // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
+                charData = 0b10101011;
 
-        //         // TODO: Load the pixel shift register.
-        //         // TODO: In the real chip, the shift register is loaded at the exact start of F2.
-        //         pixelShiftRegister = charData;
-        //     }
-        // }
+                // TODO: Load the pixel shift register.
+                // TODO: In the real chip, the shift register is loaded at the exact start of F2.
+                pixelShiftRegister = charData;
+            }
+        }
 
 
         // TODO: Should we poll here for phase 2 via another interrupt? e.g. irq 1
@@ -514,46 +528,76 @@ void core1_entry(void) {
         if (verticalCounter % 1) {
             // Odd
             if (sync) {
-                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
+                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
+                //CVBS_TX = PAL_SYNC;
+                pixel = PAL_SYNC;
             }
             else if (colourBurst) {
-                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BURST_O);
+                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BURST_O);
+                //CVBS_TX = PAL_BURST_O;
+                pixel = PAL_BURST_O;
             }
             else if (blanking) {
-                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLANK);
+                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLANK);
+                //CVBS_TX = PAL_BLANK;
+                pixel = PAL_BLANK;
             }
             else if (pixelOutputEnabled) {
-                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
+                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
+                //CVBS_TX = PAL_BLACK;
+                pixel = PAL_BLACK;
             }
             else {
-                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
+                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
+                //CVBS_TX = PAL_WHITE;
+                pixel = PAL_WHITE;
             }
         } else {
             // Even
             if (sync) {
-                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
+                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
+                //CVBS_TX = PAL_SYNC;
+                pixel = PAL_SYNC;
             }
             else if (colourBurst) {
-                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BURST_E);
+                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BURST_E);
+                //CVBS_TX = PAL_BURST_E;
+                pixel = PAL_BURST_E;
             }
             else if (blanking) {
-                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLANK);
+                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLANK);
+                //CVBS_TX = PAL_BLANK;
+                pixel = PAL_BLANK;
             }
             else if (pixelOutputEnabled) {
-                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
+                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
+                //CVBS_TX = PAL_BLACK;
+                pixel = PAL_BLACK;
             }
             else {
-                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
+                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
+                //CVBS_TX = PAL_WHITE;
+                pixel = PAL_WHITE;
             }
         }
+
+        pio_sm_put(CVBS_PIO, CVBS_SM, pixel);
+
+        // TESTING: Experimenting with calling pio_sm_put more than once. We'll need to call it 4 times.
+        pio_sm_put(CVBS_PIO, CVBS_SM, pixel);
+        pio_sm_put(CVBS_PIO, CVBS_SM, pixel);
+        pio_sm_put(CVBS_PIO, CVBS_SM, pixel);
+
+        //CVBS_TX = pixel;
+        
         // END OF TEST CODE:
 
 
         // DEBUG: Temporary check to see if we've overshot the 120 cycle allowance.
-        //if (pio_interrupt_get(VIC_PIO, 1) && (frames != 0)) {
-        //   // An overrun when frames isn't 0 (i.e. when it didn't print the .|) is of concern.
-        //    printf("X[%d]", frames);
-        //}
+        //if (pio_interrupt_get(VIC_PIO, 1)) {
+        if (VIC_PIO->irq & 0x1) {
+           overruns = 1;
+        }
     }
 }
 
@@ -562,5 +606,8 @@ void vic_init(void) {
 }
 
 void vic_task(void) {
-    // TODO: This is where core0 would process something from core1, if required.
+    if (overruns > 0) {
+        printf("X.");
+        overruns = 0;
+    }
 }

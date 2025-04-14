@@ -54,7 +54,7 @@ static void init(void)
     dvi_init();
 #ifdef PIVIC
     vic_init();
-    cvbs_init();
+    //cvbs_init();
 #endif
 #ifdef OCULA
     ula_init();
@@ -67,7 +67,7 @@ static void task(void)
     dvi_task();
 #ifdef PIVIC
     vic_task();
-    cvbs_task();
+    //cvbs_task();
 #endif
 #ifdef OCULA
     ula_task();
