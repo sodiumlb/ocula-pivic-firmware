@@ -60,6 +60,43 @@
 #define PAL_LYELLOW_O   CVBS_CMD(19,31,28,0,1)
 #define PAL_LYELLOW_E   CVBS_CMD(19,31,28,0,1)
 
+const uint32_t pal_palette_o[16] = {
+    PAL_BLACK,
+    PAL_WHITE,
+    PAL_RED_O,
+    PAL_CYAN_O,
+    PAL_PURPLE_O,
+    PAL_GREEN_O,
+    PAL_BLUE_O,
+    PAL_YELLOW_O,
+    PAL_ORANGE_O,
+    PAL_LORANGE_O,
+    PAL_PINK_O,
+    PAL_LCYAN_O,
+    PAL_LPURPLE_O,
+    PAL_LGREEN_O,
+    PAL_LBLUE_O,
+    PAL_LYELLOW_O
+};
+
+const uint32_t pal_palette_e[16] = {
+    PAL_BLACK,
+    PAL_WHITE,
+    PAL_RED_E,
+    PAL_CYAN_E,
+    PAL_PURPLE_E,
+    PAL_GREEN_E,
+    PAL_BLUE_E,
+    PAL_YELLOW_E,
+    PAL_ORANGE_E,
+    PAL_LORANGE_E,
+    PAL_PINK_E,
+    PAL_LCYAN_E,
+    PAL_LPURPLE_E,
+    PAL_LGREEN_E,
+    PAL_LBLUE_E,
+    PAL_LYELLOW_E
+};
 
 // END OF EXPERIMENTAL DEFINES>
 
