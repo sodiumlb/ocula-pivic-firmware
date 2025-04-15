@@ -121,6 +121,94 @@ const uint32_t pal_palette_e[16] = {
 
 volatile uint32_t overruns = 0;
 
+
+static void inline __attribute__((always_inline)) outputPixels(
+        uint16_t verticalCounter, uint8_t horizontalCounter, 
+        bool sync, bool colourBurst, bool blanking, bool pixelOutputEnabled,
+        bool hsync, bool hblank, bool vblank, bool vblankPulse, bool vsyncPulse,
+        uint8_t charData, uint8_t colourData, uint8_t backgroundColour,
+        uint8_t borderColour, uint8_t auxiliaryColour,
+        uint32_t pixel1, uint32_t pixel2) {
+
+    // Sync level output is triggered in three scenarios:
+    // - When hsync is true and vblank is not true (i.e. hsync doesn't happen during vertical blanking)
+    // - When vblank is true and vblankPulse is not true (short syncs during lines 1-3 and 7-9)
+    // - When vsync is true and vblankPulse is also true (long syncs during lines 4-6)
+    sync = (hsync || (vblank && !vblankPulse) || vsyncPulse);
+
+    // Blanking is much simpler by comparison.
+    blanking = (vblank || hblank);
+
+    if (verticalCounter & 1) {
+        // Odd
+        if (sync) {
+            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
+            //CVBS_TX = PAL_SYNC;
+            pixel1 = pixel2 = PAL_SYNC;
+        }
+        else if (colourBurst) {
+            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BURST_O);
+            //CVBS_TX = PAL_BURST_O;
+            pixel1 = pixel2 = PAL_BURST_O;
+        }
+        else if (blanking) {
+            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLANK); 
+            //CVBS_TX = PAL_BLANK;
+            pixel1 = pixel2 = PAL_BLANK;
+        }
+        else if (pixelOutputEnabled) {
+            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
+            //CVBS_TX = PAL_BLACK;
+            //pixel1 = pixel2 = pal_palette_o[horizontalCounter & 0xF];
+
+            // Normal graphics for now (i.e. no reverse and multicolour)
+            pixel1 = pal_palette_o[((charData & 0x80) == 0 ? backgroundColour : colourData)];
+            pixel2 = pal_palette_o[((charData & 0x40) == 0 ? backgroundColour : colourData)];
+
+        }
+        else {
+            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
+            //CVBS_TX = PAL_WHITE;
+            //pixel1 = pixel2 = PAL_WHITE;
+            pixel1 = pixel2 = pal_palette_o[borderColour];
+        }
+    } else {
+        // Even
+        if (sync) {
+            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
+            //CVBS_TX = PAL_SYNC;
+            pixel1 = pixel2 = PAL_SYNC;
+        }
+        else if (colourBurst) {
+            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BURST_E);
+            //CVBS_TX = PAL_BURST_E;
+            pixel1 = pixel2 = PAL_BURST_E;
+        }
+        else if (blanking) {
+            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLANK);
+            //CVBS_TX = PAL_BLANK;
+            pixel1 = pixel2 = PAL_BLANK;
+        }
+        else if (pixelOutputEnabled) {
+            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
+            //CVBS_TX = PAL_BLACK;
+            //pixel1 = pixel2 = pal_palette_e[horizontalCounter & 0xF];
+
+            pixel1 = pal_palette_e[((charData & 0x80) == 0 ? backgroundColour : colourData)];
+            pixel2 = pal_palette_e[((charData & 0x40) == 0 ? backgroundColour : colourData)];
+        }
+        else {
+            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
+            //CVBS_TX = PAL_WHITE;
+            //pixel1 = pixel2 = PAL_WHITE;
+            pixel1 = pixel2 = pal_palette_e[borderColour];
+        }
+    }
+
+    pio_sm_put(CVBS_PIO, CVBS_SM, pixel1);
+    pio_sm_put(CVBS_PIO, CVBS_SM, pixel2);
+}
+
 void core1_entry(void) {
 
     // TODO: Decide where it makes sense to initialise the CVBS PIO.
@@ -147,11 +235,8 @@ void core1_entry(void) {
     printf("VIC init done\n");
 
     uint32_t pixel = 0;
-
     uint32_t pixel1 = 0;
     uint32_t pixel2 = 0;
-    uint32_t pixel3 = 0;
-    uint32_t pixel4 = 0;
 
     // DEBUGGING variables
     uint32_t frames = 0;
@@ -354,8 +439,6 @@ void core1_entry(void) {
                 frames++;
                 if (frames == 50) {
                     frames = 0;
-                    // NOTE: This printf takes a LOT of cycles, so remember that when debugging.
-                    //printf(".|");
                 }
 
             } else {
@@ -449,9 +532,13 @@ void core1_entry(void) {
         // If pixel output is enabled, then we shift out two pixels in F1. We do 
         // this before fetching the data below, because char data fetched in F1
         // doesn't get output until start of F2.
-        if (pixelOutputEnabled) {
+        // if (pixelOutputEnabled) {
 
-        }
+        // }
+
+        outputPixels(verticalCounter, horizontalCounter, sync, colourBurst, blanking, pixelOutputEnabled, 
+            hsync, hblank, vblank, vblankPulse, vsyncPulse, charData, colourData, backgroundColour,
+            borderColour, auxiliaryColour, pixel1, pixel2);
 
         // At the end of F1, if 'In Matrix', then the data read from memory arrives.
         if (addressOutputEnabled) {
@@ -540,14 +627,16 @@ void core1_entry(void) {
         // Clears video matrix latch, on each of the long syncs during vsync (see code above)
         vsyncPulse = (vsync && vblankPulse);
 
+        // TODO: Remove at some point, as this has been moved into the outputPixels inline function.
         // Sync level output is triggered in three scenarios:
         // - When hsync is true and vblank is not true (i.e. hsync doesn't happen during vertical blanking)
         // - When vblank is true and vblankPulse is not true (short syncs during lines 1-3 and 7-9)
         // - When vsync is true and vblankPulse is also true (long syncs during lines 4-6)
-        sync = (hsync || (vblank && !vblankPulse) || vsyncPulse);
+        //sync = (hsync || (vblank && !vblankPulse) || vsyncPulse);
 
+        // TODO: Remove at some point, as this has been moved into the outputPixels inline function.
         // Blanking is much simpler by comparison.
-        blanking = (vblank || hblank);
+        //blanking = (vblank || hblank);
 
         // Colour Enable controls whether chroma output pin outputs anything.
         // - Chroma output is not enabled for B/W and blanking, unless colour burst is active.
@@ -585,76 +674,12 @@ void core1_entry(void) {
 
 
         // TODO: Shift out two more pixels somewhere around here.
+
+        outputPixels(verticalCounter, horizontalCounter, sync, colourBurst, blanking, pixelOutputEnabled, 
+            hsync, hblank, vblank, vblankPulse, vsyncPulse, charData, colourData, backgroundColour,
+            borderColour, auxiliaryColour, pixel1, pixel2);
+
         // TODO: If 'In Matrix', calculate address to fetch in next F1.
-
-
-        // TEST CODE:
-        if (verticalCounter & 1) {
-            // Odd
-            if (sync) {
-                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
-                //CVBS_TX = PAL_SYNC;
-                pixel = PAL_SYNC;
-            }
-            else if (colourBurst) {
-                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BURST_O);
-                //CVBS_TX = PAL_BURST_O;
-                pixel = PAL_BURST_O;
-            }
-            else if (blanking) {
-                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLANK);
-                //CVBS_TX = PAL_BLANK;
-                pixel = PAL_BLANK;
-            }
-            else if (pixelOutputEnabled) {
-                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
-                //CVBS_TX = PAL_BLACK;
-                pixel = pal_palette_o[horizontalCounter & 0xF];
-            }
-            else {
-                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
-                //CVBS_TX = PAL_WHITE;
-                pixel = PAL_WHITE;
-            }
-        } else {
-            // Even
-            if (sync) {
-                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
-                //CVBS_TX = PAL_SYNC;
-                pixel = PAL_SYNC;
-            }
-            else if (colourBurst) {
-                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BURST_E);
-                //CVBS_TX = PAL_BURST_E;
-                pixel = PAL_BURST_E;
-            }
-            else if (blanking) {
-                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLANK);
-                //CVBS_TX = PAL_BLANK;
-                pixel = PAL_BLANK;
-            }
-            else if (pixelOutputEnabled) {
-                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
-                //CVBS_TX = PAL_BLACK;
-                pixel = pal_palette_e[horizontalCounter & 0xF];
-            }
-            else {
-                //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
-                //CVBS_TX = PAL_WHITE;
-                pixel = PAL_WHITE;
-            }
-        }
-
-        pio_sm_put(CVBS_PIO, CVBS_SM, pixel);
-
-        // TESTING: Experimenting with calling pio_sm_put more than once. We'll need to call it 4 times.
-        pio_sm_put(CVBS_PIO, CVBS_SM, pixel);
-        pio_sm_put(CVBS_PIO, CVBS_SM, pixel);
-        pio_sm_put(CVBS_PIO, CVBS_SM, pixel);
-
-        //CVBS_TX = pixel;
-        
-        // END OF TEST CODE:
 
 
         // DEBUG: Temporary check to see if we've overshot the 120 cycle allowance.
