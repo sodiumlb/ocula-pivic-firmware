@@ -102,7 +102,7 @@ const uint32_t pal_palette_e[16] = {
 
 #define CVBS_TX  CVBS_PIO->txf[CVBS_SM]
 
-uint32_t overruns = 0;
+volatile uint32_t overruns = 0;
 
 void core1_entry(void) {
 
