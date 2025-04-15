@@ -48,41 +48,78 @@
 #define PAL_BLACK       CVBS_CMD(18,18,9,0,1)
 #define PAL_WHITE       CVBS_CMD(23,23,29,0,1)
 // TESTING: Experimenting with a black and while screen for now, so tweaking the above in testing.
-#define PAL_RED_O       CVBS_CMD(5,10,15,9,4)
-#define PAL_RED_E       CVBS_CMD(10,5,15,6,4)
-#define PAL_CYAN_O      CVBS_CMD(9,15,24,9,4)
-#define PAL_CYAN_E      CVBS_CMD(15,9,24,7,4)
-#define PAL_PURPLE_O    CVBS_CMD(29,22,18,5,4)
-#define PAL_PURPLE_E    CVBS_CMD(22,29,18,10,4)
-#define PAL_GREEN_O     CVBS_CMD(1,7,22,5,4)
-#define PAL_GREEN_E     CVBS_CMD(7,1,22,10,4)
-#define PAL_BLUE_O      CVBS_CMD(9,10,14,0,4)
-#define PAL_BLUE_E      CVBS_CMD(9,10,14,0,4)
-#define PAL_YELLOW_O    CVBS_CMD(5,15,25,0,4)
-#define PAL_YELLOW_E    CVBS_CMD(5,15,25,0,4)
-#define PAL_ORANGE_O    CVBS_CMD(19,22,19,11,4)
-#define PAL_ORANGE_E    CVBS_CMD(22,19,19,4,4)
-#define PAL_LORANGE_O   CVBS_CMD(27,21,24,11,4)
-#define PAL_LORANGE_E   CVBS_CMD(21,27,24,4,4)
-#define PAL_PINK_O      CVBS_CMD(11,5,23,9,4)
-#define PAL_PINK_E      CVBS_CMD(5,11,23,6,4)
-#define PAL_LCYAN_O	    CVBS_CMD(3,15,27,9,4)
-#define PAL_LCYAN_E     CVBS_CMD(15,3,27,7,4)
-#define PAL_LPURPLE_O   CVBS_CMD(27,21,24,5,4)
-#define PAL_LPURPLE_E   CVBS_CMD(21,27,24,10,4)
-#define PAL_LGREEN_O    CVBS_CMD(29,23,26,5,4)
-#define PAL_LGREEN_E    CVBS_CMD(23,29,26,10,4)
-#define PAL_LBLUE_O     CVBS_CMD(3,5,22,0,4)
-#define PAL_LBLUE_E     CVBS_CMD(3,5,22,0,4)
-#define PAL_LYELLOW_O   CVBS_CMD(19,31,28,0,4)
-#define PAL_LYELLOW_E   CVBS_CMD(19,31,28,0,4)
+#define PAL_RED_O       CVBS_CMD(5,10,15,9,1)
+#define PAL_RED_E       CVBS_CMD(10,5,15,6,1)
+#define PAL_CYAN_O      CVBS_CMD(9,15,24,9,1)
+#define PAL_CYAN_E      CVBS_CMD(15,9,24,7,1)
+#define PAL_PURPLE_O    CVBS_CMD(29,22,18,5,1)
+#define PAL_PURPLE_E    CVBS_CMD(22,29,18,10,1)
+#define PAL_GREEN_O     CVBS_CMD(1,7,22,5,1)
+#define PAL_GREEN_E     CVBS_CMD(7,1,22,10,1)
+#define PAL_BLUE_O      CVBS_CMD(9,10,14,0,1)
+#define PAL_BLUE_E      CVBS_CMD(9,10,14,0,1)
+#define PAL_YELLOW_O    CVBS_CMD(5,15,25,0,1)
+#define PAL_YELLOW_E    CVBS_CMD(5,15,25,0,1)
+#define PAL_ORANGE_O    CVBS_CMD(19,22,19,11,1)
+#define PAL_ORANGE_E    CVBS_CMD(22,19,19,4,1)
+#define PAL_LORANGE_O   CVBS_CMD(27,21,24,11,1)
+#define PAL_LORANGE_E   CVBS_CMD(21,27,24,4,1)
+#define PAL_PINK_O      CVBS_CMD(11,5,23,9,1)
+#define PAL_PINK_E      CVBS_CMD(5,11,23,6,1)
+#define PAL_LCYAN_O	    CVBS_CMD(3,15,27,9,1)
+#define PAL_LCYAN_E     CVBS_CMD(15,3,27,7,1)
+#define PAL_LPURPLE_O   CVBS_CMD(27,21,24,5,1)
+#define PAL_LPURPLE_E   CVBS_CMD(21,27,24,10,1)
+#define PAL_LGREEN_O    CVBS_CMD(29,23,26,5,1)
+#define PAL_LGREEN_E    CVBS_CMD(23,29,26,10,1)
+#define PAL_LBLUE_O     CVBS_CMD(3,5,22,0,1)
+#define PAL_LBLUE_E     CVBS_CMD(3,5,22,0,1)
+#define PAL_LYELLOW_O   CVBS_CMD(19,31,28,0,1)
+#define PAL_LYELLOW_E   CVBS_CMD(19,31,28,0,1)
 
+const uint32_t pal_palette_o[16] = {
+    PAL_BLACK,
+    PAL_WHITE,
+    PAL_RED_O,
+    PAL_CYAN_O,
+    PAL_PURPLE_O,
+    PAL_GREEN_O,
+    PAL_BLUE_O,
+    PAL_YELLOW_O,
+    PAL_ORANGE_O,
+    PAL_LORANGE_O,
+    PAL_PINK_O,
+    PAL_LCYAN_O,
+    PAL_LPURPLE_O,
+    PAL_LGREEN_O,
+    PAL_LBLUE_O,
+    PAL_LYELLOW_O
+};
+
+const uint32_t pal_palette_e[16] = {
+    PAL_BLACK,
+    PAL_WHITE,
+    PAL_RED_E,
+    PAL_CYAN_E,
+    PAL_PURPLE_E,
+    PAL_GREEN_E,
+    PAL_BLUE_E,
+    PAL_YELLOW_E,
+    PAL_ORANGE_E,
+    PAL_LORANGE_E,
+    PAL_PINK_E,
+    PAL_LCYAN_E,
+    PAL_LPURPLE_E,
+    PAL_LGREEN_E,
+    PAL_LBLUE_E,
+    PAL_LYELLOW_E
+};
 
 // END OF EXPERIMENTAL DEFINES>
 
 #define CVBS_TX  CVBS_PIO->txf[CVBS_SM]
 
-uint32_t overruns = 0;
+volatile uint32_t overruns = 0;
 
 void core1_entry(void) {
 
@@ -552,7 +589,7 @@ void core1_entry(void) {
 
 
         // TEST CODE:
-        if (verticalCounter % 1) {
+        if (verticalCounter & 1) {
             // Odd
             if (sync) {
                 //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
@@ -572,7 +609,7 @@ void core1_entry(void) {
             else if (pixelOutputEnabled) {
                 //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
                 //CVBS_TX = PAL_BLACK;
-                pixel = PAL_BLACK;
+                pixel = pal_palette_o[horizontalCounter & 0xF];
             }
             else {
                 //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
@@ -599,7 +636,7 @@ void core1_entry(void) {
             else if (pixelOutputEnabled) {
                 //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
                 //CVBS_TX = PAL_BLACK;
-                pixel = PAL_BLACK;
+                pixel = pal_palette_e[horizontalCounter & 0xF];
             }
             else {
                 //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
@@ -621,8 +658,7 @@ void core1_entry(void) {
 
 
         // DEBUG: Temporary check to see if we've overshot the 120 cycle allowance.
-        //if (pio_interrupt_get(VIC_PIO, 1)) {
-        if (VIC_PIO->irq & 0x1) {
+        if (pio_interrupt_get(VIC_PIO, 1)) {
            overruns = 1;
         }
     }
