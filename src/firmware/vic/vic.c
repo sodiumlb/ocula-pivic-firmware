@@ -631,8 +631,7 @@ void core1_entry(void) {
 
 
         // DEBUG: Temporary check to see if we've overshot the 120 cycle allowance.
-        //if (pio_interrupt_get(VIC_PIO, 1)) {
-        if (VIC_PIO->irq & 0x1) {
+        if (pio_interrupt_get(VIC_PIO, 1)) {
            overruns = 1;
         }
     }
