@@ -582,7 +582,7 @@ void core1_entry(void) {
             else if (pixelOutputEnabled) {
                 //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
                 //CVBS_TX = PAL_BLACK;
-                pixel = PAL_BLACK;
+                pixel = pal_palette_o[horizontalCounter & 0xF];
             }
             else {
                 //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
@@ -609,7 +609,7 @@ void core1_entry(void) {
             else if (pixelOutputEnabled) {
                 //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
                 //CVBS_TX = PAL_BLACK;
-                pixel = PAL_BLACK;
+                pixel = pal_palette_e[horizontalCounter & 0xF];
             }
             else {
                 //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
