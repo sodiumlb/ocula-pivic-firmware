@@ -7,6 +7,7 @@
 #include "main.h"
 //#include "sys/ria.h"
 #include "vic/vic.h"
+#include "vic/char_rom.h"
 #include "vic/cvbs.h"
 #include "sys/mem.h"
 #include "vic.pio.h"
@@ -16,6 +17,22 @@
 #include "hardware/pio.h"
 #include <string.h>
 #include <stdio.h>
+
+// These are the actual VIC 20 memory addresses, but note that the VIC chip sees memory a bit differently.
+// $8000-$83FF: 1 KB uppercase/glyphs
+// $8400-$87FF: 1 KB uppercase/lowercase
+// $8800-$8BFF: 1 KB inverse uppercase/glyphs
+// $8C00-$8FFF: 1 KB inverse uppercase/lowercase
+#define ADDR_UPPERCASE_GLYPHS_CHRSET            0x8000
+#define ADDR_UPPERCASE_LOWERCASE_CHRSET         0x8400
+#define ADDR_INVERSE_UPPERCASE_GLYPHS_CHRSET    0x8800
+#define ADDR_INVERSE_UPPERCASE_LOWERCASE_CHRSET 0x8C00
+
+// These are the 'standard' screen memory locations in the VIC 20 memory map, but in practice the 
+// programmer can set screen memory to several other locations.
+#define ADDR_UNEXPANDED_SCR  0x1E00
+#define ADDR_8KPLUS_EXP_SCR  0x1000
+
 
 // EXPERIMENTAL TEST DEFINES:
 // TODO: Decide where to put these.
@@ -72,6 +89,12 @@ void core1_entry(void) {
     // TODO: Decide where it makes sense to initialise the CVBS PIO.
     cvbs_init();
 
+    // Set up a test page for the screen memory.
+    memcpy((void*)(&xram[ADDR_UPPERCASE_GLYPHS_CHRSET]), (void*)vic_char_rom, sizeof(vic_char_rom));
+    memset((void*)&xram[ADDR_UNEXPANDED_SCR], 0x20, 1024);
+    sprintf((char*)(&xram[ADDR_UNEXPANDED_SCR]), "PIVIC TEST " __DATE__);
+    sprintf((char*)(&xram[ADDR_UNEXPANDED_SCR] + 22), "0123456789012345678901");
+
     // Set up VIC PIO.
     pio_set_gpio_base(VIC_PIO, VIC_PIN_BANK);
     // TODO: We might add the second output clock in the future.
@@ -102,6 +125,10 @@ void core1_entry(void) {
     uint8_t numOfColumns = 22;          // 7-bit number of video matrix columns
     uint8_t numOfRows = 23;             // 6-bit number of video matrix rows
     uint8_t lastCellLine = 7;           // Last Cell Depth Counter value. Depends on double height mode.
+    uint8_t backgroundColour = 1;       // 4-bit background colour index
+    uint8_t borderColour = 11;          // 3-bit border colour index
+    uint8_t auxiliaryColour = 0;        // 4-bit auxiliary colour index
+    uint8_t reverse = 0;                // 1-bit reverse state
 
     uint16_t videoMatrixCounter = 0;     // 12-bit video matrix counter (VMC)
     uint16_t videoMatrixLatch = 0;       // 12-bit latch that VMC is stored to and loaded from
