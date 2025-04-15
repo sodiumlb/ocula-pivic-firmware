@@ -562,7 +562,7 @@ void core1_entry(void) {
 
 
         // TEST CODE:
-        if (verticalCounter % 1) {
+        if (verticalCounter & 1) {
             // Odd
             if (sync) {
                 //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
