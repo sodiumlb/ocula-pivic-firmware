@@ -5,7 +5,6 @@
 */
 
 #include "main.h"
-//#include "sys/ria.h"
 #include "vic/vic.h"
 #include "vic/char_rom.h"
 #include "vic/cvbs.h"
@@ -34,20 +33,17 @@
 #define ADDR_8KPLUS_EXP_SCR  0x1000
 
 
-// EXPERIMENTAL TEST DEFINES:
-// TODO: Decide where to put these.
 #define CVBS_DELAY_CONST_POST (15-3)
 #define CVBS_CMD(L0,L1,DC,delay,count) \
          ((((CVBS_DELAY_CONST_POST-delay)&0xF)<<23) |  ((L1&0x1F)<<18) | (((count-1)&0x1FF)<<9) |((L0&0x1F)<<4) | ((delay&0x0F)))
 #define CVBS_REP(cmd,count) ((cmd & ~(0x1FF<<9)) | ((count-1) & 0x1FF)<<9)
-// As an experiement, everything is currently set to repeat of 3 (i.e. duration of one F1/F2 cycle)
+
 #define PAL_SYNC        CVBS_CMD( 0, 0, 0, 0,1)
 #define PAL_BLANK       CVBS_CMD(18,18,18, 0,1)
 #define PAL_BURST_O     CVBS_CMD(6,12,9,11,1)
 #define PAL_BURST_E     CVBS_CMD(12,6,9,4,1)
 #define PAL_BLACK       CVBS_CMD(18,18,9,0,1)
 #define PAL_WHITE       CVBS_CMD(23,23,29,0,1)
-// TESTING: Experimenting with a black and while screen for now, so tweaking the above in testing.
 #define PAL_RED_O       CVBS_CMD(5,10,15,9,1)
 #define PAL_RED_E       CVBS_CMD(10,5,15,6,1)
 #define PAL_CYAN_O      CVBS_CMD(9,15,24,9,1)
@@ -115,9 +111,6 @@ const uint32_t pal_palette_e[16] = {
     PAL_LYELLOW_E
 };
 
-// END OF EXPERIMENTAL DEFINES>
-
-#define CVBS_TX  CVBS_PIO->txf[CVBS_SM]
 
 volatile uint32_t overruns = 0;
 
@@ -125,10 +118,13 @@ volatile uint32_t overruns = 0;
 static void inline __attribute__((always_inline)) outputPixels(
         uint16_t verticalCounter, uint8_t horizontalCounter, 
         bool sync, bool colourBurst, bool blanking, bool pixelOutputEnabled,
-        bool hsync, bool hblank, bool vblank, bool vblankPulse, bool vsyncPulse,
+        bool hsync, bool hblank, bool vsync, bool vblank, bool vblankPulse, bool vsyncPulse,
         uint8_t charData, uint8_t colourData, uint8_t backgroundColour,
         uint8_t borderColour, uint8_t auxiliaryColour,
         uint32_t pixel1, uint32_t pixel2) {
+
+    // Clears video matrix latch, on each of the long syncs during vsync (see code above)
+    vsyncPulse = (vsync && vblankPulse);
 
     // Sync level output is triggered in three scenarios:
     // - When hsync is true and vblank is not true (i.e. hsync doesn't happen during vertical blanking)
@@ -142,65 +138,40 @@ static void inline __attribute__((always_inline)) outputPixels(
     if (verticalCounter & 1) {
         // Odd
         if (sync) {
-            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
-            //CVBS_TX = PAL_SYNC;
             pixel1 = pixel2 = PAL_SYNC;
         }
         else if (colourBurst) {
-            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BURST_O);
-            //CVBS_TX = PAL_BURST_O;
             pixel1 = pixel2 = PAL_BURST_O;
         }
         else if (blanking) {
-            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLANK); 
-            //CVBS_TX = PAL_BLANK;
             pixel1 = pixel2 = PAL_BLANK;
         }
         else if (pixelOutputEnabled) {
-            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
-            //CVBS_TX = PAL_BLACK;
-            //pixel1 = pixel2 = pal_palette_o[horizontalCounter & 0xF];
-
             // Normal graphics for now (i.e. no reverse and multicolour)
             pixel1 = pal_palette_o[((charData & 0x80) == 0 ? backgroundColour : colourData)];
             pixel2 = pal_palette_o[((charData & 0x40) == 0 ? backgroundColour : colourData)];
-
+            charData = (charData << 1);
         }
         else {
-            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
-            //CVBS_TX = PAL_WHITE;
-            //pixel1 = pixel2 = PAL_WHITE;
             pixel1 = pixel2 = pal_palette_o[borderColour];
         }
     } else {
         // Even
         if (sync) {
-            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SYNC);
-            //CVBS_TX = PAL_SYNC;
             pixel1 = pixel2 = PAL_SYNC;
         }
         else if (colourBurst) {
-            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BURST_E);
-            //CVBS_TX = PAL_BURST_E;
             pixel1 = pixel2 = PAL_BURST_E;
         }
         else if (blanking) {
-            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLANK);
-            //CVBS_TX = PAL_BLANK;
             pixel1 = pixel2 = PAL_BLANK;
         }
         else if (pixelOutputEnabled) {
-            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BLACK);
-            //CVBS_TX = PAL_BLACK;
-            //pixel1 = pixel2 = pal_palette_e[horizontalCounter & 0xF];
-
             pixel1 = pal_palette_e[((charData & 0x80) == 0 ? backgroundColour : colourData)];
             pixel2 = pal_palette_e[((charData & 0x40) == 0 ? backgroundColour : colourData)];
+            charData = (charData << 1);
         }
         else {
-            //pio_sm_put(CVBS_PIO, CVBS_SM, PAL_WHITE);
-            //CVBS_TX = PAL_WHITE;
-            //pixel1 = pixel2 = PAL_WHITE;
             pixel1 = pixel2 = pal_palette_e[borderColour];
         }
     }
@@ -209,9 +180,9 @@ static void inline __attribute__((always_inline)) outputPixels(
     pio_sm_put(CVBS_PIO, CVBS_SM, pixel2);
 }
 
+
 void core1_entry(void) {
 
-    // TODO: Decide where it makes sense to initialise the CVBS PIO.
     cvbs_init();
 
     // Set up a test page for the screen memory.
@@ -234,7 +205,6 @@ void core1_entry(void) {
     pio_sm_set_enabled(VIC_PIO, VIC_SM, true);   
     printf("VIC init done\n");
 
-    uint32_t pixel = 0;
     uint32_t pixel1 = 0;
     uint32_t pixel2 = 0;
 
@@ -252,6 +222,7 @@ void core1_entry(void) {
     uint8_t auxiliaryColour = 0;        // 4-bit auxiliary colour index
     uint8_t reverse = 0;                // 1-bit reverse state
 
+    // Counters.
     uint16_t videoMatrixCounter = 0;     // 12-bit video matrix counter (VMC)
     uint16_t videoMatrixLatch = 0;       // 12-bit latch that VMC is stored to and loaded from
     uint16_t verticalCounter = 0;        // 9-bit vertical counter (i.e. raster lines)
@@ -347,7 +318,6 @@ void core1_entry(void) {
     bool sync = false;
     bool blanking = false;
     bool colourEnable = false;
-    bool blackOrWhite = false;
 
     while (1) {
         // Poll for PIO IRQ 0. This is the rising edge of F1.
@@ -529,15 +499,10 @@ void core1_entry(void) {
             videoMatrixCounter++;
         }
 
-        // If pixel output is enabled, then we shift out two pixels in F1. We do 
-        // this before fetching the data below, because char data fetched in F1
-        // doesn't get output until start of F2.
-        // if (pixelOutputEnabled) {
-
-        // }
-
+        // Shift out two pixels during F1. We do this before fetching the data below, because 
+        // char data fetched in F1 doesn't get output until start of F2.
         outputPixels(verticalCounter, horizontalCounter, sync, colourBurst, blanking, pixelOutputEnabled, 
-            hsync, hblank, vblank, vblankPulse, vsyncPulse, charData, colourData, backgroundColour,
+            hsync, hblank, vsync, vblank, vblankPulse, vsyncPulse, charData, colourData, backgroundColour,
             borderColour, auxiliaryColour, pixel1, pixel2);
 
         // At the end of F1, if 'In Matrix', then the data read from memory arrives.
@@ -554,7 +519,8 @@ void core1_entry(void) {
             else {
                 // TODO: This is where we read the char data from VIC PIO.
                 // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
-                charData = 0b10101011;
+                charData = 0b10110111;
+                //xram[ADDR_HIRES_SCR + 
 
                 // TODO: Load the pixel shift register.
                 // TODO: In the real chip, the shift register is loaded at the exact start of F2.
@@ -624,26 +590,6 @@ void core1_entry(void) {
             screenYComp = (verticalCounter == screenOriginY);
         }
 
-        // Clears video matrix latch, on each of the long syncs during vsync (see code above)
-        vsyncPulse = (vsync && vblankPulse);
-
-        // TODO: Remove at some point, as this has been moved into the outputPixels inline function.
-        // Sync level output is triggered in three scenarios:
-        // - When hsync is true and vblank is not true (i.e. hsync doesn't happen during vertical blanking)
-        // - When vblank is true and vblankPulse is not true (short syncs during lines 1-3 and 7-9)
-        // - When vsync is true and vblankPulse is also true (long syncs during lines 4-6)
-        //sync = (hsync || (vblank && !vblankPulse) || vsyncPulse);
-
-        // TODO: Remove at some point, as this has been moved into the outputPixels inline function.
-        // Blanking is much simpler by comparison.
-        //blanking = (vblank || hblank);
-
-        // Colour Enable controls whether chroma output pin outputs anything.
-        // - Chroma output is not enabled for B/W and blanking, unless colour burst is active.
-        // TODO: Not entirely sure we need this one. If we know the colour, we just lookup the CVBS data.
-        //colourEnable = ((blackOrWhite || blanking) && !colourBurst);
-
-
         // Screen origin X/Y comparators are done as part of In Matrix calculations below.
         // 'In Matrix' calculations, i.e. are we within the video matrix at the moment?
         // 'In Matrix Y' cleared on either last line or vert cell counter reaching it last value.
@@ -671,12 +617,9 @@ void core1_entry(void) {
         //   between the comparison result and internal changes to 'In Matrix' state.
         screenXComp = (horizontalCounter == screenOriginX);
         
-
-
-        // TODO: Shift out two more pixels somewhere around here.
-
+        // Shift out two more pixels during F2.
         outputPixels(verticalCounter, horizontalCounter, sync, colourBurst, blanking, pixelOutputEnabled, 
-            hsync, hblank, vblank, vblankPulse, vsyncPulse, charData, colourData, backgroundColour,
+            hsync, hblank, vsync, vblank, vblankPulse, vsyncPulse, charData, colourData, backgroundColour,
             borderColour, auxiliaryColour, pixel1, pixel2);
 
         // TODO: If 'In Matrix', calculate address to fetch in next F1.
