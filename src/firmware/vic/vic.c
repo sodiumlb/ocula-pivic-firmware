@@ -114,8 +114,9 @@ const uint32_t pal_palette_e[16] = {
 
 volatile uint32_t overruns = 0;
 
+#define OUTPUT_PIXELS
 
-static void inline __attribute__((always_inline)) outputPixels(
+static uint8_t inline __attribute__((always_inline)) outputPixels(
         uint16_t verticalCounter, uint8_t horizontalCounter, 
         bool sync, bool colourBurst, bool blanking, bool pixelOutputEnabled,
         bool hsync, bool hblank, bool vsync, bool vblank, bool vblankPulse, bool vsyncPulse,
@@ -178,6 +179,9 @@ static void inline __attribute__((always_inline)) outputPixels(
 
     pio_sm_put(CVBS_PIO, CVBS_SM, pixel1);
     pio_sm_put(CVBS_PIO, CVBS_SM, pixel2);
+
+    // Shift pixel shift register by 2, since we just output 2 pixels.
+    return (charData << 2);
 }
 
 
@@ -205,9 +209,9 @@ void core1_entry(void) {
     pio_sm_set_enabled(VIC_PIO, VIC_SM, true);   
     printf("VIC init done\n");
 
-    // Every half cpu cycle, we output two pixels. The values are temporarily stored in these vars.
-    uint32_t pixel1 = 0;
-    uint32_t pixel2 = 0;
+    //
+    // START OF VIC CHIP STATE
+    //
 
     // Hard coded control registers for now (from default PAL VIC).
     uint8_t screenOriginX = 12;         // 7-bit horiz counter value to match for left of video matrix
@@ -313,7 +317,15 @@ void core1_entry(void) {
     bool vsyncPulse = false;
     bool sync = false;
     bool blanking = false;
-    bool colourEnable = false;
+
+    // Every half cpu cycle, we output two pixels. The values are temporarily stored in these vars.
+    uint32_t pixel1 = 0;
+    uint32_t pixel2 = 0;
+
+    //
+    // END OF VIC CHIP STATE
+    //
+
 
     while (1) {
         // Poll for PIO IRQ 0. This is the rising edge of F1.
@@ -488,12 +500,6 @@ void core1_entry(void) {
             videoMatrixCounter++;
         }
 
-        // Shift out two pixels during F1. We do this before fetching the data below, because 
-        // char data fetched in F1 doesn't get output until start of F2.
-        outputPixels(verticalCounter, horizontalCounter, sync, colourBurst, blanking, pixelOutputEnabled, 
-            hsync, hblank, vsync, vblank, vblankPulse, vsyncPulse, charData, colourData, backgroundColour,
-            borderColour, auxiliaryColour, pixel1, pixel2);
-
         // At the end of F1, if 'In Matrix', then the data read from memory arrives.
         if (addressOutputEnabled) {
             if (horizontalCellCounter & 1) {
@@ -507,9 +513,15 @@ void core1_entry(void) {
                 // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
                 // In this emulation, charData acts as the pixel shift register. We load it here, i.e. end
                 // of F1 / start of F2. In the real chip, it happens at the very start of F2.
-                charData = 0b10110111;
+                charData = 0b11000000;
             }
         }
+
+        // Shift out two pixels during F1. We do this before fetching the data below, because 
+        // char data fetched in F1 doesn't get output until start of F2.
+        charData = outputPixels(verticalCounter, horizontalCounter, sync, colourBurst, blanking, pixelOutputEnabled, 
+            hsync, hblank, vsync, vblank, vblankPulse, vsyncPulse, charData, colourData, backgroundColour,
+            borderColour, auxiliaryColour, pixel1, pixel2);
 
         // TODO: Should we poll here for phase 2 via another interrupt? e.g. irq 1
 
@@ -598,7 +610,7 @@ void core1_entry(void) {
         screenXComp = (horizontalCounter == screenOriginX);
         
         // Shift out two more pixels during F2.
-        outputPixels(verticalCounter, horizontalCounter, sync, colourBurst, blanking, pixelOutputEnabled, 
+        charData = outputPixels(verticalCounter, horizontalCounter, sync, colourBurst, blanking, pixelOutputEnabled, 
             hsync, hblank, vsync, vblank, vblankPulse, vsyncPulse, charData, colourData, backgroundColour,
             borderColour, auxiliaryColour, pixel1, pixel2);
 
