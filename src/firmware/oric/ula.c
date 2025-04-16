@@ -156,6 +156,7 @@ void core1_loop(void){
     uint8_t screen_data;
     uint8_t char_data;
     uint8_t pixel_data;     //Monochrome
+    uint8_t invert_flag;
 
     pio_sm_put(RGBS_PIO,RGBS_SM,CMD_BLANK40); //Add some latency between PIO and this loop.
 
@@ -175,7 +176,7 @@ void core1_loop(void){
             RGBS_TX = RGBS_CMD1(VAL_SYNC,1);
         }else if(hscan && vscan){
             //output pixeldata with invertion
-            RGBS_TX = rgbs_cmd_pixel(ula.ink,ula.paper,char_data);
+            RGBS_TX = rgbs_cmd_pixel(ula.ink,ula.paper,char_data | invert_flag);
         }else{
             RGBS_TX = RGBS_CMD1(VAL_BLANK,1);
         }
@@ -195,20 +196,22 @@ void core1_loop(void){
             char_data = 0x00;   //Show paper when on attributes
         }else{
             // ULA Phase 2
+            uint16_t ch_offs = ((screen_data & ULA_MASK_CHAR)*8) + (verticalCounter & 0x7);
             if(ula.mode & ULA_HIRES){
                 if(ula.style & ULA_ALTCHR){
-                    char_data = xram[ADDR_HIRES_ALT_CHRSET + (screen_data & ULA_MASK_CHAR)];
+                    char_data = xram[ADDR_HIRES_ALT_CHRSET + ch_offs];
                 }else{ //STDCHAR
-                    char_data = xram[ADDR_HIRES_STD_CHRSET + (screen_data & ULA_MASK_CHAR)];
+                    char_data = xram[ADDR_HIRES_STD_CHRSET + ch_offs];
                 }
             }else{ //LORES
                 if(ula.style & ULA_ALTCHR){
-                    char_data = xram[ADDR_LORES_ALT_CHRSET + ((screen_data & ULA_MASK_CHAR)*8) + (verticalCounter & 0x7)];
+                    char_data = xram[ADDR_LORES_ALT_CHRSET + ch_offs];
                 }else{ //STDCHAR
-                    char_data = xram[ADDR_LORES_STD_CHRSET + ((screen_data & ULA_MASK_CHAR)*8) + (verticalCounter & 0x7)];
+                    char_data = xram[ADDR_LORES_STD_CHRSET + ch_offs];
                 }
             }
         }
+        invert_flag = screen_data & ULA_INVERT;
 
         // Counter updates that will be used in the next cycle
         // This results in some numbers looking off by one,
@@ -331,6 +334,9 @@ void ula_init(void){
     }
     for(uint8_t i=0; i<(0x7F-0x20); i++){
         xram[ADDR_LORES_SCR + 40*4 + i] =  0x20 + i;    
+    }
+    for(uint8_t i=0; i<(0x7F-0x20); i++){
+        xram[ADDR_LORES_SCR + 40*7 + i] =  0x80 | (0x20 + i);    
     }
     printf("PIO inits\n");
     phi_pio_init();
