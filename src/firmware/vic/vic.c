@@ -151,7 +151,6 @@ static uint8_t inline __attribute__((always_inline)) outputPixels(
             // Normal graphics for now (i.e. no reverse and multicolour)
             pixel1 = pal_palette_o[((charData & 0x80) == 0 ? backgroundColour : colourData)];
             pixel2 = pal_palette_o[((charData & 0x40) == 0 ? backgroundColour : colourData)];
-            charData = (charData << 1);
         }
         else {
             pixel1 = pixel2 = pal_palette_o[borderColour];
@@ -170,7 +169,6 @@ static uint8_t inline __attribute__((always_inline)) outputPixels(
         else if (pixelOutputEnabled) {
             pixel1 = pal_palette_e[((charData & 0x80) == 0 ? backgroundColour : colourData)];
             pixel2 = pal_palette_e[((charData & 0x40) == 0 ? backgroundColour : colourData)];
-            charData = (charData << 1);
         }
         else {
             pixel1 = pixel2 = pal_palette_e[borderColour];
@@ -192,8 +190,18 @@ void core1_entry(void) {
     // Set up a test page for the screen memory.
     memcpy((void*)(&xram[ADDR_UPPERCASE_GLYPHS_CHRSET]), (void*)vic_char_rom, sizeof(vic_char_rom));
     memset((void*)&xram[ADDR_UNEXPANDED_SCR], 0x20, 1024);
-    sprintf((char*)(&xram[ADDR_UNEXPANDED_SCR]), "PIVIC TEST " __DATE__);
-    sprintf((char*)(&xram[ADDR_UNEXPANDED_SCR] + 22), "0123456789012345678901");
+
+    // TODO: sprintf doesn't work for VIC. Doesn't align with screen codes.
+    //sprintf((char*)(&xram[ADDR_UNEXPANDED_SCR]), "PIVIC TEST 1234");
+    //sprintf((char*)(&xram[ADDR_UNEXPANDED_SCR] + 22), "0123456789012345678901");
+
+    // First row
+    xram[ADDR_UNEXPANDED_SCR + 0] = 16;  // P
+    xram[ADDR_UNEXPANDED_SCR + 1] = 9;   // I
+    xram[ADDR_UNEXPANDED_SCR + 2] = 22;  // V
+    xram[ADDR_UNEXPANDED_SCR + 3] = 9;   // I
+    xram[ADDR_UNEXPANDED_SCR + 4] = 3;   // C
+    
 
     // Set up VIC PIO.
     pio_set_gpio_base(VIC_PIO, VIC_PIN_BANK);
@@ -473,6 +481,10 @@ void core1_entry(void) {
         // - On reaching 0, clears In Matrix Y flag (see implementation above)
         if (lastLine) {
             verticalCellCounter = numOfRows;
+
+            // TODO: Remove, as this is temporary to check VMC reset.
+            videoMatrixCounter = 0;
+            videoMatrixLatch = 0;
         }
         
         // Video Matrix Counter (VMC):
@@ -505,7 +517,7 @@ void core1_entry(void) {
             if (horizontalCellCounter & 1) {
                 // TODO: This is where we read the cell index from VIC PIO.
                 // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
-                cellIndex = 0;
+                cellIndex = xram[ADDR_UNEXPANDED_SCR + 0];//(videoMatrixCounter >> 1)];
                 colourData = 3;
             }
             else {
@@ -513,7 +525,7 @@ void core1_entry(void) {
                 // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
                 // In this emulation, charData acts as the pixel shift register. We load it here, i.e. end
                 // of F1 / start of F2. In the real chip, it happens at the very start of F2.
-                charData = 0b11000000;
+                charData = xram[ADDR_UPPERCASE_GLYPHS_CHRSET + (cellIndex << 3) + cellDepthCounter];
             }
         }
 
