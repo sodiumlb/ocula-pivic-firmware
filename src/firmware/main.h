@@ -51,13 +51,41 @@ bool main_prog(uint16_t *xregs);
 #endif
 
 #ifdef OCULA
-#define RGBS_PIN_OFFS 0
+#define PIO0_PIN_OFFS 0
+#define PIO1_PIN_OFFS 16
+#define PIO2_PIN_OFFS 16
+
+#define RGBS_PIN_OFFS PIO0_PIN_OFFS
 #define RGBS_PIO pio0
 #define RGBS_SM 0
 
-#define PHI_PIN_OFFS 16
+#define NIO_PIN_OFFS PIO0_PIN_OFFS
+#define NIO_PIO pio0
+#define NIO_SM 1
+
+#define NROMSEL_PIN_OFFS PIO0_PIN_OFFS
+#define NROMSEL_PIO pio0
+#define NROMSEL_SM 2
+
+#define PHI_PIN_OFFS PIO1_PIN_OFFS
 #define PHI_PIO pio1
 #define PHI_SM 0
+
+#define DECODE_PIN_OFFS PIO1_PIN_OFFS
+#define DECODE_PIO pio1
+#define DECODE_SM 1
+
+#define XREAD_PIN_OFFS PIO2_PIN_OFFS
+#define XREAD_PIO pio2
+#define XREAD_SM 0
+
+#define XWRITE_PIN_OFFS PIO2_PIN_OFFS
+#define XWRITE_PIO pio2
+#define XWRITE_SM 1
+
+#define XDIR_PIN_OFFS PIO2_PIN_OFFS
+#define XDIR_PIO pio2
+#define XDIR_SM 2
 
 #define RGBS_PIN_BASE 2
 #define SYNC_PIN 2
