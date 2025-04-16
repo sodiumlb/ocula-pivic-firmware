@@ -205,11 +205,9 @@ void core1_entry(void) {
     pio_sm_set_enabled(VIC_PIO, VIC_SM, true);   
     printf("VIC init done\n");
 
+    // Every half cpu cycle, we output two pixels. The values are temporarily stored in these vars.
     uint32_t pixel1 = 0;
     uint32_t pixel2 = 0;
-
-    // DEBUGGING variables
-    uint32_t frames = 0;
 
     // Hard coded control registers for now (from default PAL VIC).
     uint8_t screenOriginX = 12;         // 7-bit horiz counter value to match for left of video matrix
@@ -230,10 +228,8 @@ void core1_entry(void) {
     uint8_t  horizontalCellCounter = 0;  // 8-bit horizontal cell counter (down counter)
     uint8_t  verticalCellCounter = 0;    // 6-bit vertical cell counter (down counter)
     uint8_t  cellDepthCounter = 0;       // 4-bit cell depth counter (sounds either from 0-7, or 0-15)
-    
-    uint8_t  pixelShiftRegister = 0;     // 8-bit shift register for shifting out pixels.
 
-    // Values normally fetched externally, from screen mem and char mem.
+    // Values normally fetched externally, from screen mem, colour RAM and char mem.
     uint8_t  cellIndex = 0;
     uint8_t  charData = 0;
     uint8_t  colourData = 0;
@@ -404,13 +400,6 @@ void core1_entry(void) {
         if (horizontalCounter == 0) {
             if (lastLine) {
                 verticalCounter = 0;
-
-                // DEBUG: Should print every second, due to PAL 50Hz.
-                frames++;
-                if (frames == 50) {
-                    frames = 0;
-                }
-
             } else {
                 verticalCounter++;
             }
@@ -507,9 +496,6 @@ void core1_entry(void) {
 
         // At the end of F1, if 'In Matrix', then the data read from memory arrives.
         if (addressOutputEnabled) {
-
-            // TODO: Shift out two pixels somewhere around here.
-
             if (horizontalCellCounter & 1) {
                 // TODO: This is where we read the cell index from VIC PIO.
                 // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
@@ -519,15 +505,11 @@ void core1_entry(void) {
             else {
                 // TODO: This is where we read the char data from VIC PIO.
                 // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
+                // In this emulation, charData acts as the pixel shift register. We load it here, i.e. end
+                // of F1 / start of F2. In the real chip, it happens at the very start of F2.
                 charData = 0b10110111;
-                //xram[ADDR_HIRES_SCR + 
-
-                // TODO: Load the pixel shift register.
-                // TODO: In the real chip, the shift register is loaded at the exact start of F2.
-                pixelShiftRegister = charData;
             }
         }
-
 
         // TODO: Should we poll here for phase 2 via another interrupt? e.g. irq 1
 
@@ -568,8 +550,7 @@ void core1_entry(void) {
                 break;
         }
 
-        // Y Decoder - Phase 2 updates
-        // -
+        // Y Decoder - Phase 2 updates for vertical sync and blanking.
         if (newLine) {
             switch (verticalCounter) {
                 case 1:
@@ -590,7 +571,6 @@ void core1_entry(void) {
             screenYComp = (verticalCounter == screenOriginY);
         }
 
-        // Screen origin X/Y comparators are done as part of In Matrix calculations below.
         // 'In Matrix' calculations, i.e. are we within the video matrix at the moment?
         // 'In Matrix Y' cleared on either last line or vert cell counter reaching it last value.
         if (lastLine || (verticalCellCounter == 0)) {
