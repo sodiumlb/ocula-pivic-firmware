@@ -124,9 +124,6 @@ static uint8_t inline __attribute__((always_inline)) outputPixels(
         uint8_t borderColour, uint8_t auxiliaryColour,
         uint32_t pixel1, uint32_t pixel2) {
 
-    // Clears video matrix latch, on each of the long syncs during vsync (see code above)
-    vsyncPulse = (vsync && vblankPulse);
-
     // Sync level output is triggered in three scenarios:
     // - When hsync is true and vblank is not true (i.e. hsync doesn't happen during vertical blanking)
     // - When vblank is true and vblankPulse is not true (short syncs during lines 1-3 and 7-9)
@@ -182,27 +179,7 @@ static uint8_t inline __attribute__((always_inline)) outputPixels(
     return (charData << 2);
 }
 
-
-void core1_entry(void) {
-
-    cvbs_init();
-
-    // Set up a test page for the screen memory.
-    memcpy((void*)(&xram[ADDR_UPPERCASE_GLYPHS_CHRSET]), (void*)vic_char_rom, sizeof(vic_char_rom));
-    memset((void*)&xram[ADDR_UNEXPANDED_SCR], 0x20, 1024);
-
-    // TODO: sprintf doesn't work for VIC. Doesn't align with screen codes.
-    //sprintf((char*)(&xram[ADDR_UNEXPANDED_SCR]), "PIVIC TEST 1234");
-    //sprintf((char*)(&xram[ADDR_UNEXPANDED_SCR] + 22), "0123456789012345678901");
-
-    // First row
-    xram[ADDR_UNEXPANDED_SCR + 0] = 16;  // P
-    xram[ADDR_UNEXPANDED_SCR + 1] = 9;   // I
-    xram[ADDR_UNEXPANDED_SCR + 2] = 22;  // V
-    xram[ADDR_UNEXPANDED_SCR + 3] = 9;   // I
-    xram[ADDR_UNEXPANDED_SCR + 4] = 3;   // C
-    
-
+void vic_pio_init(void) {
     // Set up VIC PIO.
     pio_set_gpio_base(VIC_PIO, VIC_PIN_BANK);
     // TODO: We might add the second output clock in the future.
@@ -216,7 +193,32 @@ void core1_entry(void) {
     pio_sm_init(VIC_PIO, VIC_SM, offset, &config);
     pio_sm_set_enabled(VIC_PIO, VIC_SM, true);   
     printf("VIC init done\n");
+}
 
+void vic_memory_init() {
+    memcpy((void*)(&xram[ADDR_UPPERCASE_GLYPHS_CHRSET]), (void*)vic_char_rom, sizeof(vic_char_rom));
+
+    // Set up a test page for the screen memory.
+    memset((void*)&xram[ADDR_UNEXPANDED_SCR], 0x20, 1024);
+
+    // TODO: sprintf doesn't work for VIC. Doesn't align with screen codes.
+    //sprintf((char*)(&xram[ADDR_UNEXPANDED_SCR]), "PIVIC TEST 1234");
+    //sprintf((char*)(&xram[ADDR_UNEXPANDED_SCR] + 22), "0123456789012345678901");
+
+    // First row
+    xram[ADDR_UNEXPANDED_SCR + 0] = 16;  // P
+    xram[ADDR_UNEXPANDED_SCR + 1] = 9;   // I
+    xram[ADDR_UNEXPANDED_SCR + 2] = 22;  // V
+    xram[ADDR_UNEXPANDED_SCR + 3] = 9;   // I
+    xram[ADDR_UNEXPANDED_SCR + 4] = 3;   // C
+}
+
+void core1_entry(void) {
+
+    cvbs_init();
+    vic_pio_init();
+    vic_memory_init();
+    
     //
     // START OF VIC CHIP STATE
     //
@@ -335,6 +337,8 @@ void core1_entry(void) {
     //
 
 
+    // TODO: Does this need some latency between the PIO and this loop like the ULA has? 
+
     while (1) {
         // Poll for PIO IRQ 0. This is the rising edge of F1.
         while (!pio_interrupt_get(VIC_PIO, 1)) {
@@ -407,7 +411,7 @@ void core1_entry(void) {
                 hblank = false;
                 break;
             case 38:
-                vblankPulse = false;
+                vsyncPulse = vblankPulse = false;
                 break;
         }
 
@@ -481,10 +485,6 @@ void core1_entry(void) {
         // - On reaching 0, clears In Matrix Y flag (see implementation above)
         if (lastLine) {
             verticalCellCounter = numOfRows;
-
-            // TODO: Remove, as this is temporary to check VMC reset.
-            videoMatrixCounter = 0;
-            videoMatrixLatch = 0;
         }
         
         // Video Matrix Counter (VMC):
@@ -594,6 +594,9 @@ void core1_entry(void) {
             // Screen Origin Y comparator is also here for efficency.
             screenYComp = (verticalCounter == screenOriginY);
         }
+
+        // Clears video matrix latch, on each of the long syncs during vsync (see code above)
+        vsyncPulse = (vsync && vblankPulse);
 
         // 'In Matrix' calculations, i.e. are we within the video matrix at the moment?
         // 'In Matrix Y' cleared on either last line or vert cell counter reaching it last value.
