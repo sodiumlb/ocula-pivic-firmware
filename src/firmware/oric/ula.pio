@@ -46,20 +46,26 @@ series:
     jmp y-- repeat
 .wrap
 
-; RAM emulation read & write
-
-.program xram_read
+; RAM emulation - read & write from/to xram
+; Address of the memory to read from is set in x by setup
+; DMA setup required to take the address, fetch data and return
+; Autopull and autpush used
+.program xread
+.in 16 left auto 16
+.out 8 right auto 8
 .wrap_target
     mov isr x           ; Base address to fetch from in the system
-    wait irq 0 [30]     ; sample address ca 200ns after phi0
+    wait 0 gpio 13 [30] ; sample address ca 200ns after phi0 falling edge (pin 29 => pin 13 in upper GPIO bank)
     in pins 16          ; Pull in rest of address from 6502
     out pins 8          ; Blocking till data returns. pindirs set elsewhere
 .wrap
 
-.program xram_write
+; Address of the memory to write to is set in x by setup
+; DMA setup required to take the address then data and write to memory
+.program xwrite
 .wrap_target
 start:
-    wait irq 2          ; Wait for PHI rising edge
+    wait 1 gpio 13      ; Wait for phi0 rising edge (pin 29 => pin 13 in upper GPIO bank)
     jmp pin start       ; If read, go back to start
     mov osr pins        ; Capture D[7:0],PHI,A[15:0],RnW,nMAP
     out y 8             ; Temporary store data in y
@@ -67,6 +73,72 @@ start:
     mov isr x           ; System top address bits
     in osr 16           ; shift in bottom address
     push                ; Send address to FIFO
-    mov isr y           ; 
+    mov isr y           ; Move data to isr
     push                ; Send data to FIFO
+.wrap
+
+.program xdir
+.wrap_target
+.set 1
+.out 8
+start:
+    wait 0 irq 0        ; Wait for, then clear IRQ. Signaled by decode. Only run if not ROM or IO
+    jmp pin dir_out     ; If PHI pin is high, jump to dir_out 
+    jmp start           ; else return to IRQ loop
+dir_out:
+    set pins 1          ; Set DIR on external bus transciver to output
+    mov pindirs ~null   ; Set data pins to output
+    wait 0 gpio 13      ; Wait for phi0 falling edge (pin 29 => pin 13 in upper GPIO bank)
+    mov pindirs null    ; Disable data pins output
+    set pins 0          ; Set DIR on external bus transciver to input
+.wrap
+
+; Decode logic for driving DIR and indirectly nROMSEL and nIO
+; PIO needs to run in upper GPIO bank while nROMSEL and nIO is in lower
+; Requires nMAP to be polarity inverted in GPIO setup 
+; This program freeruns to get close to the original decode logic behaviour
+; x set to 0x3 in setup for comparing to A[15:8] and A[15:14]
+.program decode
+.wrap_target
+start:
+    mov y pins          ; Get A15-A8
+    jmp x!=y not_io     ; Skip if not page 3
+is_io:
+    irq prev set 1      ; Assert nIO
+    irq prev clear 2    ; Clear nROMSEL
+    jmp start
+not_io:
+    jmp pin not_rom     ; if MAP is asserted
+    mov osr pins        ; Get A15-A8
+    out null 6          ; Spool out A13-A8
+    out y 2             ; Get A15-A14
+    jmp x!=y not_rom    ; Skip if not [A15:A14]==0b11
+is_rom:
+    irq prev clear 1    ; Clear nIO
+    irq prev set 2      ; Assert nROMSEL
+    jmp start
+not_rom:
+    irq prev clear 1    ; Clear nIO
+    irq prev clear 2    ; Clear nROMSEL
+    irq next set 0      ; Signal xdir on pio#+1 
+.wrap
+
+; nIO pin program
+; Controlled by ula_decode running in PIO+1
+; Active low with pin drive on side set
+.program nio
+.side_set 1
+.wrap_target
+    wait irq 1  side 1  ; Clear pin and wait for IRQ raised
+    irq wait 1  side 0  ; Assert pin and wait for IRQ cleared
+.wrap
+
+; nROMSEL pin program
+; Controlled by ula_decode running in PIO+1
+; Active low with pin drive on side set
+.program nromsel
+.side_set 1
+.wrap_target
+    wait irq 2  side 1  ; Clear pin and wait for IRQ raised
+    irq wait 2  side 0  ; Assert pin and wait for IRQ cleared
 .wrap

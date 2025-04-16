@@ -324,6 +324,167 @@ void rgbs_pio_init(void){
     printf("RGBS PIO init done\n");
 }
 
+void decode_pio_init(void){
+    pio_set_gpio_base (DECODE_PIO, DECODE_PIN_OFFS);
+    uint offset = pio_add_program(DECODE_PIO, &decode_program);
+    pio_sm_config config = decode_program_get_default_config(offset);
+    sm_config_set_in_pin_base(&config, ADDR_PIN_BASE + 8);
+    sm_config_set_in_pin_count(&config, 8);
+    sm_config_set_jmp_pin(&config, NMAP_PIN);
+    //Invert input polarity of nMAP to make it active high (MAP)
+    gpio_set_inover(NMAP_PIN, GPIO_OVERRIDE_INVERT);
+    pio_sm_init(DECODE_PIO, DECODE_SM, offset, &config);
+    //Set sm x register to 3 for decode matching of 0x03-- and A[15:14]==0x03
+    pio_sm_exec_wait_blocking(DECODE_PIO, DECODE_SM, pio_encode_set(pio_x, 0x3));
+    pio_sm_set_enabled(DECODE_PIO, DECODE_SM, true);   
+    printf("DECODE PIO init done\n");
+}
+
+void nio_pio_init(void){
+    pio_set_gpio_base (NIO_PIO, NIO_PIN_OFFS);
+    pio_gpio_init(NIO_PIO, NIO_PIN);
+    gpio_set_drive_strength(NIO_PIN, GPIO_DRIVE_STRENGTH_2MA);
+    pio_sm_set_consecutive_pindirs(NIO_PIO, NIO_SM, NIO_PIN, 1, true);
+    uint offset = pio_add_program(NIO_PIO, &nio_program);
+    pio_sm_config config = nio_program_get_default_config(offset);
+    sm_config_set_sideset_pin_base(&config, NIO_PIN);
+    pio_sm_init(NIO_PIO, NIO_SM, offset, &config);
+    pio_sm_set_enabled(NIO_PIO, NIO_SM, true);   
+    printf("nIO PIO init done\n");
+}
+
+void nromsel_pio_init(void){
+    pio_set_gpio_base (NROMSEL_PIO, NROMSEL_PIN_OFFS);
+    pio_gpio_init(NROMSEL_PIO, NROMSEL_PIN);
+    gpio_set_drive_strength(NROMSEL_PIN, GPIO_DRIVE_STRENGTH_2MA);
+    pio_sm_set_consecutive_pindirs(NROMSEL_PIO, NROMSEL_SM, NROMSEL_PIN, 1, true);
+    uint offset = pio_add_program(NROMSEL_PIO, &nromsel_program);
+    pio_sm_config config = nromsel_program_get_default_config(offset);
+    sm_config_set_sideset_pin_base(&config, NROMSEL_PIN);
+    pio_sm_init(NROMSEL_PIO, NROMSEL_SM, offset, &config);
+    pio_sm_set_enabled(NROMSEL_PIO, NROMSEL_SM, true);   
+    printf("nROMSEL PIO init done\n");
+}
+
+void xread_pio_init(void){
+    pio_set_gpio_base (XREAD_PIO, XREAD_PIN_OFFS);
+    for(uint32_t i = 0; i < DATA_PIN_COUNT; i++){
+        pio_gpio_init(XREAD_PIO, DATA_PIN_BASE+i);
+        gpio_set_drive_strength(DATA_PIN_BASE+i, GPIO_DRIVE_STRENGTH_2MA);
+     }
+    uint offset = pio_add_program(XREAD_PIO, &xread_program);
+    pio_sm_config config = xread_program_get_default_config(offset);
+    //Pin counts and autopush/autopull set in program
+    sm_config_set_in_pin_base(&config, ADDR_PIN_BASE);  
+    sm_config_set_out_pin_base(&config, DATA_PIN_BASE);
+    pio_sm_init(XREAD_PIO, XREAD_SM, offset, &config);
+    pio_sm_put_blocking(XREAD_PIO, XREAD_SM, (uintptr_t)xram >> 16);
+    pio_sm_exec_wait_blocking(XREAD_PIO, XREAD_SM, pio_encode_pull(false, true));
+    pio_sm_exec_wait_blocking(XREAD_PIO, XREAD_SM, pio_encode_mov(pio_x, pio_osr));
+    pio_sm_set_enabled(XREAD_PIO, XREAD_SM, true);
+
+    // Set up two DMA channels for fetching address then data
+    int addr_chan = dma_claim_unused_channel(true);
+    int data_chan = dma_claim_unused_channel(true);
+
+    // DMA move the requested memory data to PIO for output
+    dma_channel_config data_dma = dma_channel_get_default_config(data_chan);
+    channel_config_set_high_priority(&data_dma, true);
+    channel_config_set_dreq(&data_dma, pio_get_dreq(XREAD_PIO, XREAD_SM, true));
+    channel_config_set_read_increment(&data_dma, false);
+    channel_config_set_write_increment(&data_dma, false);
+    channel_config_set_transfer_data_size(&data_dma, DMA_SIZE_8);
+    channel_config_set_chain_to(&data_dma, addr_chan);
+    dma_channel_configure(
+        data_chan,
+        &data_dma,
+        &XREAD_PIO->txf[XREAD_SM],       // dst
+        xram,                            // src
+        1,
+        false);
+
+    // DMA move address from PIO into the data DMA config
+    dma_channel_config addr_dma = dma_channel_get_default_config(addr_chan);
+    channel_config_set_high_priority(&addr_dma, true);
+    channel_config_set_dreq(&addr_dma, pio_get_dreq(XREAD_PIO, XREAD_SM, false));
+    channel_config_set_read_increment(&addr_dma, false);
+    channel_config_set_write_increment(&addr_dma, false);
+    channel_config_set_chain_to(&addr_dma, data_chan);
+    dma_channel_configure(
+        addr_chan,
+        &addr_dma,
+        &dma_channel_hw_addr(data_chan)->read_addr,      // dst
+        &XREAD_PIO->rxf[XREAD_SM],                       // src
+        1,
+        true);
+    
+    printf("XREAD PIO init done\n");
+}
+
+void xwrite_pio_init(void){
+    pio_set_gpio_base (XWRITE_PIO, XWRITE_PIN_OFFS);
+    uint offset = pio_add_program(XWRITE_PIO, &xread_program);
+    pio_sm_config config = xwrite_program_get_default_config(offset);
+    sm_config_set_in_pin_base(&config, DATA_PIN_BASE);  
+    pio_sm_init(XWRITE_PIO, XWRITE_SM, offset, &config);
+    pio_sm_put_blocking(XWRITE_PIO, XWRITE_SM, (uintptr_t)xram >> 16);
+    pio_sm_exec_wait_blocking(XWRITE_PIO, XWRITE_SM, pio_encode_pull(false, true));
+    pio_sm_exec_wait_blocking(XWRITE_PIO, XWRITE_SM, pio_encode_mov(pio_x, pio_osr));
+    pio_sm_set_enabled(XWRITE_PIO, XWRITE_SM, true);
+
+    // Set up two DMA channels for fetching address then data
+    int addr_chan = dma_claim_unused_channel(true);
+    int data_chan = dma_claim_unused_channel(true);
+
+    // DMA move the requested memory data to PIO for output
+    dma_channel_config data_dma = dma_channel_get_default_config(data_chan);
+    channel_config_set_high_priority(&data_dma, true);
+    channel_config_set_dreq(&data_dma, pio_get_dreq(XREAD_PIO, XREAD_SM, false));
+    channel_config_set_read_increment(&data_dma, false);
+    channel_config_set_write_increment(&data_dma, false);
+    channel_config_set_transfer_data_size(&data_dma, DMA_SIZE_8);
+    channel_config_set_chain_to(&data_dma, addr_chan);
+    dma_channel_configure(
+        data_chan,
+        &data_dma,
+        xram,                            // dst
+        &XREAD_PIO->rxf[XREAD_SM],       // src
+        1,
+        false);
+
+    // DMA move address from PIO into the data DMA config
+    dma_channel_config addr_dma = dma_channel_get_default_config(addr_chan);
+    channel_config_set_high_priority(&addr_dma, true);
+    channel_config_set_dreq(&addr_dma, pio_get_dreq(XWRITE_PIO, XWRITE_SM, false));
+    channel_config_set_read_increment(&addr_dma, false);
+    channel_config_set_write_increment(&addr_dma, false);
+    channel_config_set_chain_to(&addr_dma, data_chan);
+    dma_channel_configure(
+        addr_chan,
+        &addr_dma,
+        &dma_channel_hw_addr(data_chan)->al2_write_addr_trig,   // dst
+        &XREAD_PIO->rxf[XREAD_SM],                              // src
+        1,
+        true);
+    
+    printf("XREAD PIO init done\n");
+}
+
+void xdir_pio_init(void){
+    pio_set_gpio_base (XDIR_PIO, XDIR_PIN_OFFS);
+    pio_gpio_init(XDIR_PIO, DIR_PIN);
+    gpio_set_drive_strength(DIR_PIN, GPIO_DRIVE_STRENGTH_2MA);
+    pio_sm_set_consecutive_pindirs(XDIR_PIO, XDIR_SM, DIR_PIN, 1, true);
+    uint offset = pio_add_program(XDIR_PIO, &xdir_program);
+    pio_sm_config config = xdir_program_get_default_config(offset);
+    sm_config_set_set_pin_base(&config, DIR_PIN);
+    sm_config_set_out_pin_base(&config, DATA_PIN_BASE);
+    sm_config_set_jmp_pin(&config, PHI_PIN);
+    pio_sm_init(XDIR_PIO, XDIR_SM, offset, &config);
+    pio_sm_set_enabled(XDIR_PIO, XDIR_SM, true);   
+    printf("XDIR PIO init done\n");   
+}
+
 void ula_init(void){
     printf("ula_init()\n");
     memcpy((void*)(&xram[ADDR_LORES_STD_CHRSET+(0x20*8)]), (void*)oric_font, sizeof(oric_font));
@@ -341,6 +502,12 @@ void ula_init(void){
     printf("PIO inits\n");
     phi_pio_init();
     rgbs_pio_init();
+    decode_pio_init();
+    nio_pio_init();
+    nromsel_pio_init();
+    xread_pio_init();
+    xwrite_pio_init();
+    xdir_pio_init();
 
     multicore_launch_core1(core1_loop);
 }
