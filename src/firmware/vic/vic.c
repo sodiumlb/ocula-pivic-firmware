@@ -572,8 +572,6 @@ void core1_entry(void) {
         // Everything calculated below this line can only happen in F2 and are static during F1.
 
         // Re-calculated in F2 of every cycle (not F1). The values are however tested in F1 multiple times.
-        newLine = (horizontalCounter == 0);
-        lastLine = (verticalCounter == 311);
         cdcLastValue = (cellDepthCounter == lastCellLine);
 
         // X Decoder - Phase 2 updates:
@@ -581,7 +579,11 @@ void core1_entry(void) {
         // - This isn't true for all cases, as some include F1 in the NOR, so don't change until F1.
         // - This is why some X decoding is also done at the start of F1.
         switch (horizontalCounter) {
+            case 0:
+                newLine = true;
+                break;
             case 1:
+                newLine = false;
                 // Horizontal sync is only triggered when vertical blanking is not active.
                 hsync = !vblank;
                 break;
@@ -607,6 +609,9 @@ void core1_entry(void) {
         // Y Decoder - Phase 2 updates for vertical sync and blanking.
         if (newLine) {
             switch (verticalCounter) {
+                case 0:
+                    lastLine = false;
+                    break;
                 case 1:
                     vblank = true;
                     break;
@@ -618,6 +623,9 @@ void core1_entry(void) {
                     break;
                 case 10:
                     vblank = false;
+                    break;
+                case 311:
+                    lastLine = true;
                     break;
             }
 
