@@ -32,6 +32,8 @@
 #define ADDR_UNEXPANDED_SCR  0x1E00
 #define ADDR_8KPLUS_EXP_SCR  0x1000
 
+#define ADDR_COLOUR_RAM      0x9600
+
 
 #define CVBS_DELAY_CONST_POST (15-3)
 #define CVBS_CMD(L0,L1,DC,delay,count) \
@@ -114,7 +116,6 @@ const uint32_t pal_palette_e[16] = {
 
 volatile uint32_t overruns = 0;
 
-#define OUTPUT_PIXELS
 
 static uint8_t inline __attribute__((always_inline)) outputPixels(
         uint16_t verticalCounter, uint8_t horizontalCounter, 
@@ -211,6 +212,23 @@ void vic_memory_init() {
     xram[ADDR_UNEXPANDED_SCR + 2] = 22;  // V
     xram[ADDR_UNEXPANDED_SCR + 3] = 9;   // I
     xram[ADDR_UNEXPANDED_SCR + 4] = 3;   // C
+    xram[ADDR_COLOUR_RAM + 0] = 2;
+    xram[ADDR_COLOUR_RAM + 1] = 3;
+    xram[ADDR_COLOUR_RAM + 2] = 4;
+    xram[ADDR_COLOUR_RAM + 3] = 5;
+    xram[ADDR_COLOUR_RAM + 4] = 6;
+
+    // Second row
+    xram[ADDR_UNEXPANDED_SCR + 22] = 16;  // P
+    xram[ADDR_UNEXPANDED_SCR + 23] = 9;   // I
+    xram[ADDR_UNEXPANDED_SCR + 24] = 22;  // V
+    xram[ADDR_UNEXPANDED_SCR + 25] = 9;   // I
+    xram[ADDR_UNEXPANDED_SCR + 26] = 3;   // C
+    xram[ADDR_COLOUR_RAM + 22] = 7;
+    xram[ADDR_COLOUR_RAM + 23] = 0;
+    xram[ADDR_COLOUR_RAM + 24] = 2;
+    xram[ADDR_COLOUR_RAM + 25] = 3;
+    xram[ADDR_COLOUR_RAM + 26] = 4;
 }
 
 void core1_entry(void) {
@@ -247,6 +265,7 @@ void core1_entry(void) {
     uint8_t  cellIndex = 0;
     uint8_t  charData = 0;
     uint8_t  colourData = 0;
+    uint8_t  colourDataLatch = 0;
 
     // New Line: Triggered when horiz counter resets during F1, but only exposed during F2, then used in next F1.
     // - Active for only that one cycle.
@@ -509,7 +528,7 @@ void core1_entry(void) {
                 videoMatrixLatch = videoMatrixCounter;
             }
             // Always incremenets when in matrix, and is not loading from latch.
-            videoMatrixCounter++;
+            //videoMatrixCounter++;
         }
 
         // At the end of F1, if 'In Matrix', then the data read from memory arrives.
@@ -517,8 +536,13 @@ void core1_entry(void) {
             if (horizontalCellCounter & 1) {
                 // TODO: This is where we read the cell index from VIC PIO.
                 // TODO: We will instead read from local RAM, which has a copy of what the CPU put into the external RAM.
-                cellIndex = xram[ADDR_UNEXPANDED_SCR + 0];//(videoMatrixCounter >> 1)];
-                colourData = 3;
+                cellIndex = xram[ADDR_UNEXPANDED_SCR + videoMatrixCounter];
+                
+                // Colour data comes in at this point but not "used" until chardata comes in.
+                colourDataLatch = xram[ADDR_COLOUR_RAM + videoMatrixCounter];
+
+                // EXPERIMENTAL: Not where it happens in the real chip, but let's try this.
+                videoMatrixCounter++;
             }
             else {
                 // TODO: This is where we read the char data from VIC PIO.
@@ -526,6 +550,9 @@ void core1_entry(void) {
                 // In this emulation, charData acts as the pixel shift register. We load it here, i.e. end
                 // of F1 / start of F2. In the real chip, it happens at the very start of F2.
                 charData = xram[ADDR_UPPERCASE_GLYPHS_CHRSET + (cellIndex << 3) + cellDepthCounter];
+
+                // Now that the char data is available, we can let the colour data "in".
+                colourData = colourDataLatch;
             }
         }
 
