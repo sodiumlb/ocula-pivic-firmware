@@ -400,18 +400,21 @@ void core1_entry(void) {
 
                 // While we're in the matrix, and outputting pixels, nothing for inMatrixDelay to do.
 
-                case 8:
+                case 8: break;
+                case 9: break;
+                case 10: break;
+                case 11:
                     // We're now leaving the matrix. It happens immediately. HCC/VMC counters stop.
                     inMatrix = false;
                     break;
-                case 9:
+                case 12:
                     // Address Output disabled a cycle later.
                     addressOutputEnabled = false;
                     break;
-                case 10:
+                case 13:
                     // Additional 1 cycle delay to allow pixel shift register to unload last 4 bits.
                     break;
-                case 11:
+                case 14:
                     // And finally, pixel output turned off.
                     // TODO: The timing of the pixel output disable doesn't seem to quite match up.
                     pixelOutputEnabled = false;
