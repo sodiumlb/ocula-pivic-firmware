@@ -129,8 +129,8 @@ not_rom:
 .program nio
 .side_set 1
 .wrap_target
-    wait irq 1  side 1  ; Clear pin and wait for IRQ raised
-    irq wait 1  side 0  ; Assert pin and wait for IRQ cleared
+    wait 1 irq 1  side 1  ; Clear pin and wait for IRQ raised
+    irq wait 1  side 0    ; Assert pin and IRQ (again), and wait for IRQ cleared
 .wrap
 
 ; nROMSEL pin program
@@ -139,6 +139,6 @@ not_rom:
 .program nromsel
 .side_set 1
 .wrap_target
-    wait irq 2  side 1  ; Clear pin and wait for IRQ raised
-    irq wait 2  side 0  ; Assert pin and wait for IRQ cleared
+    wait 1 irq 2  side 1  ; Clear pin and wait for IRQ raised
+    irq wait 2  side 0    ; Assert pin and IRQ (again), and wait for IRQ cleared
 .wrap
