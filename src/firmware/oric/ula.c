@@ -451,6 +451,7 @@ void xwrite_pio_init(void){
     // Set up two DMA channels for fetching address then data
     int addr_chan = dma_claim_unused_channel(true);
     int data_chan = dma_claim_unused_channel(true);
+    xwrite_dma_data_chan = data_chan;
 
     // DMA move the requested memory data to PIO for output
     dma_channel_config data_dma = dma_channel_get_default_config(data_chan);
@@ -544,5 +545,18 @@ void ula_init(void){
 }
 
 void ula_task(void){
-
+    //if(pio2->irq > 1)
+    uint64_t pins = gpio_get_all64();
+    uint16_t addr = (pins >> ADDR_PIN_BASE) & 0xFFFF;
+    uint8_t data = (pins >> DATA_PIN_BASE) & 0xFF;
+    uint8_t map = (pins >> NMAP_PIN) & 0x1;
+    uint8_t rnw = (pins >> RNW_PIN) & 0x1;
+    uint8_t pirq0 = pio0->irq & 0xFF;
+    uint8_t pirq1 = pio1->irq & 0xFF;
+    uint8_t pirq2 = pio2->irq & 0xFF;
+    uint32_t xwrite_addr = dma_hw->ch[xwrite_dma_data_chan].write_addr;
+    uint8_t xw_fifo = pio_sm_get_rx_fifo_level(XWRITE_PIO, XWRITE_SM);
+    //printf("%llx %08x %08x %08x\n", gpio_get_all64(), pio0->irq, pio1->irq, pio2->irq);
+    sprintf((char*)(&xram[ADDR_LORES_SCR]+20*40), "A:%04x D:%02x %c PIO:%02x%02x%02x WX:%08x %d\n", 
+        addr, data, (rnw ? 'R' : 'W'), pirq0, pirq1, pirq2, xwrite_addr, xw_fifo);
 }
