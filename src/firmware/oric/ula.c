@@ -299,6 +299,7 @@ void core1_loop(void){
 void phi_pio_init(void){
     pio_set_gpio_base (PHI_PIO, PHI_PIN_OFFS);
     pio_gpio_init(PHI_PIO, PHI_PIN);
+    gpio_set_input_enabled(PHI_PIN, true);
     pio_sm_set_consecutive_pindirs(PHI_PIO, PHI_SM, PHI_PIN, 1, true);
     uint offset = pio_add_program(PHI_PIO, &phi_program);
     pio_sm_config config = phi_program_get_default_config(offset);
@@ -326,13 +327,16 @@ void rgbs_pio_init(void){
 
 void decode_pio_init(void){
     pio_set_gpio_base (DECODE_PIO, DECODE_PIN_OFFS);
+    gpio_init(NMAP_PIN);
+    gpio_set_input_enabled(NMAP_PIN, true);
+    gpio_set_pulls(NMAP_PIN, true, false);             //E9 work-around
+    //Invert input polarity of nMAP to make it active high (MAP)
+    gpio_set_inover(NMAP_PIN, GPIO_OVERRIDE_INVERT);
     uint offset = pio_add_program(DECODE_PIO, &decode_program);
     pio_sm_config config = decode_program_get_default_config(offset);
     sm_config_set_in_pin_base(&config, ADDR_PIN_BASE + 8);
     sm_config_set_in_pin_count(&config, 8);
     sm_config_set_jmp_pin(&config, NMAP_PIN);
-    //Invert input polarity of nMAP to make it active high (MAP)
-    gpio_set_inover(NMAP_PIN, GPIO_OVERRIDE_INVERT);
     pio_sm_init(DECODE_PIO, DECODE_SM, offset, &config);
     //Set sm x register to 3 for decode matching of 0x03-- and A[15:14]==0x03
     pio_sm_exec_wait_blocking(DECODE_PIO, DECODE_SM, pio_encode_set(pio_x, 0x3));
@@ -369,9 +373,20 @@ void nromsel_pio_init(void){
 void xread_pio_init(void){
     pio_set_gpio_base (XREAD_PIO, XREAD_PIN_OFFS);
     for(uint32_t i = 0; i < DATA_PIN_COUNT; i++){
+        gpio_init(DATA_PIN_BASE+i);
+        gpio_set_input_enabled(DATA_PIN_BASE+i, true);
         pio_gpio_init(XREAD_PIO, DATA_PIN_BASE+i);
         gpio_set_drive_strength(DATA_PIN_BASE+i, GPIO_DRIVE_STRENGTH_2MA);
-     }
+    }
+    for(uint32_t i = 0; i < ADDR_PIN_COUNT; i++){
+        gpio_init(ADDR_PIN_BASE+i);
+        gpio_set_pulls(ADDR_PIN_BASE+i, false, true);   //E9 work-around
+        gpio_set_input_enabled(ADDR_PIN_BASE+i, true);
+    }
+    gpio_init(RNW_PIN);
+    gpio_set_input_enabled(RNW_PIN, true);
+    gpio_set_pulls(RNW_PIN, false, false);              //E9 work-around
+
     uint offset = pio_add_program(XREAD_PIO, &xread_program);
     pio_sm_config config = xread_program_get_default_config(offset);
     //Pin counts and autopush/autopull set in program
@@ -509,6 +524,21 @@ void ula_init(void){
     xwrite_pio_init();
     xdir_pio_init();
 
+    //Set unused outputs to defaults
+    gpio_set_function(CAS_PIN, GPIO_FUNC_SIO);
+    gpio_set_function(RAS_PIN, GPIO_FUNC_SIO);
+    gpio_set_function(MUX_PIN, GPIO_FUNC_SIO);
+    gpio_set_function(WREN_PIN, GPIO_FUNC_SIO);
+    gpio_set_dir(CAS_PIN, true);
+    gpio_set_dir(RAS_PIN, true);
+    gpio_set_dir(MUX_PIN, true);
+    gpio_set_dir(WREN_PIN, true);
+    gpio_put(CAS_PIN, true);
+    gpio_put(RAS_PIN, true);
+    gpio_put(MUX_PIN, true);
+    gpio_put(WREN_PIN, false);
+    
+    
     multicore_launch_core1(core1_loop);
 }
 
