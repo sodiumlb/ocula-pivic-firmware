@@ -438,9 +438,10 @@ void xread_pio_init(void){
 
 void xwrite_pio_init(void){
     pio_set_gpio_base (XWRITE_PIO, XWRITE_PIN_OFFS);
-    uint offset = pio_add_program(XWRITE_PIO, &xread_program);
+    uint offset = pio_add_program(XWRITE_PIO, &xwrite_program);
     pio_sm_config config = xwrite_program_get_default_config(offset);
-    sm_config_set_in_pin_base(&config, DATA_PIN_BASE);  
+    sm_config_set_in_pin_base(&config, DATA_PIN_BASE); 
+    sm_config_set_jmp_pin(&config, RNW_PIN); 
     pio_sm_init(XWRITE_PIO, XWRITE_SM, offset, &config);
     pio_sm_put_blocking(XWRITE_PIO, XWRITE_SM, (uintptr_t)xram >> 16);
     pio_sm_exec_wait_blocking(XWRITE_PIO, XWRITE_SM, pio_encode_pull(false, true));
@@ -454,7 +455,7 @@ void xwrite_pio_init(void){
     // DMA move the requested memory data to PIO for output
     dma_channel_config data_dma = dma_channel_get_default_config(data_chan);
     channel_config_set_high_priority(&data_dma, true);
-    channel_config_set_dreq(&data_dma, pio_get_dreq(XREAD_PIO, XREAD_SM, false));
+    channel_config_set_dreq(&data_dma, pio_get_dreq(XWRITE_PIO, XWRITE_SM, false));
     channel_config_set_read_increment(&data_dma, false);
     channel_config_set_write_increment(&data_dma, false);
     channel_config_set_transfer_data_size(&data_dma, DMA_SIZE_8);
@@ -463,7 +464,7 @@ void xwrite_pio_init(void){
         data_chan,
         &data_dma,
         xram,                            // dst
-        &XREAD_PIO->rxf[XREAD_SM],       // src
+        &XWRITE_PIO->rxf[XWRITE_SM],       // src
         1,
         false);
 
@@ -477,12 +478,12 @@ void xwrite_pio_init(void){
     dma_channel_configure(
         addr_chan,
         &addr_dma,
-        &dma_channel_hw_addr(data_chan)->al2_write_addr_trig,   // dst
-        &XREAD_PIO->rxf[XREAD_SM],                              // src
+        &dma_channel_hw_addr(data_chan)->write_addr,            // dst
+        &XWRITE_PIO->rxf[XWRITE_SM],                            // src
         1,
         true);
     
-    printf("XREAD PIO init done\n");
+    printf("XWRITE PIO init done\n");
 }
 
 void xdir_pio_init(void){
