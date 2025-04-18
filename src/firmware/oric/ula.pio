@@ -82,7 +82,7 @@ start:
 .set 1
 .out 8
 start:
-    wait 0 irq 0        ; Wait for, then clear IRQ. Signaled by decode. Only run if not ROM or IO
+    wait 1 irq 0        ; Wait for, then clear IRQ. Signaled by decode. Only run if not ROM or IO
     jmp pin dir_out     ; If PHI pin is high, jump to dir_out 
     jmp start           ; else return to IRQ loop
 dir_out:
