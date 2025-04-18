@@ -68,13 +68,13 @@ start:
     wait 1 gpio 13      ; Wait for phi0 rising edge (pin 29 => pin 13 in upper GPIO bank)
     jmp pin start       ; If read, go back to start
     mov osr pins        ; Capture D[7:0],PHI,A[15:0],RnW,nMAP
-    out y 8             ; Temporary store data in y
-    out null 1          ; Spool out PHI
+    out null 9          ; Spool out D[7:0], PHI
     mov isr x           ; System top address bits
     in osr 16           ; shift in bottom address
-    push                ; Send address to FIFO
-    mov isr y           ; Move data to isr
-    push                ; Send data to FIFO
+    push noblock        ; Send address to FIFO
+    wait 0 gpio 13      ; Wait for phi0 falling edge before capturing data
+    mov isr pins        ; Move data to isr
+    push noblock        ; Send data to FIFO
 .wrap
 
 .program xdir
