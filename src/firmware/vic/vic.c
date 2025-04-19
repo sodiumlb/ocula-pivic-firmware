@@ -70,7 +70,7 @@
 #define PAL_BACKPORCH    CVBS_CMD(18,18,18, 0, 4)
 
 // Vertical blanking and sync.
-// TODO: From original cvbs.c code. Doesn't match VIC chip.
+// TODO: From original cvbs.c code. Doesn't match VIC chip timings.
 #define PAL_LONG_SYNC_L  CVBS_CMD( 0, 0, 0, 0,133)
 #define PAL_LONG_SYNC_H  CVBS_CMD(18,18,18, 0,  9)
 #define PAL_SHORT_SYNC_L CVBS_CMD( 0, 0, 0, 0,  9)
@@ -112,22 +112,6 @@
 #define PAL_LYELLOW_O   CVBS_CMD(19,31,28,0,1)
 #define PAL_LYELLOW_E   CVBS_CMD(19,31,28,0,1)
 
-// PAL Border colours. Included here as an efficiency for outputting 4 pixels at once.
-#define PAL_BORDER_BLACK       CVBS_CMD(18,18,9,0,4)
-#define PAL_BORDER_WHITE       CVBS_CMD(23,23,29,0,4)
-#define PAL_BORDER_RED_O       CVBS_CMD(5,10,15,9,4)
-#define PAL_BORDER_RED_E       CVBS_CMD(10,5,15,6,4)
-#define PAL_BORDER_CYAN_O      CVBS_CMD(9,15,24,9,4)
-#define PAL_BORDER_CYAN_E      CVBS_CMD(15,9,24,7,4)
-#define PAL_BORDER_PURPLE_O    CVBS_CMD(29,22,18,5,4)
-#define PAL_BORDER_PURPLE_E    CVBS_CMD(22,29,18,10,4)
-#define PAL_BORDER_GREEN_O     CVBS_CMD(1,7,22,5,4)
-#define PAL_BORDER_GREEN_E     CVBS_CMD(7,1,22,10,4)
-#define PAL_BORDER_BLUE_O      CVBS_CMD(9,10,14,0,4)
-#define PAL_BORDER_BLUE_E      CVBS_CMD(9,10,14,0,4)
-#define PAL_BORDER_YELLOW_O    CVBS_CMD(5,15,25,0,4)
-#define PAL_BORDER_YELLOW_E    CVBS_CMD(5,15,25,0,4)
-
 const uint32_t pal_palette_o[16] = {
     PAL_BLACK,
     PAL_WHITE,
@@ -164,28 +148,6 @@ const uint32_t pal_palette_e[16] = {
     PAL_LGREEN_E,
     PAL_LBLUE_E,
     PAL_LYELLOW_E
-};
-
-const uint32_t pal_border_palette_o[8] = {
-    PAL_BORDER_BLACK,
-    PAL_BORDER_WHITE,
-    PAL_BORDER_RED_O,
-    PAL_BORDER_CYAN_O,
-    PAL_BORDER_PURPLE_O,
-    PAL_BORDER_GREEN_O,
-    PAL_BORDER_BLUE_O,
-    PAL_BORDER_YELLOW_O
-};
-
-const uint32_t pal_border_palette_e[8] = {
-    PAL_BORDER_BLACK,
-    PAL_BORDER_WHITE,
-    PAL_BORDER_RED_E,
-    PAL_BORDER_CYAN_E,
-    PAL_BORDER_PURPLE_E,
-    PAL_BORDER_GREEN_E,
-    PAL_BORDER_BLUE_E,
-    PAL_BORDER_YELLOW_E
 };
 
 
@@ -320,16 +282,16 @@ void core1_entry_new(void) {
     //
 
     // Hard coded control registers for now (from default PAL VIC).
-    uint8_t screenOriginX = 12;          // 7-bit horiz counter value to match for left of video matrix
-    uint8_t screenOriginY = 38 * 2;      // 8-bit vert counter value (x 2) to match for top of video matrix
-    uint8_t numOfColumns = 22;           // 7-bit number of video matrix columns
-    uint8_t numOfRows = 23;              // 6-bit number of video matrix rows
-    uint8_t lastCellLine = 7;            // Last Cell Depth Counter value. Depends on double height mode.
-    uint8_t characterSizeShift = 3;      // Number of bits the Cell Depth Counter counts over.
-    uint8_t backgroundColourIndex = 1;   // 4-bit background colour index
-    uint8_t borderColourIndex = 11;      // 3-bit border colour index
-    uint8_t auxiliaryColourIndex = 0;    // 4-bit auxiliary colour index
-    uint8_t reverse = 0;                 // 1-bit reverse state
+    uint8_t  screenOriginX = 12;         // 7-bit horiz counter value to match for left of video matrix
+    uint8_t  screenOriginY = 38 * 2;     // 8-bit vert counter value (x 2) to match for top of video matrix
+    uint8_t  numOfColumns = 22;          // 7-bit number of video matrix columns
+    uint8_t  numOfRows = 23;             // 6-bit number of video matrix rows
+    uint8_t  lastCellLine = 7;           // Last Cell Depth Counter value. Depends on double height mode.
+    uint8_t  characterSizeShift = 3;     // Number of bits the Cell Depth Counter counts over.
+    uint8_t  backgroundColourIndex = 1;  // 4-bit background colour index
+    uint8_t  borderColourIndex = 11;     // 3-bit border colour index
+    uint8_t  auxiliaryColourIndex = 0;   // 4-bit auxiliary colour index
+    uint8_t  reverse = 0;                // 1-bit reverse state
     uint16_t videoMemoryStart = 0;       // Decoded starting address for screen memory.
     uint16_t colourMemoryStart = 0;      // Decoded starting address for colour memory.
     uint16_t characterMemoryStart = 0;   // Decoded starting address for character memory.
@@ -362,9 +324,9 @@ void core1_entry_new(void) {
     uint32_t auxiliaryColourEven = 0;    // CVBS command for auxiliary colour on even line.
 
     // Holds the colour commands for each multi colour colour for odd and even lines.
-    uint32_t  multiColourTableOdd[4] = { 0, 0, 0, 0};
-    uint32_t  multiColourTableEven[4] = { 0, 0, 0, 0};
-    uint32_t  *multiColourTable = multiColourTableEven;
+    uint32_t multiColourTableOdd[4] = { 0, 0, 0, 0};
+    uint32_t multiColourTableEven[4] = { 0, 0, 0, 0};
+    uint32_t *multiColourTable = multiColourTableEven;
 
     // Every cpu cycle, we output four pixels. The values are temporarily stored in these vars.
     uint32_t pixel1 = 0;
@@ -433,6 +395,10 @@ void core1_entry_new(void) {
         if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
             
             if (horizontalCounter == PAL_HBLANK_START) {
+                // Horizontal blanking doesn't actually start until 2 pixels in.
+                pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+
                 // Start of horizontal blanking. Let's send all blanking CVBS commands up front.
                 // Horiz Blanking - From: 70.5  To: 12  Len: 12.5 cycles
                 // Front Porch - From: 70.5  To: 1.5  Len: 2 cycles
@@ -515,6 +481,9 @@ void core1_entry_new(void) {
                         if (horizontalCounter > PAL_HBLANK_END) {
                             // Output four border pixels.
                             pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                         }
                         // Nothing to do otherwise. Still in blanking if below 12.
                         break;
@@ -523,6 +492,9 @@ void core1_entry_new(void) {
                     case FETCH_MATRIX_LINE:
                         if (horizontalCounter > PAL_HBLANK_END) {
                             // Output four border pixels.
+                            pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                             pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                         }
                         if (horizontalCounter == screenOriginX) {
