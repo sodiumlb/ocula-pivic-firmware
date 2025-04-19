@@ -311,19 +311,19 @@ void core1_entry_new(void) {
     //
 
     // Hard coded control registers for now (from default PAL VIC).
-    uint8_t screenOriginX = 12;         // 7-bit horiz counter value to match for left of video matrix
-    uint8_t screenOriginY = 38 * 2;     // 8-bit vert counter value (x 2) to match for top of video matrix
-    uint8_t numOfColumns = 22;          // 7-bit number of video matrix columns
-    uint8_t numOfRows = 23;             // 6-bit number of video matrix rows
-    uint8_t lastCellLine = 7;           // Last Cell Depth Counter value. Depends on double height mode.
-    uint8_t characterSizeShift = 3;     // Number of bits the Cell Depth Counter counts over.
-    uint8_t backgroundColourIndex = 1;  // 4-bit background colour index
-    uint8_t borderColourIndex = 11;     // 3-bit border colour index
-    uint8_t auxiliaryColourIndex = 0;   // 4-bit auxiliary colour index
-    uint8_t reverse = 0;                // 1-bit reverse state
-    uint16_t videoMemoryStart = 0;      // Decoded starting address for screen memory.
-    uint16_t colourMemoryStart = 0;     // Decoded starting address for colour memory.
-    uint16_t characterMemoryStart = 0;  // Decoded starting address for character memory.
+    uint8_t screenOriginX = 12;          // 7-bit horiz counter value to match for left of video matrix
+    uint8_t screenOriginY = 38 * 2;      // 8-bit vert counter value (x 2) to match for top of video matrix
+    uint8_t numOfColumns = 22;           // 7-bit number of video matrix columns
+    uint8_t numOfRows = 23;              // 6-bit number of video matrix rows
+    uint8_t lastCellLine = 7;            // Last Cell Depth Counter value. Depends on double height mode.
+    uint8_t characterSizeShift = 3;      // Number of bits the Cell Depth Counter counts over.
+    uint8_t backgroundColourIndex = 1;   // 4-bit background colour index
+    uint8_t borderColourIndex = 11;      // 3-bit border colour index
+    uint8_t auxiliaryColourIndex = 0;    // 4-bit auxiliary colour index
+    uint8_t reverse = 0;                 // 1-bit reverse state
+    uint16_t videoMemoryStart = 0;       // Decoded starting address for screen memory.
+    uint16_t colourMemoryStart = 0;      // Decoded starting address for colour memory.
+    uint16_t characterMemoryStart = 0;   // Decoded starting address for character memory.
 
     // Counters.
     uint16_t videoMatrixCounter = 0;     // 12-bit video matrix counter (VMC)
@@ -335,22 +335,22 @@ void core1_entry_new(void) {
     uint8_t  cellDepthCounter = 0;       // 4-bit cell depth counter (sounds either from 0-7, or 0-15)
 
     // Values normally fetched externally, from screen mem, colour RAM and char mem.
-    uint8_t  cellIndex = 0;
-    uint8_t  charData = 0;
-    uint8_t  colourData = 0;
-    uint8_t  colourDataLatch = 0;
+    uint8_t  cellIndex = 0;              // 8 bits fetched from screen memory.
+    uint8_t  charData = 0;               // 8 bits of bitmap data fetched from character memory.
+    uint8_t  colourData = 0;             // 4 bits fetched from colour memory (top bit multi/hires mode)
+    uint8_t  colourDataLatch = 0;        // 4 bits latched from colour memory during cell index fetch.
 
     // Holds the colour commands for border, background and auxiliary.
-    uint32_t foregroundColour = 0;      // CVBS command for the foreground colour.
-    uint32_t borderColour = 0;          // Points to either odd or even border colour.
-    uint32_t borderColourOdd = 0;       // CVBS command for border colour on odd line.
-    uint32_t borderColourEven = 0;      // CVBS command for border colour on even line.
-    uint32_t backgroundColour = 0;      // Points to either odd or even background colour.
-    uint32_t backgroundColourOdd = 0;   // CVBS command for background colour on odd line.
-    uint32_t backgroundColourEven = 0;  // CVBS command for background colour on even line.
-    uint32_t auxiliaryColour = 0;       // Points to odd or even auxiliary colour.
-    uint32_t auxiliaryColourOdd = 0;    // CVBS command for auxiliary colour on odd line.
-    uint32_t auxiliaryColourEven = 0;  // CVBS command for auxiliary colour on even line.
+    uint32_t foregroundColour = 0;       // CVBS command for the foreground colour.
+    uint32_t borderColour = 0;           // Points to either odd or even border colour.
+    uint32_t borderColourOdd = 0;        // CVBS command for border colour on odd line.
+    uint32_t borderColourEven = 0;       // CVBS command for border colour on even line.
+    uint32_t backgroundColour = 0;       // Points to either odd or even background colour.
+    uint32_t backgroundColourOdd = 0;    // CVBS command for background colour on odd line.
+    uint32_t backgroundColourEven = 0;   // CVBS command for background colour on even line.
+    uint32_t auxiliaryColour = 0;        // Points to odd or even auxiliary colour.
+    uint32_t auxiliaryColourOdd = 0;     // CVBS command for auxiliary colour on odd line.
+    uint32_t auxiliaryColourEven = 0;    // CVBS command for auxiliary colour on even line.
 
     // Holds the colour commands for each multi colour colour for odd and even lines.
     uint32_t  multiColourTableOdd[4] = { 0, 0, 0, 0};
