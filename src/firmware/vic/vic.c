@@ -370,7 +370,7 @@ void core1_entry_new(void) {
     // Optimisation to represent "in matrix", "address output enabled", and "pixel output enabled" 
     // all with one simple state variable. It might not be 100% accurate but should work for most 
     // cases.
-    uint8_t fetchState = 0;
+    uint8_t fetchState = FETCH_OUTSIDE_MATRIX;
     
     //
     // END OF VIC CHIP STATE
@@ -384,6 +384,26 @@ void core1_entry_new(void) {
     videoMemoryStart = ADDR_UNEXPANDED_SCR;
     colourMemoryStart = ADDR_COLOUR_RAM;
     characterMemoryStart = ADDR_UPPERCASE_GLYPHS_CHRSET;
+
+    // TESTING: Example of variables set up for certain border/background/aux colours.
+    backgroundColourIndex = 1;
+    backgroundColourEven = pal_palette_e[backgroundColourIndex];
+    backgroundColourOdd = pal_palette_o[backgroundColourIndex];
+    backgroundColour = backgroundColourEven;
+    borderColourIndex = 11;
+    borderColourEven = pal_palette_e[borderColourIndex];
+    borderColourOdd = pal_palette_o[borderColourIndex];
+    borderColour = borderColourEven;
+    auxiliaryColourIndex = 0;
+    auxiliaryColourEven = pal_palette_e[auxiliaryColourIndex];
+    auxiliaryColourOdd = pal_palette_o[auxiliaryColourIndex];
+    auxiliaryColour = auxiliaryColourEven;
+    multiColourTableEven[0] = backgroundColourEven;
+    multiColourTableEven[1] = borderColourEven;
+    multiColourTableEven[3] = auxiliaryColourEven;
+    multiColourTableOdd[0] = backgroundColourOdd;
+    multiColourTableOdd[1] = borderColourOdd;
+    multiColourTableOdd[3] = auxiliaryColourOdd;
 
     while (1) {
         // Poll for PIO IRQ 0. This is the rising edge of F1.
@@ -403,9 +423,6 @@ void core1_entry_new(void) {
         // Line 0, and Lines after 9, are "visible", i.e. not within the vertical blanking.
         if ((verticalCounter == 0) || (verticalCounter > 9)) {
             
-            // Check that we are inside the text screen.
-            //if ((verticalCounter >= textScreenTop) && (verticalCounter < textScreenBottom) && (horizontalCounter >= textScreenLeft) && (horizontalCounter < textScreenRight)) {
-
             if (horizontalCounter == 70) {
                 // Start of horizontal blanking. Let's send all blanking CVBS commands up front.
                 // Horiz Blanking - From: 70.5  To: 12  Len: 12.5 cycles
@@ -518,13 +535,13 @@ void core1_entry_new(void) {
                         // Increment the video matrix counter.
                         videoMatrixCounter++;
 
-                        // Output the 4 pixels for this cycle (usually second 4 pixels of character).
+                        // Output the 4 pixels for this cycle (usually second 4 pixels of a character).
                         pio_sm_put(CVBS_PIO, CVBS_SM, pixel5);
                         pio_sm_put(CVBS_PIO, CVBS_SM, pixel6);
                         pio_sm_put(CVBS_PIO, CVBS_SM, pixel7);
                         pio_sm_put(CVBS_PIO, CVBS_SM, pixel8);
 
-                        // Toggle fetch state.
+                        // Toggle fetch state. Close matrix if HCC hits zero.
                         fetchState = (--horizontalCellCounter? FETCH_SCREEN_CODE : FETCH_MATRIX_LINE);
                         break;
 
@@ -546,9 +563,9 @@ void core1_entry_new(void) {
                             pal_palette_o[colourData] : 
                             pal_palette_e[colourData]);
 
-                        // Plot pixels.
+                        // Determinen character pixels.
                         if ((colourData & 0x08) == 0) {
-                            // Hires.
+                            // Hires mode.
                             if (reverse == 0) {
                                 // Normal unreversed graphics.
                                 pixel1 = (charData & 0x80? foregroundColour : backgroundColour);
@@ -585,21 +602,22 @@ void core1_entry_new(void) {
                         pio_sm_put(CVBS_PIO, CVBS_SM, pixel3);
                         pio_sm_put(CVBS_PIO, CVBS_SM, pixel4);
 
-                        // Toggle fetch state.
+                        // Toggle fetch state. Close matrix if HCC hits zero.
                         fetchState = (--horizontalCellCounter? FETCH_SCREEN_CODE : FETCH_MATRIX_LINE);
                         break;
                 }
             }
         } else {
-            // Vertical blanking.
+            // Vertical blanking and sync - Lines 1-9.
             if (verticalCounter < 4) {
+                // Lines 1, 2, 3.
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
             }
             else if (verticalCounter < 7) {
-                // Vertical sync.
+                // Vertical sync, lines 4, 5, 6.
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_L);
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_H);
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_L);
@@ -609,6 +627,7 @@ void core1_entry_new(void) {
                 videoMatrixLatch = videoMatrixCounter = 0;
             }
             else {
+                // Lines 7, 8, 9.
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
