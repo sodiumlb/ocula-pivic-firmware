@@ -63,18 +63,20 @@ series:
 ; Address of the memory to write to is set in x by setup
 ; DMA setup required to take the address then data and write to memory
 .program xwrite
+.in 32 left
+.out 32 right
 .wrap_target
 start:
     wait 1 gpio 13      ; Wait for phi0 rising edge (pin 29 => pin 13 in upper GPIO bank)
     jmp pin start       ; If read, go back to start
     mov osr pins        ; Capture D[7:0],PHI,A[15:0],RnW,nMAP
-    out y 8             ; Temporary store data in y
-    out null 1          ; Spool out PHI
+    out null 9          ; Spool out D[7:0], PHI
     mov isr x           ; System top address bits
     in osr 16           ; shift in bottom address
-    push                ; Send address to FIFO
-    mov isr y           ; Move data to isr
-    push                ; Send data to FIFO
+    push noblock        ; Send address to FIFO
+    wait 0 gpio 13      ; Wait for phi0 falling edge before capturing data
+    mov isr pins        ; Move data to isr
+    push noblock        ; Send data to FIFO
 .wrap
 
 .program xdir
@@ -82,15 +84,15 @@ start:
 .set 1
 .out 8
 start:
-    wait 0 irq 0        ; Wait for, then clear IRQ. Signaled by decode. Only run if not ROM or IO
+    wait 1 irq 0        ; Wait for, then clear IRQ. Signaled by decode. Only run if not ROM or IO
     jmp pin dir_out     ; If PHI pin is high, jump to dir_out 
     jmp start           ; else return to IRQ loop
 dir_out:
-    set pins 1          ; Set DIR on external bus transciver to output
+    set pins 0          ; Set DIR on external bus transciver to output
     mov pindirs ~null   ; Set data pins to output
     wait 0 gpio 13      ; Wait for phi0 falling edge (pin 29 => pin 13 in upper GPIO bank)
     mov pindirs null    ; Disable data pins output
-    set pins 0          ; Set DIR on external bus transciver to input
+    set pins 1          ; Set DIR on external bus transciver to input
 .wrap
 
 ; Decode logic for driving DIR and indirectly nROMSEL and nIO
@@ -99,6 +101,7 @@ dir_out:
 ; This program freeruns to get close to the original decode logic behaviour
 ; x set to 0x3 in setup for comparing to A[15:8] and A[15:14]
 .program decode
+.out 32 right
 .wrap_target
 start:
     mov y pins          ; Get A15-A8
@@ -129,8 +132,8 @@ not_rom:
 .program nio
 .side_set 1
 .wrap_target
-    wait irq 1  side 1  ; Clear pin and wait for IRQ raised
-    irq wait 1  side 0  ; Assert pin and wait for IRQ cleared
+    wait 1 irq 1  side 1  ; Clear pin and wait for IRQ raised
+    irq wait 1  side 0    ; Assert pin and IRQ (again), and wait for IRQ cleared
 .wrap
 
 ; nROMSEL pin program
@@ -139,6 +142,6 @@ not_rom:
 .program nromsel
 .side_set 1
 .wrap_target
-    wait irq 2  side 1  ; Clear pin and wait for IRQ raised
-    irq wait 2  side 0  ; Assert pin and wait for IRQ cleared
+    wait 1 irq 2  side 1  ; Clear pin and wait for IRQ raised
+    irq wait 2  side 0    ; Assert pin and IRQ (again), and wait for IRQ cleared
 .wrap
