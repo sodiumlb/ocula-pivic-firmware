@@ -41,6 +41,15 @@
 #define FETCH_SCREEN_CODE     3
 #define FETCH_CHAR_DATA       4
 
+// Constants related to video timing for PAL and NTSC.
+#define PAL_HBLANK_END        11
+#define PAL_HBLANK_START      70
+#define PAL_VBLANK_START      1
+#define PAL_VSYNC_START       4
+#define PAL_VSYNC_END         6
+#define PAL_VBLANK_END        9
+#define PAL_LAST_LINE         311
+
 #define CVBS_DELAY_CONST_POST (15-3)
 #define CVBS_CMD(L0,L1,DC,delay,count) \
          ((((CVBS_DELAY_CONST_POST-delay)&0xF)<<23) |  ((L1&0x1F)<<18) | (((count-1)&0x1FF)<<9) |((L0&0x1F)<<4) | ((delay&0x0F)))
@@ -421,9 +430,9 @@ void core1_entry_new(void) {
         // Line 0:       Last visible line of a frame (yes, this is actually true)
 
         // Line 0, and Lines after 9, are "visible", i.e. not within the vertical blanking.
-        if ((verticalCounter == 0) || (verticalCounter > 9)) {
+        if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
             
-            if (horizontalCounter == 70) {
+            if (horizontalCounter == PAL_HBLANK_START) {
                 // Start of horizontal blanking. Let's send all blanking CVBS commands up front.
                 // Horiz Blanking - From: 70.5  To: 12  Len: 12.5 cycles
                 // Front Porch - From: 70.5  To: 1.5  Len: 2 cycles
@@ -446,7 +455,7 @@ void core1_entry_new(void) {
                 horizontalCounter = 0;
             }
             else if (horizontalCounter == 0) {
-                if (verticalCounter == 311) {
+                if (verticalCounter == PAL_LAST_LINE) {
                     // Last line. This is when VCC loads number of rows.
                     verticalCounter = 0;
                     verticalCellCounter = numOfRows;
@@ -503,7 +512,7 @@ void core1_entry_new(void) {
             else {
                 switch (fetchState) {
                     case FETCH_OUTSIDE_MATRIX:
-                        if (horizontalCounter >= 12) {
+                        if (horizontalCounter > PAL_HBLANK_END) {
                             // Output four border pixels.
                             pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                         }
@@ -512,11 +521,13 @@ void core1_entry_new(void) {
                         
                     case FETCH_IN_MATRIX_Y:
                     case FETCH_MATRIX_LINE:
-                        if (horizontalCounter >= 12) {
+                        if (horizontalCounter > PAL_HBLANK_END) {
                             // Output four border pixels.
                             pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                         }
                         if (horizontalCounter == screenOriginX) {
+                            // Last 4 pixels before first char renders are still border.
+                            pixel5 = pixel6 = pixel7 = pixel8 = borderColour;
                             fetchState = FETCH_SCREEN_CODE;
                         }
                         break;
@@ -536,10 +547,12 @@ void core1_entry_new(void) {
                         videoMatrixCounter++;
 
                         // Output the 4 pixels for this cycle (usually second 4 pixels of a character).
-                        pio_sm_put(CVBS_PIO, CVBS_SM, pixel5);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, pixel6);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, pixel7);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, pixel8);
+                        if (horizontalCounter > PAL_HBLANK_END) {
+                            pio_sm_put(CVBS_PIO, CVBS_SM, pixel5);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, pixel6);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, pixel7);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, pixel8);
+                        }
 
                         // Toggle fetch state. Close matrix if HCC hits zero.
                         fetchState = (--horizontalCellCounter? FETCH_SCREEN_CODE : FETCH_MATRIX_LINE);
@@ -597,10 +610,12 @@ void core1_entry_new(void) {
                         }
 
                         // Output the first 4 pixels of the character.
-                        pio_sm_put(CVBS_PIO, CVBS_SM, pixel1);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, pixel2);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, pixel3);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, pixel4);
+                        if (horizontalCounter > PAL_HBLANK_END) {
+                            pio_sm_put(CVBS_PIO, CVBS_SM, pixel1);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, pixel2);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, pixel3);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, pixel4);
+                        }
 
                         // Toggle fetch state. Close matrix if HCC hits zero.
                         fetchState = (--horizontalCellCounter? FETCH_SCREEN_CODE : FETCH_MATRIX_LINE);
@@ -609,14 +624,14 @@ void core1_entry_new(void) {
             }
         } else {
             // Vertical blanking and sync - Lines 1-9.
-            if (verticalCounter < 4) {
+            if (verticalCounter < PAL_VSYNC_START) {
                 // Lines 1, 2, 3.
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
             }
-            else if (verticalCounter < 7) {
+            else if (verticalCounter <= PAL_VSYNC_END) {
                 // Vertical sync, lines 4, 5, 6.
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_L);
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_H);
