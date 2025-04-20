@@ -436,6 +436,8 @@ void xread_pio_init(void){
     printf("XREAD PIO init done\n");
 }
 
+uint8_t xwrite_dma_addr_chan;
+uint8_t xwrite_dma_data_chan;
 void xwrite_pio_init(void){
     pio_set_gpio_base (XWRITE_PIO, XWRITE_PIN_OFFS);
     uint offset = pio_add_program(XWRITE_PIO, &xwrite_program);
