@@ -17,6 +17,54 @@
 #include <string.h>
 #include <stdio.h>
 
+// VIC chip control registers.
+#define vic_cr0 xram[0x9000]    // ABBBBBBB A=Interlace B=Screen Origin X (4 pixels granularity)
+#define vic_cr1 xram[0x9001]    // CCCCCCCC C=Screen Origin Y (2 pixel granularity)
+#define vic_cr2 xram[0x9002]    // HDDDDDDD D=Number of Columns
+#define vic_cr3 xram[0x9003]    // GEEEEEEF E=Number of Rows F=Double Size Chars
+#define vic_cr4 xram[0x9004]    // GGGGGGGG G=Raster Line
+#define vic_cr5 xram[0x9005]    // HHHHIIII H=Screen Mem Addr I=Char Mem Addr
+#define vic_cr6 xram[0x9006]    // JJJJJJJJ Light pen X
+#define vic_cr7 xram[0x9007]    // KKKKKKKK Light pen Y
+#define vic_cr8 xram[0x9008]    // LLLLLLLL Paddle X
+#define vic_cr9 xram[0x9009]    // MMMMMMMM Paddle Y
+#define vic_cra xram[0x900a]    // NRRRRRRR Sound voice 1
+#define vic_crb xram[0x900b]    // OSSSSSSS Sound voice 2
+#define vic_crc xram[0x900c]    // PTTTTTTT Sound voice 3
+#define vic_crd xram[0x900d]    // QUUUUUUU Noise voice
+#define vic_cre xram[0x900e]    // WWWWVVVV W=Auxiliary colour V=Volume control
+#define vic_crf xram[0x900f]    // XXXXYZZZ X=Background colour Y=Reverse Z=Border colour
+
+// Expressions to access different parts of control registers.
+#define brd_cr (vic_crf & 0x07)
+#define bck_cr (vic_crf >> 4)
+#define aux_cr (vic_cre >> 4)
+#define rev_cr (vic_crf & 0x08)
+#define sox_cr (vic_cr0 & 0x7F)
+#define soy_cr vic_cr1
+#define col_cr (vic_cr2 & 0x7F)
+#define row_cr ((vic_cr3 & 0x7E) >> 1)
+#define dbl_cr (vic_cr3 & 0x01)
+#define chr_cr (vic_cr5 & 0x0F)
+#define scn_cr (((vic_cr5 & 0xF0) >> 3) | ((vic_cr2 & 0x80) >> 7))
+
+// A lookup table for determining the start of video memory.
+const uint16_t videoMemoryTable[32] = { 
+    0x8000, 0x8200, 0x8400, 0x8600, 0x8800, 0x8A00, 0x8C00, 0x8E00, 
+    0x9000, 0x9200, 0x9400, 0x9600, 0x9800, 0x9A00, 0x9C00, 0x9E00, 
+    0x0000, 0x0200, 0x0400, 0x0600, 0x0800, 0x0A00, 0x0C00, 0x0E00, 
+    0x1000, 0x1200, 0x1400, 0x1600, 0x1800, 0x1A00, 0x1C00, 0x1E00 
+};
+
+// A lookup table for determining the start of character memory.
+const uint16_t charMemoryTable[16] = { 
+    0x8000, 0x8400, 0x8800, 0x8C00, 0x9000, 0x9400, 0x9800, 0x9C00, 
+    0x0000, 0x0400, 0x0800, 0x0C00, 0x1000, 0x1400, 0x1800, 0x1C00 
+};
+
+#define screen_memory videoMemoryTable[scn_cr]
+#define char_memory   charMemoryTable[chr_cr]
+
 // These are the actual VIC 20 memory addresses, but note that the VIC chip sees memory a bit differently.
 // $8000-$83FF: 1 KB uppercase/glyphs
 // $8400-$87FF: 1 KB uppercase/lowercase
