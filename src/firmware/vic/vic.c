@@ -239,10 +239,6 @@ void vic_memory_init() {
     // Set up a test page for the screen memory.
     memset((void*)&xram[ADDR_UNEXPANDED_SCR], 0x20, 1024);
 
-    // TODO: sprintf doesn't work for VIC. Doesn't align with screen codes.
-    //sprintf((char*)(&xram[ADDR_UNEXPANDED_SCR]), "PIVIC TEST 1234");
-    //sprintf((char*)(&xram[ADDR_UNEXPANDED_SCR] + 22), "0123456789012345678901");
-
     // First row
     xram[ADDR_UNEXPANDED_SCR + 0] = 16;  // P
     xram[ADDR_UNEXPANDED_SCR + 1] = 9;   // I
