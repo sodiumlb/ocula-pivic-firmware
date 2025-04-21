@@ -79,9 +79,10 @@ start:
 .wrap
 
 .program xdir
-.wrap_target
 .set 1
-.out 8
+.in 1 left
+.out 8 right
+.wrap_target
 start:
     wait 1 irq 0        ; Wait for, then clear IRQ. Signaled by decode. Only run if not ROM or IO
     jmp pin dir_out     ; If PHI pin is high, jump to dir_out 
@@ -102,6 +103,7 @@ dir_out:
 ; This program freeruns to get close to the original decode logic behaviour
 ; x set to 0x3 in setup for comparing to A[15:8] and A[15:14]
 .program decode
+.in 8 left
 .out 32 right
 .wrap_target
 start:
