@@ -308,7 +308,7 @@ void phi_pio_init(void){
     sm_config_set_sideset_pin_base(&config, PHI_PIN);          
     pio_sm_init(PHI_PIO, PHI_SM, offset, &config);
     pio_sm_set_enabled(PHI_PIO, PHI_SM, true);   
-    printf("PHI PIO init done\n");
+    //printf("PHI PIO init done\n");
 }
 
 void rgbs_pio_init(void){
