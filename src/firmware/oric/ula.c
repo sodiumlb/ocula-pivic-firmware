@@ -549,7 +549,6 @@ void xdir_pio_init(void){
 }
 
 void ula_init(void){
-    printf("ula_init()\n");
     memcpy((void*)(&xram[ADDR_LORES_STD_CHRSET+(0x20*8)]), (void*)oric_font, sizeof(oric_font));
     memset((void*)&xram[ADDR_LORES_SCR], 0x20, 40*28);
     sprintf((char*)(&xram[ADDR_LORES_SCR]), "Oric OCULA test " __DATE__);
@@ -559,18 +558,28 @@ void ula_init(void){
     for(uint8_t i=0; i<(0x7F-0x20); i++){
         xram[ADDR_LORES_SCR + 40*4 + i] =  0x20 + i;    
     }
-    for(uint8_t i=0; i<(0x7F-0x20); i++){
-        xram[ADDR_LORES_SCR + 40*7 + i] =  0x80 | (0x20 + i);    
-    }
-    printf("PIO inits\n");
-    phi_pio_init();
+    // for(uint8_t i=0; i<(0x7F-0x20); i++){
+    //     xram[ADDR_LORES_SCR + 40*7 + i] =  0x80 | (0x20 + i);    
+    // }
+    //Capture IRQ vector on unitialised system
+    xram[0x0244] = 0xB8;    //CLV
+    xram[0x0245] = 0xA9;    //STA #AA
+    xram[0x0246] = 0xAA;
+    xram[0x0247] = 0x8D;    //STA $0101
+    xram[0x0248] = 0x01;
+    xram[0x0249] = 0x01;   
+    xram[0x024A] = 0x50;    //BVC -5
+    xram[0x024B] = 0xFB;
     rgbs_pio_init();
+    phi_pio_init();
+    xread_pio_init();
+    xdir_pio_init();
     decode_pio_init();
     nio_pio_init();
-    nromsel_pio_init();
-    xread_pio_init();
     xwrite_pio_init();
-    xdir_pio_init();
+    trace_pio_init();
+    sleep_us(20);
+    nromsel_pio_init();
 
     //Set unused outputs to defaults
     gpio_set_function(CAS_PIN, GPIO_FUNC_SIO);
@@ -581,9 +590,9 @@ void ula_init(void){
     gpio_set_dir(RAS_PIN, true);
     gpio_set_dir(MUX_PIN, true);
     gpio_set_dir(WREN_PIN, true);
-    gpio_put(CAS_PIN, true);
-    gpio_put(RAS_PIN, true);
-    gpio_put(MUX_PIN, true);
+    gpio_put(CAS_PIN, false);
+    gpio_put(RAS_PIN, false);
+    gpio_put(MUX_PIN, false);
     gpio_put(WREN_PIN, false);
     
     
