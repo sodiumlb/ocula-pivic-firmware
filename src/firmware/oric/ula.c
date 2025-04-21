@@ -300,6 +300,8 @@ void phi_pio_init(void){
     pio_set_gpio_base (PHI_PIO, PHI_PIN_OFFS);
     pio_gpio_init(PHI_PIO, PHI_PIN);
     gpio_set_input_enabled(PHI_PIN, true);
+    gpio_set_slew_rate(PHI_PIN, GPIO_SLEW_RATE_SLOW);
+    gpio_set_drive_strength(PHI_PIN, GPIO_DRIVE_STRENGTH_2MA);
     pio_sm_set_consecutive_pindirs(PHI_PIO, PHI_SM, PHI_PIN, 1, true);
     uint offset = pio_add_program(PHI_PIO, &phi_program);
     pio_sm_config config = phi_program_get_default_config(offset);
