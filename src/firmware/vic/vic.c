@@ -35,19 +35,6 @@
 #define vic_cre xram[0x900e]    // WWWWVVVV W=Auxiliary colour V=Volume control
 #define vic_crf xram[0x900f]    // XXXXYZZZ X=Background colour Y=Reverse Z=Border colour
 
-// Expressions to access different parts of control registers.
-#define brd_cr (vic_crf & 0x07)
-#define bck_cr (vic_crf >> 4)
-#define aux_cr (vic_cre >> 4)
-#define rev_cr (vic_crf & 0x08)
-#define sox_cr (vic_cr0 & 0x7F)
-#define soy_cr vic_cr1
-#define col_cr (vic_cr2 & 0x7F)
-#define row_cr ((vic_cr3 & 0x7E) >> 1)
-#define dbl_cr (vic_cr3 & 0x01)
-#define chr_cr (vic_cr5 & 0x0F)
-#define scn_cr (((vic_cr5 & 0xF0) >> 3) | ((vic_cr2 & 0x80) >> 7))
-
 // A lookup table for determining the start of video memory.
 const uint16_t videoMemoryTable[32] = { 
     0x8000, 0x8200, 0x8400, 0x8600, 0x8800, 0x8A00, 0x8C00, 0x8E00, 
@@ -62,8 +49,21 @@ const uint16_t charMemoryTable[16] = {
     0x0000, 0x0400, 0x0800, 0x0C00, 0x1000, 0x1400, 0x1800, 0x1C00 
 };
 
-#define screen_memory videoMemoryTable[scn_cr]
-#define char_memory   charMemoryTable[chr_cr]
+// Expressions to access different parts of control registers.
+#define border_colour_index      (vic_crf & 0x07)
+#define background_colour_index  (vic_crf >> 4)
+#define auxiliary_colour_index   (vic_cre >> 4)
+#define reverse_mode             (vic_crf & 0x08)
+#define screen_origin_x          (vic_cr0 & 0x7F)
+#define screen_origin_y          (vic_cr1)
+#define num_of_columns           (vic_cr2 & 0x7F)
+#define num_of_rows              ((vic_cr3 & 0x7E) >> 1)
+#define double_height_mode       (vic_cr3 & 0x01)
+#define last_line_of_cell        (7 | (double_height_mode << 3))
+#define char_size_shift          (3 + double_height_mode)
+#define screen_mem_start         videoMemoryTable[((vic_cr5 & 0xF0) >> 3) | ((vic_cr2 & 0x80) >> 7)]
+#define char_mem_start           charMemoryTable[vic_cr5 & 0x0F]
+#define colour_mem_start         ((vic_cr2 & 0x80)? 0x9400 : 0x9600)
 
 // These are the actual VIC 20 memory addresses, but note that the VIC chip sees memory a bit differently.
 // $8000-$83FF: 1 KB uppercase/glyphs
