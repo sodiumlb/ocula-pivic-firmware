@@ -87,6 +87,8 @@ start:
     jmp pin dir_out     ; If PHI pin is high, jump to dir_out 
     jmp start           ; else return to IRQ loop
 dir_out:
+    mov y pins          ; Get RnW
+    jmp !y start        ; If write, abort output
     set pins 0          ; Set DIR on external bus transciver to output
     mov pindirs ~null   ; Set data pins to output
     wait 0 gpio 29 [30] ; Wait for phi0 falling edge + ca 40 + 60ns for data hold
