@@ -506,7 +506,9 @@ void xdir_pio_init(void){
     pio_sm_config config = xdir_program_get_default_config(offset);
     sm_config_set_set_pin_base(&config, DIR_PIN);
     sm_config_set_out_pin_base(&config, DATA_PIN_BASE);
+    sm_config_set_out_pin_count(&config, DATA_PIN_COUNT);
     sm_config_set_jmp_pin(&config, PHI_PIN);
+    sm_config_set_in_pin_base(&config, RNW_PIN);
     pio_sm_init(XDIR_PIO, XDIR_SM, offset, &config);
     pio_sm_set_enabled(XDIR_PIO, XDIR_SM, true);   
     //printf("XDIR PIO init done\n");   
