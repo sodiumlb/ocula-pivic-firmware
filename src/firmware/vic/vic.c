@@ -160,7 +160,7 @@ const uint16_t charMemoryTable[16] = {
 #define PAL_LYELLOW_O   CVBS_CMD(19,31,28,0,1)
 #define PAL_LYELLOW_E   CVBS_CMD(19,31,28,0,1)
 
-const uint32_t pal_palette_o[16] = {
+uint32_t pal_palette_o[16] = {
     PAL_BLACK,
     PAL_WHITE,
     PAL_RED_O,
@@ -179,7 +179,7 @@ const uint32_t pal_palette_o[16] = {
     PAL_LYELLOW_O
 };
 
-const uint32_t pal_palette_e[16] = {
+uint32_t pal_palette_e[16] = {
     PAL_BLACK,
     PAL_WHITE,
     PAL_RED_E,
@@ -326,6 +326,7 @@ void core1_entry_new(void) {
     //
 
     // Hard coded control registers for now (from default PAL VIC).
+    // TODO: Remove after switching to using the xram VIC control register addresses.
     uint8_t  screenOriginX = 12;         // 7-bit horiz counter value to match for left of video matrix
     uint8_t  screenOriginY = 38 * 2;     // 8-bit vert counter value (x 2) to match for top of video matrix
     uint8_t  numOfColumns = 22;          // 7-bit number of video matrix columns
@@ -356,6 +357,7 @@ void core1_entry_new(void) {
     uint8_t  colourDataLatch = 0;        // 4 bits latched from colour memory during cell index fetch.
 
     // Holds the colour commands for border, background and auxiliary.
+    // TODO: Remove after switching to using pointer that alternates between pal_palette_o/pal_palette_e.
     uint32_t foregroundColour = 0;       // CVBS command for the foreground colour.
     uint32_t borderColour = 0;           // Points to either odd or even border colour.
     uint32_t borderColourOdd = 0;        // CVBS command for border colour on odd line.
@@ -368,6 +370,7 @@ void core1_entry_new(void) {
     uint32_t auxiliaryColourEven = 0;    // CVBS command for auxiliary colour on even line.
 
     // Holds the colour commands for each multi colour colour for odd and even lines.
+    // TODO: Switch to using a single multiColourTable that is populated from control registers in real time.
     uint32_t multiColourTableOdd[4] = { 0, 0, 0, 0};
     uint32_t multiColourTableEven[4] = { 0, 0, 0, 0};
     uint32_t *multiColourTable = multiColourTableEven;
@@ -381,6 +384,10 @@ void core1_entry_new(void) {
     uint32_t pixel6 = 0;
     uint32_t pixel7 = 0;
     uint32_t pixel8 = 0;
+
+    // Pointer that alternates on each line between even and odd palettes.
+    // TODO: This outputs a warning if palette arrays are const.
+    uint32_t *pal_palette = pal_palette_e;
 
     // Optimisation to represent "in matrix", "address output enabled", and "pixel output enabled" 
     // all with one simple state variable. It might not be 100% accurate but should work for most 
@@ -401,6 +408,7 @@ void core1_entry_new(void) {
     characterMemoryStart = ADDR_UPPERCASE_GLYPHS_CHRSET;
 
     // TESTING: Example of variables set up for certain border/background/aux colours.
+    // TODO: Remove after switching to using xram control register addresses.
     backgroundColourIndex = 1;
     backgroundColourEven = pal_palette_e[backgroundColourIndex];
     backgroundColourOdd = pal_palette_o[backgroundColourIndex];
@@ -510,12 +518,16 @@ void core1_entry_new(void) {
                         backgroundColour = backgroundColourOdd;
                         auxiliaryColour = auxiliaryColourOdd;
                         multiColourTable = multiColourTableOdd;
+                        // TODO: Remove above and use pal_palette in realtime.
+                        pal_palette = pal_palette_o;
                     } else {
                         // Even line.
                         borderColour = borderColourEven;
                         backgroundColour = backgroundColourEven;
                         auxiliaryColour = auxiliaryColourEven;
                         multiColourTable = multiColourTableEven;
+                        // TODO: Remove above and use pal_palette in realtime.
+                        pal_palette = pal_palette_e;
                     }
                 }
 
@@ -601,7 +613,7 @@ void core1_entry_new(void) {
                             pal_palette_o[colourData] : 
                             pal_palette_e[colourData]);
 
-                        // Determinen character pixels.
+                        // Determine character pixels.
                         if ((colourData & 0x08) == 0) {
                             // Hires mode.
                             if (reverse == 0) {
