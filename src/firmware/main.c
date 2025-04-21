@@ -26,6 +26,7 @@
 #include "tusb.h"
 
 #ifdef OCULA
+#include "oric/rst.h"
 #include "oric/ula.h"
 #endif
 
@@ -35,6 +36,9 @@
 
 static void init(void)
 {
+#ifdef OCULA
+    rst_init();
+#endif
     cpu_init();
     com_init();
 
