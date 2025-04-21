@@ -331,7 +331,7 @@ void decode_pio_init(void){
     pio_set_gpio_base (DECODE_PIO, DECODE_PIN_OFFS);
     gpio_init(NMAP_PIN);
     gpio_set_input_enabled(NMAP_PIN, true);
-    gpio_set_pulls(NMAP_PIN, true, false);             //E9 work-around
+    gpio_set_pulls(NMAP_PIN, false, false);             //E9 work-around
     //Invert input polarity of nMAP to make it active high (MAP)
     gpio_set_inover(NMAP_PIN, GPIO_OVERRIDE_INVERT);
     uint offset = pio_add_program(DECODE_PIO, &decode_program);
