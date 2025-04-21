@@ -411,7 +411,7 @@ void xread_pio_init(void){
     // DMA move the requested memory data to PIO for output
     dma_channel_config data_dma = dma_channel_get_default_config(data_chan);
     channel_config_set_high_priority(&data_dma, true);
-    channel_config_set_dreq(&data_dma, pio_get_dreq(XREAD_PIO, XREAD_SM, true));
+    //channel_config_set_dreq(&data_dma, pio_get_dreq(XREAD_PIO, XREAD_SM, true));
     channel_config_set_read_increment(&data_dma, false);
     channel_config_set_write_increment(&data_dma, false);
     channel_config_set_transfer_data_size(&data_dma, DMA_SIZE_8);
