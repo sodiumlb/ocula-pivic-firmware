@@ -149,3 +149,10 @@ not_rom:
     wait 1 irq 2  side 1  ; Clear pin and wait for IRQ raised
     irq wait 2  side 0    ; Assert pin and IRQ (again), and wait for IRQ cleared
 .wrap
+
+.program trace
+.in 27 left auto 27
+.wrap_target
+    wait 1 irq 2 [12]
+    in pins 27
+.wrap

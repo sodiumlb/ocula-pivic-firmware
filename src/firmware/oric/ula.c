@@ -497,6 +497,40 @@ void xwrite_pio_init(void){
     //printf("XWRITE PIO init done\n");
 }
 
+#define TRACE_BUF &xram[0x10000]
+int trace_dma_chan;
+void trace_pio_init(void){
+    pio_set_gpio_base (TRACE_PIO, TRACE_PIN_OFFS);
+
+    uint offset = pio_add_program(TRACE_PIO, &trace_program);
+    pio_sm_config config = trace_program_get_default_config(offset);
+    //Pin counts and autopush/autopull set in program
+    sm_config_set_in_pin_base(&config, DATA_PIN_BASE);  
+    pio_sm_init(TRACE_PIO, TRACE_SM, offset, &config);
+    pio_sm_set_enabled(TRACE_PIO, TRACE_SM, true);
+
+    // Set up two DMA channels for fetching address then data
+    int trace_chan = dma_claim_unused_channel(true);
+    trace_dma_chan = trace_chan;
+
+    // DMA move the requested memory data to PIO for output
+    dma_channel_config trace_dma = dma_channel_get_default_config(trace_chan);
+    channel_config_set_high_priority(&trace_dma, true);
+    channel_config_set_dreq(&trace_dma, pio_get_dreq(TRACE_PIO, TRACE_SM, false));
+    channel_config_set_read_increment(&trace_dma, false);
+    channel_config_set_write_increment(&trace_dma, true);
+    channel_config_set_ring(&trace_dma, true, 12);
+    dma_channel_configure(
+        trace_chan,
+        &trace_dma,
+        TRACE_BUF,                        // dst
+        &TRACE_PIO->rxf[TRACE_SM],        // src
+        0xf0001000,                       // continuous
+        true);
+
+    //printf("TRACE PIO init done\n");
+}
+
 void xdir_pio_init(void){
     pio_set_gpio_base (XDIR_PIO, XDIR_PIN_OFFS);
     pio_gpio_init(XDIR_PIO, DIR_PIN);
