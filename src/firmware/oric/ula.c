@@ -324,7 +324,7 @@ void rgbs_pio_init(void){
     //sm_config_set_out_shift(&config, false, false, 32);  //Set in PIO program           
     pio_sm_init(RGBS_PIO, RGBS_SM, offset, &config);
     pio_sm_set_enabled(RGBS_PIO, RGBS_SM, true);   
-    printf("RGBS PIO init done\n");
+    //printf("RGBS PIO init done\n");
 }
 
 void decode_pio_init(void){
@@ -343,7 +343,7 @@ void decode_pio_init(void){
     //Set sm x register to 3 for decode matching of 0x03-- and A[15:14]==0x03
     pio_sm_exec_wait_blocking(DECODE_PIO, DECODE_SM, pio_encode_set(pio_x, 0x3));
     pio_sm_set_enabled(DECODE_PIO, DECODE_SM, true);   
-    printf("DECODE PIO init done\n");
+    //printf("DECODE PIO init done\n");
 }
 
 void nio_pio_init(void){
@@ -356,7 +356,7 @@ void nio_pio_init(void){
     sm_config_set_sideset_pin_base(&config, NIO_PIN);
     pio_sm_init(NIO_PIO, NIO_SM, offset, &config);
     pio_sm_set_enabled(NIO_PIO, NIO_SM, true);   
-    printf("nIO PIO init done\n");
+    //printf("nIO PIO init done\n");
 }
 
 void nromsel_pio_init(void){
@@ -369,7 +369,7 @@ void nromsel_pio_init(void){
     sm_config_set_sideset_pin_base(&config, NROMSEL_PIN);
     pio_sm_init(NROMSEL_PIO, NROMSEL_SM, offset, &config);
     pio_sm_set_enabled(NROMSEL_PIO, NROMSEL_SM, true);   
-    printf("nROMSEL PIO init done\n");
+    //printf("nROMSEL PIO init done\n");
 }
 
 void xread_pio_init(void){
@@ -435,7 +435,9 @@ void xread_pio_init(void){
         1,
         true);
     
-    printf("XREAD PIO init done\n");
+    pio_sm_set_enabled(XREAD_PIO, XREAD_SM, true);
+
+    //printf("XREAD PIO init done\n");
 }
 
 uint8_t xwrite_dma_addr_chan;
@@ -488,7 +490,7 @@ void xwrite_pio_init(void){
         1,
         true);
     
-    printf("XWRITE PIO init done\n");
+    //printf("XWRITE PIO init done\n");
 }
 
 void xdir_pio_init(void){
@@ -503,7 +505,7 @@ void xdir_pio_init(void){
     sm_config_set_jmp_pin(&config, PHI_PIN);
     pio_sm_init(XDIR_PIO, XDIR_SM, offset, &config);
     pio_sm_set_enabled(XDIR_PIO, XDIR_SM, true);   
-    printf("XDIR PIO init done\n");   
+    //printf("XDIR PIO init done\n");   
 }
 
 void ula_init(void){
