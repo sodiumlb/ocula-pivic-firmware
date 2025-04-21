@@ -73,6 +73,7 @@ start:
     out null 9          ; Spool out D[7:0], PHI
     mov isr x           ; System top address bits
     in osr 16           ; shift in bottom address
+    wait 0 gpio 29      ; Wait for phi0 falling edge before capturing data
     push noblock        ; Send address to FIFO
     mov isr pins        ; Move data to isr
     push noblock        ; Send data to FIFO
