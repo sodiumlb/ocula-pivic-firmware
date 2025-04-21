@@ -58,6 +58,7 @@ series:
     mov isr x      [10] ; Base address to fetch from in the system
     in pins 16          ; Pull in rest of address from 6502
     out pins 8          ; Blocking till data returns. pindirs set elsewhere
+    wait 1 gpio 29      ; Make sure only one iteration per phi clock
 .wrap
 
 ; Address of the memory to write to is set in x by setup
