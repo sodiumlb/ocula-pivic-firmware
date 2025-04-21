@@ -287,7 +287,7 @@ void vic_memory_init() {
     // Set up a test page for the screen memory.
     memset((void*)&xram[ADDR_UNEXPANDED_SCR], 0x20, 1024);
 
-    // First row
+    // First row - Reserved for name etc.
     xram[ADDR_UNEXPANDED_SCR + 0] = 16;  // P
     xram[ADDR_UNEXPANDED_SCR + 1] = 9;   // I
     xram[ADDR_UNEXPANDED_SCR + 2] = 22;  // V
@@ -299,17 +299,24 @@ void vic_memory_init() {
     xram[ADDR_COLOUR_RAM + 3] = 5;
     xram[ADDR_COLOUR_RAM + 4] = 6;
 
-    // Second row
-    xram[ADDR_UNEXPANDED_SCR + 22] = 16;  // P
-    xram[ADDR_UNEXPANDED_SCR + 23] = 9;   // I
-    xram[ADDR_UNEXPANDED_SCR + 24] = 22;  // V
-    xram[ADDR_UNEXPANDED_SCR + 25] = 9;   // I
-    xram[ADDR_UNEXPANDED_SCR + 26] = 3;   // C
-    xram[ADDR_COLOUR_RAM + 22] = 7;
-    xram[ADDR_COLOUR_RAM + 23] = 0;
-    xram[ADDR_COLOUR_RAM + 24] = 2;
-    xram[ADDR_COLOUR_RAM + 25] = 3;
-    xram[ADDR_COLOUR_RAM + 26] = 4;
+    // Add some coloured blocks to the end of the first line.
+    int i;
+    for (i=6; i<14; i++) {
+        xram[ADDR_UNEXPANDED_SCR + i] = 0x66;
+        xram[ADDR_UNEXPANDED_SCR + i + 8] = 0xA0;
+        xram[ADDR_COLOUR_RAM + i] = (i - 6);
+        xram[ADDR_COLOUR_RAM + i + 8] = (i - 6);
+    }
+
+    // Second row onwards - Test characters
+    for (i=0; i<256; i++) {
+        xram[ADDR_UNEXPANDED_SCR + i + 22] = (i & 0xFF);
+        xram[ADDR_COLOUR_RAM + i + 22] = (i & 0x07);
+    }
+    for (i=256; i<484; i++) {
+        xram[ADDR_UNEXPANDED_SCR + i + 22] = (i & 0xFF);
+        xram[ADDR_COLOUR_RAM + i + 22] = ((i & 0x07) | 0x08);
+    }
 }
 
 // This implementation is more like a traditional software based VIC 20 emulator, ignoring some of
