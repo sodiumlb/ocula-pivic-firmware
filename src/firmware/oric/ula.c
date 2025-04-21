@@ -372,6 +372,9 @@ void nromsel_pio_init(void){
     //printf("nROMSEL PIO init done\n");
 }
 
+
+uint8_t xread_dma_addr_chan;
+uint8_t xread_dma_data_chan;
 void xread_pio_init(void){
     pio_set_gpio_base (XREAD_PIO, XREAD_PIN_OFFS);
     for(uint32_t i = 0; i < DATA_PIN_COUNT; i++){
@@ -407,6 +410,8 @@ void xread_pio_init(void){
     // Set up two DMA channels for fetching address then data
     int addr_chan = dma_claim_unused_channel(true);
     int data_chan = dma_claim_unused_channel(true);
+    xread_dma_addr_chan = addr_chan;
+    xread_dma_data_chan = data_chan;
 
     // DMA move the requested memory data to PIO for output
     dma_channel_config data_dma = dma_channel_get_default_config(data_chan);
@@ -461,6 +466,7 @@ void xwrite_pio_init(void){
     // Set up two DMA channels for fetching address then data
     int addr_chan = dma_claim_unused_channel(true);
     int data_chan = dma_claim_unused_channel(true);
+    xwrite_dma_addr_chan = addr_chan;
     xwrite_dma_data_chan = data_chan;
 
     // DMA move the requested memory data to PIO for output
@@ -610,8 +616,50 @@ void ula_task(void){
     uint8_t pirq1 = pio1->irq & 0xFF;
     uint8_t pirq2 = pio2->irq & 0xFF;
     uint32_t xwrite_addr = dma_hw->ch[xwrite_dma_data_chan].write_addr;
-    uint8_t xw_fifo = pio_sm_get_rx_fifo_level(XWRITE_PIO, XWRITE_SM);
+    uint8_t xw_rxf = pio_sm_get_rx_fifo_level(XWRITE_PIO, XWRITE_SM);
+    uint8_t xw_status = (dma_channel_is_busy(xwrite_dma_addr_chan) ? 0x2 : 0) | (dma_channel_is_busy(xwrite_dma_data_chan) ? 0x1 : 0);
+    uint32_t trace_addr = dma_hw->ch[trace_dma_chan].write_addr;
+    uint8_t xr_rxf = pio_sm_get_rx_fifo_level(XREAD_PIO, XREAD_SM);
+    uint8_t xr_txf = pio_sm_get_tx_fifo_level(XREAD_PIO, XREAD_SM);
+    uint8_t xr_status = (dma_channel_is_busy(xread_dma_addr_chan) ? 0x2 : 0) | (dma_channel_is_busy(xread_dma_data_chan) ? 0x1 : 0);
+
     //printf("%llx %08x %08x %08x\n", gpio_get_all64(), pio0->irq, pio1->irq, pio2->irq);
-    sprintf((char*)(&xram[ADDR_LORES_SCR]+20*40), "A:%04x D:%02x %c PIO:%02x%02x%02x WX:%08x %d\n", 
-        addr, data, (rnw ? 'R' : 'W'), pirq0, pirq1, pirq2, xwrite_addr, xw_fifo);
+
+    // Trace buffer view WIP
+    // for(uint8_t i=0; i < 16; i++){
+    //     uint32_t d = ((uint32_t*)TRACE_BUF)[i];
+    //     sprintf((char*)(&xram[ADDR_LORES_SCR]+(i+10)*40), "%c %04x %02x", (d & 0x02000000 ? 'R' : 'W'), (d>>9)&0xFFFF, d & 0xFF);
+    // }
+    
+    // Memory page view
+    // uint32_t *xramw = (uint32_t*)&xram[0x00];
+    // for(uint8_t i=0; i < 8; i++){
+    //     sprintf((char*)(&xram[ADDR_LORES_SCR]+(i+10)*40), "%08x %08x %08x %08x", xramw[4*i + 0], xramw[4*i + 1], xramw[4*i + 2], xramw[4*i + 3]);
+    // }
+    // uint8_t w100, r100, cnt = 0;
+    // if(addr==0x100){
+    //     if(rnw == 0)
+    //         w100 = data;
+    //     else
+    //         r100 = data;
+    //     cnt++;
+    // }
+    
+    sprintf((char*)(&xram[ADDR_LORES_SCR]+25*40), "0x100: %02x %02x %02x %02x %02x", xram[0x100], xram[0x101], cnt, r100, w100);
+
+    sprintf((char*)(&xram[ADDR_LORES_SCR]+26*40), "A:%04x D:%02x %c PIO:%01x%01x%01x TR:%08x %d%d%d", 
+        addr, data, (rnw ? 'R' : 'W'), pirq0, pirq1, pirq2, trace_addr, xw_rxf, xr_txf, xw_status);
+    sprintf((char*)(&xram[ADDR_LORES_SCR]+27*40), "R%08x W%08x -%08x %08x", 
+        dma_hw->ch[xread_dma_data_chan].read_addr,
+        dma_hw->ch[xwrite_dma_data_chan].write_addr,
+        dma_hw->ch[xread_dma_addr_chan].write_addr,
+        XREAD_PIO->fdebug
+    );
+    // static uint8_t cnt=0;
+    // if(XREAD_PIO->fdebug & 0x01000000){
+    //     XREAD_PIO->fdebug = 0x01000000;
+    //     sprintf((char*)(&xram[ADDR_LORES_SCR]+22*40),"%d", cnt++);
+    //     pio_sm_put(XREAD_PIO, XREAD_SM, 0xAA);
+    // }
+
 }
