@@ -636,14 +636,14 @@ void ula_task(void){
     // for(uint8_t i=0; i < 8; i++){
     //     sprintf((char*)(&xram[ADDR_LORES_SCR]+(i+10)*40), "%08x %08x %08x %08x", xramw[4*i + 0], xramw[4*i + 1], xramw[4*i + 2], xramw[4*i + 3]);
     // }
-    // uint8_t w100, r100, cnt = 0;
-    // if(addr==0x100){
-    //     if(rnw == 0)
-    //         w100 = data;
-    //     else
-    //         r100 = data;
-    //     cnt++;
-    // }
+    uint8_t w100, r100, cnt = 0;
+    if(addr==0x200){
+        if(rnw == 0)
+            w100 = data;
+        else
+            r100 = data;
+        cnt++;
+    }
     
     sprintf((char*)(&xram[ADDR_LORES_SCR]+25*40), "0x100: %02x %02x %02x %02x %02x", xram[0x100], xram[0x101], cnt, r100, w100);
 
