@@ -54,8 +54,8 @@ series:
 .in 16 left auto 16
 .out 8 right auto 8
 .wrap_target
-    mov isr x           ; Base address to fetch from in the system
-    wait 0 gpio 13 [30] ; sample address ca 200ns after phi0 falling edge (pin 29 => pin 13 in upper GPIO bank)
+    wait 0 gpio 29 [30] ; sample address ca 300ns after phi0 falling edge 
+    mov isr x      [10] ; Base address to fetch from in the system
     in pins 16          ; Pull in rest of address from 6502
     out pins 8          ; Blocking till data returns. pindirs set elsewhere
 .wrap
@@ -67,14 +67,13 @@ series:
 .out 32 right
 .wrap_target
 start:
-    wait 1 gpio 13      ; Wait for phi0 rising edge (pin 29 => pin 13 in upper GPIO bank)
+    wait 1 gpio 29      ; Wait for phi0 rising edge 
     jmp pin start       ; If read, go back to start
     mov osr pins        ; Capture D[7:0],PHI,A[15:0],RnW,nMAP
     out null 9          ; Spool out D[7:0], PHI
     mov isr x           ; System top address bits
     in osr 16           ; shift in bottom address
     push noblock        ; Send address to FIFO
-    wait 0 gpio 13      ; Wait for phi0 falling edge before capturing data
     mov isr pins        ; Move data to isr
     push noblock        ; Send data to FIFO
 .wrap
@@ -90,7 +89,7 @@ start:
 dir_out:
     set pins 0          ; Set DIR on external bus transciver to output
     mov pindirs ~null   ; Set data pins to output
-    wait 0 gpio 13      ; Wait for phi0 falling edge (pin 29 => pin 13 in upper GPIO bank)
+    wait 0 gpio 29 [30] ; Wait for phi0 falling edge + ca 40 + 60ns for data hold
     mov pindirs null    ; Disable data pins output
     set pins 1          ; Set DIR on external bus transciver to input
 .wrap
