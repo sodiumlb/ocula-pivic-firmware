@@ -399,8 +399,10 @@ void xread_pio_init(void){
     pio_sm_init(XREAD_PIO, XREAD_SM, offset, &config);
     pio_sm_put_blocking(XREAD_PIO, XREAD_SM, (uintptr_t)xram >> 16);
     pio_sm_exec_wait_blocking(XREAD_PIO, XREAD_SM, pio_encode_pull(false, true));
-    pio_sm_exec_wait_blocking(XREAD_PIO, XREAD_SM, pio_encode_mov(pio_x, pio_osr));
-    pio_sm_set_enabled(XREAD_PIO, XREAD_SM, true);
+    //pio_sm_exec_wait_blocking(XREAD_PIO, XREAD_SM, pio_encode_mov(pio_x, pio_osr));
+    pio_sm_exec_wait_blocking(XREAD_PIO, XREAD_SM, pio_encode_out(pio_x, 32));
+    //Autopull/autopush enabled. Clear the FIFOs before use
+    pio_sm_clear_fifos(XREAD_PIO, XREAD_SM);
 
     // Set up two DMA channels for fetching address then data
     int addr_chan = dma_claim_unused_channel(true);
