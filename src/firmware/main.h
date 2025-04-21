@@ -70,6 +70,10 @@ bool main_prog(uint16_t *xregs);
 #define DECODE_PIO pio1
 #define DECODE_SM 1
 
+#define TRACE_PIN_OFFS PIO1_PIN_OFFS
+#define TRACE_PIO pio1
+#define TRACE_SM 2
+
 #define XREAD_PIN_OFFS PIO2_PIN_OFFS
 #define XREAD_PIO pio2
 #define XREAD_SM 0
