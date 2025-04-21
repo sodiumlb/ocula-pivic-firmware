@@ -54,10 +54,11 @@ series:
 .in 16 left auto 16
 .out 8 right auto 8
 .wrap_target
-    mov isr x           ; Base address to fetch from in the system
-    wait 0 gpio 13 [30] ; sample address ca 200ns after phi0 falling edge (pin 29 => pin 13 in upper GPIO bank)
+    wait 0 gpio 29 [30] ; sample address ca 300ns after phi0 falling edge 
+    mov isr x      [10] ; Base address to fetch from in the system
     in pins 16          ; Pull in rest of address from 6502
     out pins 8          ; Blocking till data returns. pindirs set elsewhere
+    wait 1 gpio 29      ; Make sure only one iteration per phi clock
 .wrap
 
 ; Address of the memory to write to is set in x by setup
@@ -67,30 +68,33 @@ series:
 .out 32 right
 .wrap_target
 start:
-    wait 1 gpio 13      ; Wait for phi0 rising edge (pin 29 => pin 13 in upper GPIO bank)
+    wait 1 gpio 29      ; Wait for phi0 rising edge 
     jmp pin start       ; If read, go back to start
     mov osr pins        ; Capture D[7:0],PHI,A[15:0],RnW,nMAP
     out null 9          ; Spool out D[7:0], PHI
     mov isr x           ; System top address bits
     in osr 16           ; shift in bottom address
+    wait 0 gpio 29      ; Wait for phi0 falling edge before capturing data
     push noblock        ; Send address to FIFO
-    wait 0 gpio 13      ; Wait for phi0 falling edge before capturing data
     mov isr pins        ; Move data to isr
     push noblock        ; Send data to FIFO
 .wrap
 
 .program xdir
-.wrap_target
 .set 1
-.out 8
+.in 1 left
+.out 8 right
+.wrap_target
 start:
     wait 1 irq 0        ; Wait for, then clear IRQ. Signaled by decode. Only run if not ROM or IO
     jmp pin dir_out     ; If PHI pin is high, jump to dir_out 
     jmp start           ; else return to IRQ loop
 dir_out:
+    mov y pins          ; Get RnW
+    jmp !y start        ; If write, abort output
     set pins 0          ; Set DIR on external bus transciver to output
     mov pindirs ~null   ; Set data pins to output
-    wait 0 gpio 13      ; Wait for phi0 falling edge (pin 29 => pin 13 in upper GPIO bank)
+    wait 0 gpio 29 [30] ; Wait for phi0 falling edge + ca 40 + 60ns for data hold
     mov pindirs null    ; Disable data pins output
     set pins 1          ; Set DIR on external bus transciver to input
 .wrap
@@ -101,6 +105,7 @@ dir_out:
 ; This program freeruns to get close to the original decode logic behaviour
 ; x set to 0x3 in setup for comparing to A[15:8] and A[15:14]
 .program decode
+.in 8 left
 .out 32 right
 .wrap_target
 start:
@@ -144,4 +149,11 @@ not_rom:
 .wrap_target
     wait 1 irq 2  side 1  ; Clear pin and wait for IRQ raised
     irq wait 2  side 0    ; Assert pin and IRQ (again), and wait for IRQ cleared
+.wrap
+
+.program trace
+.in 27 left auto 27
+.wrap_target
+    wait 1 irq 2 [12]
+    in pins 27
 .wrap

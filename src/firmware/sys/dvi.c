@@ -121,8 +121,8 @@ static uint v_scanline = 2;
 // post the command list, and another to post the pixels.
 static bool vactive_cmdlist_posted = false;
 
-#define DMACH_PING 0
-#define DMACH_PONG 1
+int DMACH_PING;
+int DMACH_PONG;
 
 static void dma_irq_handler() {
 
@@ -235,6 +235,8 @@ void dvi_init(void){
     // then chain to the opposite channel. Each time a channel finishes, we
     // reconfigure the one that just finished, meanwhile the opposite channel
     // is already making progress.
+    DMACH_PING = dma_claim_unused_channel(true);
+    DMACH_PONG = dma_claim_unused_channel(true);
     dma_channel_config c;
     c = dma_channel_get_default_config(DMACH_PING);
     channel_config_set_chain_to(&c, DMACH_PONG);

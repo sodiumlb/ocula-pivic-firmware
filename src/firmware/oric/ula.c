@@ -300,13 +300,15 @@ void phi_pio_init(void){
     pio_set_gpio_base (PHI_PIO, PHI_PIN_OFFS);
     pio_gpio_init(PHI_PIO, PHI_PIN);
     gpio_set_input_enabled(PHI_PIN, true);
+    gpio_set_slew_rate(PHI_PIN, GPIO_SLEW_RATE_SLOW);
+    gpio_set_drive_strength(PHI_PIN, GPIO_DRIVE_STRENGTH_2MA);
     pio_sm_set_consecutive_pindirs(PHI_PIO, PHI_SM, PHI_PIN, 1, true);
     uint offset = pio_add_program(PHI_PIO, &phi_program);
     pio_sm_config config = phi_program_get_default_config(offset);
     sm_config_set_sideset_pin_base(&config, PHI_PIN);          
     pio_sm_init(PHI_PIO, PHI_SM, offset, &config);
     pio_sm_set_enabled(PHI_PIO, PHI_SM, true);   
-    printf("PHI PIO init done\n");
+    //printf("PHI PIO init done\n");
 }
 
 void rgbs_pio_init(void){
@@ -322,14 +324,14 @@ void rgbs_pio_init(void){
     //sm_config_set_out_shift(&config, false, false, 32);  //Set in PIO program           
     pio_sm_init(RGBS_PIO, RGBS_SM, offset, &config);
     pio_sm_set_enabled(RGBS_PIO, RGBS_SM, true);   
-    printf("RGBS PIO init done\n");
+    //printf("RGBS PIO init done\n");
 }
 
 void decode_pio_init(void){
     pio_set_gpio_base (DECODE_PIO, DECODE_PIN_OFFS);
     gpio_init(NMAP_PIN);
     gpio_set_input_enabled(NMAP_PIN, true);
-    gpio_set_pulls(NMAP_PIN, true, false);             //E9 work-around
+    gpio_set_pulls(NMAP_PIN, false, false);             //E9 work-around
     //Invert input polarity of nMAP to make it active high (MAP)
     gpio_set_inover(NMAP_PIN, GPIO_OVERRIDE_INVERT);
     uint offset = pio_add_program(DECODE_PIO, &decode_program);
@@ -341,7 +343,7 @@ void decode_pio_init(void){
     //Set sm x register to 3 for decode matching of 0x03-- and A[15:14]==0x03
     pio_sm_exec_wait_blocking(DECODE_PIO, DECODE_SM, pio_encode_set(pio_x, 0x3));
     pio_sm_set_enabled(DECODE_PIO, DECODE_SM, true);   
-    printf("DECODE PIO init done\n");
+    //printf("DECODE PIO init done\n");
 }
 
 void nio_pio_init(void){
@@ -354,7 +356,7 @@ void nio_pio_init(void){
     sm_config_set_sideset_pin_base(&config, NIO_PIN);
     pio_sm_init(NIO_PIO, NIO_SM, offset, &config);
     pio_sm_set_enabled(NIO_PIO, NIO_SM, true);   
-    printf("nIO PIO init done\n");
+    //printf("nIO PIO init done\n");
 }
 
 void nromsel_pio_init(void){
@@ -367,9 +369,12 @@ void nromsel_pio_init(void){
     sm_config_set_sideset_pin_base(&config, NROMSEL_PIN);
     pio_sm_init(NROMSEL_PIO, NROMSEL_SM, offset, &config);
     pio_sm_set_enabled(NROMSEL_PIO, NROMSEL_SM, true);   
-    printf("nROMSEL PIO init done\n");
+    //printf("nROMSEL PIO init done\n");
 }
 
+
+uint8_t xread_dma_addr_chan;
+uint8_t xread_dma_data_chan;
 void xread_pio_init(void){
     pio_set_gpio_base (XREAD_PIO, XREAD_PIN_OFFS);
     for(uint32_t i = 0; i < DATA_PIN_COUNT; i++){
@@ -381,8 +386,10 @@ void xread_pio_init(void){
     for(uint32_t i = 0; i < ADDR_PIN_COUNT; i++){
         gpio_init(ADDR_PIN_BASE+i);
         gpio_set_pulls(ADDR_PIN_BASE+i, false, true);   //E9 work-around
+        pio_gpio_init(XREAD_PIO, ADDR_PIN_BASE+i);
         gpio_set_input_enabled(ADDR_PIN_BASE+i, true);
     }
+    pio_sm_set_consecutive_pindirs(XREAD_PIO, XREAD_SM, ADDR_PIN_BASE, ADDR_PIN_COUNT, false);
     gpio_init(RNW_PIN);
     gpio_set_input_enabled(RNW_PIN, true);
     gpio_set_pulls(RNW_PIN, false, false);              //E9 work-around
@@ -395,17 +402,21 @@ void xread_pio_init(void){
     pio_sm_init(XREAD_PIO, XREAD_SM, offset, &config);
     pio_sm_put_blocking(XREAD_PIO, XREAD_SM, (uintptr_t)xram >> 16);
     pio_sm_exec_wait_blocking(XREAD_PIO, XREAD_SM, pio_encode_pull(false, true));
-    pio_sm_exec_wait_blocking(XREAD_PIO, XREAD_SM, pio_encode_mov(pio_x, pio_osr));
-    pio_sm_set_enabled(XREAD_PIO, XREAD_SM, true);
+    //pio_sm_exec_wait_blocking(XREAD_PIO, XREAD_SM, pio_encode_mov(pio_x, pio_osr));
+    pio_sm_exec_wait_blocking(XREAD_PIO, XREAD_SM, pio_encode_out(pio_x, 32));
+    //Autopull/autopush enabled. Clear the FIFOs before use
+    pio_sm_clear_fifos(XREAD_PIO, XREAD_SM);
 
     // Set up two DMA channels for fetching address then data
     int addr_chan = dma_claim_unused_channel(true);
     int data_chan = dma_claim_unused_channel(true);
+    xread_dma_addr_chan = addr_chan;
+    xread_dma_data_chan = data_chan;
 
     // DMA move the requested memory data to PIO for output
     dma_channel_config data_dma = dma_channel_get_default_config(data_chan);
     channel_config_set_high_priority(&data_dma, true);
-    channel_config_set_dreq(&data_dma, pio_get_dreq(XREAD_PIO, XREAD_SM, true));
+    //channel_config_set_dreq(&data_dma, pio_get_dreq(XREAD_PIO, XREAD_SM, true));
     channel_config_set_read_increment(&data_dma, false);
     channel_config_set_write_increment(&data_dma, false);
     channel_config_set_transfer_data_size(&data_dma, DMA_SIZE_8);
@@ -433,7 +444,9 @@ void xread_pio_init(void){
         1,
         true);
     
-    printf("XREAD PIO init done\n");
+    pio_sm_set_enabled(XREAD_PIO, XREAD_SM, true);
+
+    //printf("XREAD PIO init done\n");
 }
 
 uint8_t xwrite_dma_addr_chan;
@@ -453,12 +466,13 @@ void xwrite_pio_init(void){
     // Set up two DMA channels for fetching address then data
     int addr_chan = dma_claim_unused_channel(true);
     int data_chan = dma_claim_unused_channel(true);
+    xwrite_dma_addr_chan = addr_chan;
     xwrite_dma_data_chan = data_chan;
 
     // DMA move the requested memory data to PIO for output
     dma_channel_config data_dma = dma_channel_get_default_config(data_chan);
     channel_config_set_high_priority(&data_dma, true);
-    channel_config_set_dreq(&data_dma, pio_get_dreq(XWRITE_PIO, XWRITE_SM, false));
+    //channel_config_set_dreq(&data_dma, pio_get_dreq(XWRITE_PIO, XWRITE_SM, false));
     channel_config_set_read_increment(&data_dma, false);
     channel_config_set_write_increment(&data_dma, false);
     channel_config_set_transfer_data_size(&data_dma, DMA_SIZE_8);
@@ -486,7 +500,41 @@ void xwrite_pio_init(void){
         1,
         true);
     
-    printf("XWRITE PIO init done\n");
+    //printf("XWRITE PIO init done\n");
+}
+
+#define TRACE_BUF &xram[0x10000]
+int trace_dma_chan;
+void trace_pio_init(void){
+    pio_set_gpio_base (TRACE_PIO, TRACE_PIN_OFFS);
+
+    uint offset = pio_add_program(TRACE_PIO, &trace_program);
+    pio_sm_config config = trace_program_get_default_config(offset);
+    //Pin counts and autopush/autopull set in program
+    sm_config_set_in_pin_base(&config, DATA_PIN_BASE);  
+    pio_sm_init(TRACE_PIO, TRACE_SM, offset, &config);
+    pio_sm_set_enabled(TRACE_PIO, TRACE_SM, true);
+
+    // Set up two DMA channels for fetching address then data
+    int trace_chan = dma_claim_unused_channel(true);
+    trace_dma_chan = trace_chan;
+
+    // DMA move the requested memory data to PIO for output
+    dma_channel_config trace_dma = dma_channel_get_default_config(trace_chan);
+    channel_config_set_high_priority(&trace_dma, true);
+    channel_config_set_dreq(&trace_dma, pio_get_dreq(TRACE_PIO, TRACE_SM, false));
+    channel_config_set_read_increment(&trace_dma, false);
+    channel_config_set_write_increment(&trace_dma, true);
+    channel_config_set_ring(&trace_dma, true, 12);
+    dma_channel_configure(
+        trace_chan,
+        &trace_dma,
+        TRACE_BUF,                        // dst
+        &TRACE_PIO->rxf[TRACE_SM],        // src
+        0xf0001000,                       // continuous
+        true);
+
+    //printf("TRACE PIO init done\n");
 }
 
 void xdir_pio_init(void){
@@ -498,14 +546,15 @@ void xdir_pio_init(void){
     pio_sm_config config = xdir_program_get_default_config(offset);
     sm_config_set_set_pin_base(&config, DIR_PIN);
     sm_config_set_out_pin_base(&config, DATA_PIN_BASE);
+    sm_config_set_out_pin_count(&config, DATA_PIN_COUNT);
     sm_config_set_jmp_pin(&config, PHI_PIN);
+    sm_config_set_in_pin_base(&config, RNW_PIN);
     pio_sm_init(XDIR_PIO, XDIR_SM, offset, &config);
     pio_sm_set_enabled(XDIR_PIO, XDIR_SM, true);   
-    printf("XDIR PIO init done\n");   
+    //printf("XDIR PIO init done\n");   
 }
 
 void ula_init(void){
-    printf("ula_init()\n");
     memcpy((void*)(&xram[ADDR_LORES_STD_CHRSET+(0x20*8)]), (void*)oric_font, sizeof(oric_font));
     memset((void*)&xram[ADDR_LORES_SCR], 0x20, 40*28);
     sprintf((char*)(&xram[ADDR_LORES_SCR]), "Oric OCULA test " __DATE__);
@@ -515,18 +564,28 @@ void ula_init(void){
     for(uint8_t i=0; i<(0x7F-0x20); i++){
         xram[ADDR_LORES_SCR + 40*4 + i] =  0x20 + i;    
     }
-    for(uint8_t i=0; i<(0x7F-0x20); i++){
-        xram[ADDR_LORES_SCR + 40*7 + i] =  0x80 | (0x20 + i);    
-    }
-    printf("PIO inits\n");
-    phi_pio_init();
+    // for(uint8_t i=0; i<(0x7F-0x20); i++){
+    //     xram[ADDR_LORES_SCR + 40*7 + i] =  0x80 | (0x20 + i);    
+    // }
+    //Capture IRQ vector on unitialised system
+    xram[0x0244] = 0xB8;    //CLV
+    xram[0x0245] = 0xA9;    //STA #AA
+    xram[0x0246] = 0xAA;
+    xram[0x0247] = 0x8D;    //STA $0101
+    xram[0x0248] = 0x01;
+    xram[0x0249] = 0x01;   
+    xram[0x024A] = 0x50;    //BVC -5
+    xram[0x024B] = 0xFB;
     rgbs_pio_init();
+    phi_pio_init();
+    xread_pio_init();
+    xdir_pio_init();
     decode_pio_init();
     nio_pio_init();
-    nromsel_pio_init();
-    xread_pio_init();
     xwrite_pio_init();
-    xdir_pio_init();
+    trace_pio_init();
+    sleep_us(20);
+    nromsel_pio_init();
 
     //Set unused outputs to defaults
     gpio_set_function(CAS_PIN, GPIO_FUNC_SIO);
@@ -537,9 +596,9 @@ void ula_init(void){
     gpio_set_dir(RAS_PIN, true);
     gpio_set_dir(MUX_PIN, true);
     gpio_set_dir(WREN_PIN, true);
-    gpio_put(CAS_PIN, true);
-    gpio_put(RAS_PIN, true);
-    gpio_put(MUX_PIN, true);
+    gpio_put(CAS_PIN, false);
+    gpio_put(RAS_PIN, false);
+    gpio_put(MUX_PIN, false);
     gpio_put(WREN_PIN, false);
     
     
@@ -557,8 +616,50 @@ void ula_task(void){
     uint8_t pirq1 = pio1->irq & 0xFF;
     uint8_t pirq2 = pio2->irq & 0xFF;
     uint32_t xwrite_addr = dma_hw->ch[xwrite_dma_data_chan].write_addr;
-    uint8_t xw_fifo = pio_sm_get_rx_fifo_level(XWRITE_PIO, XWRITE_SM);
+    uint8_t xw_rxf = pio_sm_get_rx_fifo_level(XWRITE_PIO, XWRITE_SM);
+    uint8_t xw_status = (dma_channel_is_busy(xwrite_dma_addr_chan) ? 0x2 : 0) | (dma_channel_is_busy(xwrite_dma_data_chan) ? 0x1 : 0);
+    uint32_t trace_addr = dma_hw->ch[trace_dma_chan].write_addr;
+    uint8_t xr_rxf = pio_sm_get_rx_fifo_level(XREAD_PIO, XREAD_SM);
+    uint8_t xr_txf = pio_sm_get_tx_fifo_level(XREAD_PIO, XREAD_SM);
+    uint8_t xr_status = (dma_channel_is_busy(xread_dma_addr_chan) ? 0x2 : 0) | (dma_channel_is_busy(xread_dma_data_chan) ? 0x1 : 0);
+
     //printf("%llx %08x %08x %08x\n", gpio_get_all64(), pio0->irq, pio1->irq, pio2->irq);
-    sprintf((char*)(&xram[ADDR_LORES_SCR]+20*40), "A:%04x D:%02x %c PIO:%02x%02x%02x WX:%08x %d\n", 
-        addr, data, (rnw ? 'R' : 'W'), pirq0, pirq1, pirq2, xwrite_addr, xw_fifo);
+
+    // Trace buffer view WIP
+    // for(uint8_t i=0; i < 16; i++){
+    //     uint32_t d = ((uint32_t*)TRACE_BUF)[i];
+    //     sprintf((char*)(&xram[ADDR_LORES_SCR]+(i+10)*40), "%c %04x %02x", (d & 0x02000000 ? 'R' : 'W'), (d>>9)&0xFFFF, d & 0xFF);
+    // }
+    
+    // Memory page view
+    // uint32_t *xramw = (uint32_t*)&xram[0x00];
+    // for(uint8_t i=0; i < 8; i++){
+    //     sprintf((char*)(&xram[ADDR_LORES_SCR]+(i+10)*40), "%08x %08x %08x %08x", xramw[4*i + 0], xramw[4*i + 1], xramw[4*i + 2], xramw[4*i + 3]);
+    // }
+    // uint8_t w100, r100, cnt = 0;
+    // if(addr==0x100){
+    //     if(rnw == 0)
+    //         w100 = data;
+    //     else
+    //         r100 = data;
+    //     cnt++;
+    // }
+    
+    sprintf((char*)(&xram[ADDR_LORES_SCR]+25*40), "0x100: %02x %02x %02x %02x %02x", xram[0x100], xram[0x101], cnt, r100, w100);
+
+    sprintf((char*)(&xram[ADDR_LORES_SCR]+26*40), "A:%04x D:%02x %c PIO:%01x%01x%01x TR:%08x %d%d%d", 
+        addr, data, (rnw ? 'R' : 'W'), pirq0, pirq1, pirq2, trace_addr, xw_rxf, xr_txf, xw_status);
+    sprintf((char*)(&xram[ADDR_LORES_SCR]+27*40), "R%08x W%08x -%08x %08x", 
+        dma_hw->ch[xread_dma_data_chan].read_addr,
+        dma_hw->ch[xwrite_dma_data_chan].write_addr,
+        dma_hw->ch[xread_dma_addr_chan].write_addr,
+        XREAD_PIO->fdebug
+    );
+    // static uint8_t cnt=0;
+    // if(XREAD_PIO->fdebug & 0x01000000){
+    //     XREAD_PIO->fdebug = 0x01000000;
+    //     sprintf((char*)(&xram[ADDR_LORES_SCR]+22*40),"%d", cnt++);
+    //     pio_sm_put(XREAD_PIO, XREAD_SM, 0xAA);
+    // }
+
 }

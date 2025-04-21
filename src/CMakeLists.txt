@@ -42,6 +42,7 @@ target_sources(ocula PRIVATE
     firmware/mon/ram.c
     firmware/mon/set.c
     firmware/mon/vip.c
+    firmware/oric/rst.c
     firmware/oric/ula.c
     firmware/sys/cfg.c
     firmware/sys/com.c
