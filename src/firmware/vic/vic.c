@@ -53,7 +53,7 @@ const uint16_t charMemoryTable[16] = {
 #define border_colour_index      (vic_crf & 0x07)
 #define background_colour_index  (vic_crf >> 4)
 #define auxiliary_colour_index   (vic_cre >> 4)
-#define reverse_mode             (vic_crf & 0x08)
+#define non_reverse_mode         (vic_crf & 0x08)
 #define screen_origin_x          (vic_cr0 & 0x7F)
 #define screen_origin_y          (vic_cr1)
 #define num_of_columns           (vic_cr2 & 0x7F)
@@ -333,7 +333,7 @@ void core1_entry_new(void) {
     uint8_t  lastCellLine = 7;           // Last Cell Depth Counter value. Depends on double height mode.
     uint8_t  characterSizeShift = 3;     // Number of bits the Cell Depth Counter counts over.
     uint8_t  backgroundColourIndex = 1;  // 4-bit background colour index
-    uint8_t  borderColourIndex = 11;     // 3-bit border colour index
+    uint8_t  borderColourIndex = 3;      // 3-bit border colour index
     uint8_t  auxiliaryColourIndex = 0;   // 4-bit auxiliary colour index
     uint8_t  reverse = 0;                // 1-bit reverse state
     uint16_t videoMemoryStart = 0;       // Decoded starting address for screen memory.
@@ -419,6 +419,15 @@ void core1_entry_new(void) {
     multiColourTableOdd[0] = backgroundColourOdd;
     multiColourTableOdd[1] = borderColourOdd;
     multiColourTableOdd[3] = auxiliaryColourOdd;
+
+    // Set up hard coded control registers for now (from default PAL VIC).
+    xram[0x9000] = 0x0C;    // Screen Origin X = 12
+    xram[0x9001] = 0x26;    // Screen Origin Y = 38
+    xram[0x9002] = 0x96;    // Number of Rows = 22 (bits 0-6) Video Mem Start (bit 7)
+    xram[0x9003] = 0x2E;    // Number of Columns = 23 (bits 1-6)
+    xram[0x9005] = 0xF0;    // Video Mem Start = 0x1E00 (bits 4-7), Char Mem Start = 0x8000 (bits 0-3)
+    xram[0x900e] = 0;       // Black auxiliary colour (bits 4-7)
+    xram[0x900f] = 0x1B;    // White background (bits 4-7), Cyan border (bits 0-2), Reverse OFF (bit 3)
 
     while (1) {
         // Poll for PIO IRQ 0. This is the rising edge of F1.
@@ -694,7 +703,7 @@ void core1_entry(void) {
     uint8_t numOfRows = 23;             // 6-bit number of video matrix rows
     uint8_t lastCellLine = 7;           // Last Cell Depth Counter value. Depends on double height mode.
     uint8_t backgroundColour = 1;       // 4-bit background colour index
-    uint8_t borderColour = 11;          // 3-bit border colour index
+    uint8_t borderColour = 3;           // 3-bit border colour index
     uint8_t auxiliaryColour = 0;        // 4-bit auxiliary colour index
     uint8_t reverse = 0;                // 1-bit reverse state
 
