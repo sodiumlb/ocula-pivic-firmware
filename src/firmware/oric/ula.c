@@ -177,7 +177,7 @@ void core1_loop(void){
             RGBS_TX = RGBS_CMD1(VAL_SYNC,1);
         }else if(hscan && vscan){
             //output pixeldata with invertion
-            RGBS_TX = rgbs_cmd_pixel(ula.ink,ula.paper,char_data | invert_flag);
+            RGBS_TX = rgbs_cmd_pixel(ula.ink,ula.paper, (char_data & 0x3F) | invert_flag);
         }else{
             RGBS_TX = RGBS_CMD1(VAL_BLANK,1);
         }
