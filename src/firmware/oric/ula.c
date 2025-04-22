@@ -59,6 +59,7 @@ const uint32_t pixel2mask[64] = {
 
 uint16_t verticalCounter = 0;
 uint8_t horizontalCounter = 0;
+uint8_t flashCounter = 0;
 
 #define ADDR_LORES_STD_CHRSET 0xB400
 #define ADDR_LORES_ALT_CHRSET 0xB800
@@ -220,6 +221,9 @@ void core1_loop(void){
                     char_data = xram[ADDR_LORES_STD_CHRSET + ch_offs];
                 }
             }
+            if((ula.style & ULA_FLASH) && flashCounter & 0x20){
+                char_data = 0;
+            }
         }
         invert_flag = screen_data & ULA_INVERT;
 
@@ -274,6 +278,7 @@ void core1_loop(void){
                         break;
                     case(312):
                         verticalCounter = 0;
+                        flashCounter++;
                         mode_50hz = !!(ula.mode & ULA_50HZ);
                         force_txt = false;
                         break;
@@ -299,6 +304,7 @@ void core1_loop(void){
                         break;
                     case(264):
                         verticalCounter = 0;
+                        flashCounter++;
                         mode_50hz = !!(ula.mode & ULA_50HZ);
                         force_txt = false;
                         break;
