@@ -109,6 +109,7 @@ dir_out:
 .out 32 right
 .wrap_target
 start:
+    wait 0 gpio 29      ; Only run while PHI is low - avoid glitches
     mov y pins          ; Get A15-A8
     jmp x!=y not_io     ; Skip if not page 3
 is_io:

@@ -307,7 +307,7 @@ void phi_pio_init(void){
     pio_sm_config config = phi_program_get_default_config(offset);
     sm_config_set_sideset_pin_base(&config, PHI_PIN);          
     pio_sm_init(PHI_PIO, PHI_SM, offset, &config);
-    pio_sm_set_enabled(PHI_PIO, PHI_SM, true);   
+    //pio_sm_set_enabled(PHI_PIO, PHI_SM, true);   
     //printf("PHI PIO init done\n");
 }
 
@@ -323,7 +323,7 @@ void rgbs_pio_init(void){
     sm_config_set_out_pins(&config, RGBS_PIN_BASE, 4);
     //sm_config_set_out_shift(&config, false, false, 32);  //Set in PIO program           
     pio_sm_init(RGBS_PIO, RGBS_SM, offset, &config);
-    pio_sm_set_enabled(RGBS_PIO, RGBS_SM, true);   
+    //pio_sm_set_enabled(RGBS_PIO, RGBS_SM, true);   
     //printf("RGBS PIO init done\n");
 }
 
@@ -342,7 +342,7 @@ void decode_pio_init(void){
     pio_sm_init(DECODE_PIO, DECODE_SM, offset, &config);
     //Set sm x register to 3 for decode matching of 0x03-- and A[15:14]==0x03
     pio_sm_exec_wait_blocking(DECODE_PIO, DECODE_SM, pio_encode_set(pio_x, 0x3));
-    pio_sm_set_enabled(DECODE_PIO, DECODE_SM, true);   
+    //pio_sm_set_enabled(DECODE_PIO, DECODE_SM, true);   
     //printf("DECODE PIO init done\n");
 }
 
@@ -355,7 +355,7 @@ void nio_pio_init(void){
     pio_sm_config config = nio_program_get_default_config(offset);
     sm_config_set_sideset_pin_base(&config, NIO_PIN);
     pio_sm_init(NIO_PIO, NIO_SM, offset, &config);
-    pio_sm_set_enabled(NIO_PIO, NIO_SM, true);   
+    //pio_sm_set_enabled(NIO_PIO, NIO_SM, true);   
     //printf("nIO PIO init done\n");
 }
 
@@ -368,7 +368,7 @@ void nromsel_pio_init(void){
     pio_sm_config config = nromsel_program_get_default_config(offset);
     sm_config_set_sideset_pin_base(&config, NROMSEL_PIN);
     pio_sm_init(NROMSEL_PIO, NROMSEL_SM, offset, &config);
-    pio_sm_set_enabled(NROMSEL_PIO, NROMSEL_SM, true);   
+    //pio_sm_set_enabled(NROMSEL_PIO, NROMSEL_SM, true);   
     //printf("nROMSEL PIO init done\n");
 }
 
@@ -444,7 +444,7 @@ void xread_pio_init(void){
         1,
         true);
     
-    pio_sm_set_enabled(XREAD_PIO, XREAD_SM, true);
+    //pio_sm_set_enabled(XREAD_PIO, XREAD_SM, true);
 
     //printf("XREAD PIO init done\n");
 }
@@ -461,7 +461,7 @@ void xwrite_pio_init(void){
     pio_sm_put_blocking(XWRITE_PIO, XWRITE_SM, (uintptr_t)xram >> 16);
     pio_sm_exec_wait_blocking(XWRITE_PIO, XWRITE_SM, pio_encode_pull(false, true));
     pio_sm_exec_wait_blocking(XWRITE_PIO, XWRITE_SM, pio_encode_mov(pio_x, pio_osr));
-    pio_sm_set_enabled(XWRITE_PIO, XWRITE_SM, true);
+    //pio_sm_set_enabled(XWRITE_PIO, XWRITE_SM, true);
 
     // Set up two DMA channels for fetching address then data
     int addr_chan = dma_claim_unused_channel(true);
@@ -513,7 +513,7 @@ void trace_pio_init(void){
     //Pin counts and autopush/autopull set in program
     sm_config_set_in_pin_base(&config, DATA_PIN_BASE);  
     pio_sm_init(TRACE_PIO, TRACE_SM, offset, &config);
-    pio_sm_set_enabled(TRACE_PIO, TRACE_SM, true);
+    //pio_sm_set_enabled(TRACE_PIO, TRACE_SM, true);
 
     // Set up two DMA channels for fetching address then data
     int trace_chan = dma_claim_unused_channel(true);
@@ -550,7 +550,7 @@ void xdir_pio_init(void){
     sm_config_set_jmp_pin(&config, PHI_PIN);
     sm_config_set_in_pin_base(&config, RNW_PIN);
     pio_sm_init(XDIR_PIO, XDIR_SM, offset, &config);
-    pio_sm_set_enabled(XDIR_PIO, XDIR_SM, true);   
+    //pio_sm_set_enabled(XDIR_PIO, XDIR_SM, true);   
     //printf("XDIR PIO init done\n");   
 }
 
@@ -584,8 +584,12 @@ void ula_init(void){
     nio_pio_init();
     xwrite_pio_init();
     trace_pio_init();
-    sleep_us(20);
     nromsel_pio_init();
+
+    pio_enable_sm_mask_in_sync(pio0, 0x7);  //RBGS, NROMSEL, NIO
+    pio_enable_sm_mask_in_sync(pio1, 0x7);  //PHI, Decode, Trace
+    pio_enable_sm_mask_in_sync(pio2, 0x7);  //XREAD, XWRITE, XDIR
+    
 
     //Set unused outputs to defaults
     gpio_set_function(CAS_PIN, GPIO_FUNC_SIO);
