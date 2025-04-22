@@ -89,8 +89,8 @@ uint8_t horizontalCounter = 0;
 uint32_t inline __attribute__((always_inline)) rgbs_cmd_pixel(uint8_t ink, uint8_t paper, uint8_t data){
     uint32_t cmd = 0x00111111;                   //Default repeat=0, sync=1 for 6 values
     if(data & ULA_INVERT){
-        ink = ~ink & 0x7;
-        paper = ~paper & 0x7;
+        ink ^= 0x7;
+        paper ^= 0x7;
     }
     // Lookup table + multiply was faster than this assembly
     /* Corex-M33 assembly for building the command word
