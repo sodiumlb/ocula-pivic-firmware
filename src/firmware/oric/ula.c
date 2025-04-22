@@ -203,10 +203,14 @@ void core1_loop(void){
                 ch_offs = ((screen_data & ULA_MASK_CHAR)*8) + (verticalCounter & 0x7); 
             }
             if(ula.mode & ULA_HIRES){
-                if(ula.style & ULA_ALTCHR){
-                    char_data = xram[ADDR_HIRES_ALT_CHRSET + ch_offs];
-                }else{ //STDCHAR
-                    char_data = xram[ADDR_HIRES_STD_CHRSET + ch_offs];
+                if(force_txt){
+                    if(ula.style & ULA_ALTCHR){
+                        char_data = xram[ADDR_HIRES_ALT_CHRSET + ch_offs];
+                    }else{ //STDCHAR
+                        char_data = xram[ADDR_HIRES_STD_CHRSET + ch_offs];
+                    }
+                }else{
+                    char_data = screen_data;
                 }
             }else{ //LORES
                 if(ula.style & ULA_ALTCHR){
