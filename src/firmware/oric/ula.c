@@ -274,7 +274,7 @@ void core1_loop(void){
                         break;
                     case(312):
                         verticalCounter = 0;
-                        mode_50hz = true; //!!(ula_mode & ULA_50HZ);
+                        mode_50hz = !!(ula.mode & ULA_50HZ);
                         force_txt = false;
                         break;
                     default:
@@ -299,7 +299,7 @@ void core1_loop(void){
                         break;
                     case(264):
                         verticalCounter = 0;
-                        mode_50hz = true; //!!(ula_mode & ULA_50HZ);
+                        mode_50hz = !!(ula.mode & ULA_50HZ);
                         force_txt = false;
                         break;
                     default:
