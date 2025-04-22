@@ -10,15 +10,6 @@
 ; Mem clock(M1/M2) = sys_clk/60  = 2.216666666666667Mhz (30 cycles per phase)
 ; Clock out(F1/F2) = sys_clk/120 = 1.108333333333333Mhz (60 cycles per phase)
 ; Program run at full 133Mhz, i.e. no clock divider => 120 cycles total, 60 cycles per F1/F2 phase.
-; Each of the 8 phase combinations shown below asserts a PIO IRQ flag(0-7) for system synchronization.
-; IRQ 0 = F1M1D1
-; IRQ 1 = F1M1D2
-; IRQ 2 = F1M2D1
-; IRQ 3 = F1M2D2
-; IRQ 4 = F2M1D1
-; IRQ 5 = F2M1D2
-; IRQ 6 = F2M2D1
-; IRQ 7 = F2M2D2
 .program clkgen
 .side_set 1
 .clock_div 2.0
@@ -29,16 +20,18 @@ irq 1   side 1 [13]      ; Signals start of phase 1 external to the PIO, i.e. to
 nop     side 1 [14]
 nop     side 1 [14]
 nop     side 1 [14]
+;
 nop     side 0 [14]
 nop     side 0 [14]
 nop     side 0 [14]
 nop     side 0 [14]
-;irq 0   side 1 [14]
-;irq 1   side 1 [14]
-;irq 2   side 1 [14]
-;irq 3   side 1 [14]
-;irq 4   side 0 [14]
-;irq 5   side 0 [14]
-;irq 6   side 0 [14]
-;irq 7   side 0 [14]
 .wrap
+
+
+; VIC Control Register Writes (and RAM Copy routine)
+; - Handles the CPU writing into a VIC register during Phase 2.
+; - Handles capturing copies of other writes to BLK4 during Phase 2.
+; - Handles fetching copies of BLK0 data for all non-BLK4 CPU writes.
+;.program ramwrite
+
+
