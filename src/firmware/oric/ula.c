@@ -196,7 +196,12 @@ void core1_loop(void){
             char_data = 0x00;   //Show paper when on attributes
         }else{
             // ULA Phase 2
-            uint16_t ch_offs = ((screen_data & ULA_MASK_CHAR)*8) + (verticalCounter & 0x7);
+            uint16_t ch_offs;
+            if(ula.style & ULA_DOUBLE){
+                ch_offs = ((screen_data & ULA_MASK_CHAR)*8) + ((verticalCounter >> 1) & 0x7);
+            }else{
+                ch_offs = ((screen_data & ULA_MASK_CHAR)*8) + (verticalCounter & 0x7); 
+            }
             if(ula.mode & ULA_HIRES){
                 if(ula.style & ULA_ALTCHR){
                     char_data = xram[ADDR_HIRES_ALT_CHRSET + ch_offs];
