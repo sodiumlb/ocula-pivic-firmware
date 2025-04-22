@@ -152,6 +152,7 @@ void core1_loop(void){
     static bool vsync = false;
     static bool mode_50hz = true;      //Updated only at the end of frame
     static bool force_txt = false;      //Forced text mode at the bottom of hires
+    static bool hattrib = false;
 
     uint8_t screen_data;
     uint8_t char_data;
@@ -189,7 +190,7 @@ void core1_loop(void){
         }
         //Check for and update attribute registers
 
-        if((screen_data & ULA_MASK_ATTRIB_MARK)==0x00){
+        if(hattrib && vscan && (screen_data & ULA_MASK_ATTRIB_MARK)==0x00){
             uint8_t value = screen_data & ULA_MASK_ATTRIB_VALUE;
             uint8_t index = (screen_data & ULA_MASK_ATTRIB_INDEX)>>3;
             ula.attrib[index] = value;
@@ -229,6 +230,9 @@ void core1_loop(void){
             case(1):
                 hscan = true;
                 break;
+            case(40):
+                hattrib = false;
+                break;
             case(41):   
                 hscan = false;
                 break;
@@ -244,6 +248,7 @@ void core1_loop(void){
                 ula.ink = 0x07;
                 ula.paper = 0x00;
                 ula.style = 0x00;
+                hattrib = true;
                 break;
             default:    
                 break;
