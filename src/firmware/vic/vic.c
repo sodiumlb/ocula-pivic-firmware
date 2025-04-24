@@ -491,7 +491,11 @@ void core1_entry_new(void) {
                 // Last line. This is when VCC loads number of rows.
                 verticalCounter = 0;
                 verticalCellCounter = numOfRows;
-                fetchState = FETCH_OUTSIDE_MATRIX;
+                if (screenOriginY == 0) {
+                    fetchState = FETCH_IN_MATRIX_Y;
+                } else {
+                    fetchState = FETCH_OUTSIDE_MATRIX;
+                }
             } else {
                 verticalCounter++;
 
@@ -727,11 +731,37 @@ void core1_entry_new(void) {
                 horizontalCounter++;
             }
         } else {
-            // Inside vertical blanking. The CVBS commands for each line were sent during HC=0, 
-            // so nothing else to do for the rest of the line other than increment and reset HC.
+            // Inside vertical blanking. The CVBS commands for each line were already sent during 
+            // HC=0. For the rest of the line, it is a simplified version of the standard line, 
+            // except that we don't output any pixels.
             if (horizontalCounter == PAL_HBLANK_START) {
                 horizontalCounter = 0;
-            } else {
+                if (cellDepthCounter == lastCellLine) {
+                    videoMatrixLatch = videoMatrixCounter;
+                }
+            }
+            else {
+                // In case the screen origin Y is set within the vertical blanking lines, we still need 
+                // to update the fetch state, video matrix counter, and the horizontal cell counter, even
+                // though we're not outputting character pixels.
+                switch (fetchState) {
+                    case FETCH_OUTSIDE_MATRIX:
+                        break;
+                    case FETCH_IN_MATRIX_Y:
+                    case FETCH_MATRIX_LINE:
+                        if (horizontalCounter == screenOriginX) {
+                            fetchState = FETCH_SCREEN_CODE;
+                        }
+                        break;
+                    case FETCH_SCREEN_CODE:
+                        fetchState = (horizontalCellCounter--? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                        break;
+                    case FETCH_CHAR_DATA:
+                        videoMatrixCounter++;
+                        fetchState = (horizontalCellCounter--? FETCH_SCREEN_CODE : FETCH_MATRIX_LINE);
+                        break;
+                }
+
                 horizontalCounter++;
             }
         }
