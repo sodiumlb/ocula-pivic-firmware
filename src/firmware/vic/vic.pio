@@ -12,7 +12,6 @@
 ; Program run at full 133Mhz, i.e. no clock divider => 120 cycles total, 60 cycles per F1/F2 phase.
 .program clkgen
 .side_set 1
-.clock_div 2.0
 
 .wrap_target
 irq 0   side 1 [0]       ; Signals start of phase 1 internal to the PIO.

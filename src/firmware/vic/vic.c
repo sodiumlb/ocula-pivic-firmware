@@ -347,7 +347,7 @@ void core1_entry_new(void) {
 
     // Hard coded control registers for now (from default PAL VIC).
     // TODO: Remove after switching to using the xram VIC control register addresses.
-    // TODO: The +7 is for the in matrix delay.
+    // TODO: The +6 is for the in matrix delay.
     uint8_t  screenOriginX = 12 + 6;     // 7-bit horiz counter value to match for left of video matrix
     uint8_t  screenOriginY = 38 * 2;     // 8-bit vert counter value (x 2) to match for top of video matrix
     uint8_t  numOfColumns = 22;          // 7-bit number of video matrix columns
