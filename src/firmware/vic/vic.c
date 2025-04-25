@@ -477,6 +477,14 @@ void vic_core1_loop(void) {
                     videoMatrixLatch = videoMatrixCounter;
                 }
 
+                // If the video matrix hasn't closed yet, then its still either FETCH_SCREEN_CODE 
+                // or FETCH_CHAR_DATA. In that scenario, we need to close it by setting fetchState
+                // to FETCH_MATRIX_LINE so that the next line starts with border as expected, i.e.
+                // the "In Matrix" state ends either when HCC counts down OR the end of the line.
+                if (fetchState > FETCH_MATRIX_LINE) {
+                    fetchState = FETCH_MATRIX_LINE;
+                }
+
                 // Nothing else to do at this point, so reset HC and skip rest of loop.
                 horizontalCounter = 0;
             }
