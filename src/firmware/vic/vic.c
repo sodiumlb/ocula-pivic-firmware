@@ -239,8 +239,8 @@ void vic_memory_init() {
     // Set up hard coded control registers for now (from default PAL VIC).
     xram[0x1000] = 0x0C;    // Screen Origin X = 12
     xram[0x1001] = 0x26;    // Screen Origin Y = 38
-    xram[0x1002] = 0x96;    // Number of Rows = 22 (bits 0-6) Video Mem Start (bit 7)
-    xram[0x1003] = 0x2E;    // Number of Columns = 23 (bits 1-6)
+    xram[0x1002] = 0x96;    // Number of Columns = 22 (bits 0-6) Video Mem Start (bit 7)
+    xram[0x1003] = 0x2E;    // Number of Rows = 23 (bits 1-6)
     xram[0x1005] = 0xF0;    // Video Mem Start = 0x3E00 (bits 4-7), Char Mem Start = 0x0000 (bits 0-3)
     xram[0x100e] = 0;       // Black auxiliary colour (bits 4-7)
     xram[0x100f] = 0x1B;    // White background (bits 4-7), Cyan border (bits 0-2), Reverse OFF (bit 3)
