@@ -64,8 +64,8 @@
 #define background_colour_index  (vic_crf >> 4)
 #define auxiliary_colour_index   (vic_cre >> 4)
 #define non_reverse_mode         (vic_crf & 0x08)
-#define screen_origin_x          (vic_cr0 & 0x7F)
-#define screen_origin_y          (vic_cr1)
+#define screen_origin_x          ((vic_cr0 & 0x7F) + 6)
+#define screen_origin_y          (vic_cr1 << 1)
 #define num_of_columns           (vic_cr2 & 0x7F)
 #define num_of_rows              ((vic_cr3 & 0x7E) >> 1)
 #define double_height_mode       (vic_cr3 & 0x01)
@@ -73,7 +73,9 @@
 #define char_size_shift          (3 + double_height_mode)
 #define screen_mem_start         (((vic_cr5 & 0xF0) << 6) | ((vic_cr2 & 0x80) << 2))
 #define char_mem_start           ((vic_cr5 & 0x0F) << 10)
-#define colour_mem_start         ((vic_cr2 & 0x80)? 0x1400 : 0x1600)
+#define colour_mem_start         (0x1400 | ((vic_cr2 & 0x80) << 2))
+// TODO: Decide whether to keep above or use below. Maybe one of them is more efficient.
+//#define colour_mem_start         ((vic_cr2 & 0x80)? 0x1600 : 0x1400)
 
 // These are the actual VIC 20 memory addresses, but note that the VIC chip sees memory a bit differently.
 // $8000-$83FF: 1 KB uppercase/glyphs
@@ -298,6 +300,15 @@ void vic_pio_init(void) {
 void vic_memory_init() {
     memcpy((void*)(&xram[ADDR_UPPERCASE_GLYPHS_CHRSET]), (void*)vic_char_rom, sizeof(vic_char_rom));
 
+    // Set up hard coded control registers for now (from default PAL VIC).
+    xram[0x1000] = 0x0C;    // Screen Origin X = 12
+    xram[0x1001] = 0x26;    // Screen Origin Y = 38
+    xram[0x1002] = 0x96;    // Number of Rows = 22 (bits 0-6) Video Mem Start (bit 7)
+    xram[0x1003] = 0x2E;    // Number of Columns = 23 (bits 1-6)
+    xram[0x1005] = 0xF0;    // Video Mem Start = 0x3E00 (bits 4-7), Char Mem Start = 0x0000 (bits 0-3)
+    xram[0x100e] = 0;       // Black auxiliary colour (bits 4-7)
+    xram[0x100f] = 0x1B;    // White background (bits 4-7), Cyan border (bits 0-2), Reverse OFF (bit 3)
+
     // Set up a test page for the screen memory.
     memset((void*)&xram[ADDR_UNEXPANDED_SCR], 0x20, 1024);
 
@@ -361,19 +372,31 @@ void core1_entry_new(void) {
     // Hard coded control registers for now (from default PAL VIC).
     // TODO: Remove after switching to using the xram VIC control register addresses.
     // TODO: The +6 is for the in matrix delay.
-    uint8_t  screenOriginX = 12 + 6;     // 7-bit horiz counter value to match for left of video matrix
-    uint8_t  screenOriginY = 38 * 2;     // 8-bit vert counter value (x 2) to match for top of video matrix
-    uint8_t  numOfColumns = 22;          // 7-bit number of video matrix columns
-    uint8_t  numOfRows = 23;             // 6-bit number of video matrix rows
-    uint8_t  lastCellLine = 7;           // Last Cell Depth Counter value. Depends on double height mode.
-    uint8_t  characterSizeShift = 3;     // Number of bits the Cell Depth Counter counts over.
-    uint8_t  backgroundColourIndex = 1;  // 4-bit background colour index
-    uint8_t  borderColourIndex = 3;      // 3-bit border colour index
-    uint8_t  auxiliaryColourIndex = 0;   // 4-bit auxiliary colour index
-    uint8_t  reverse = 0;                // 1-bit reverse state
-    uint16_t videoMemoryStart = 0;       // Decoded starting address for screen memory.
-    uint16_t colourMemoryStart = 0;      // Decoded starting address for colour memory.
-    uint16_t characterMemoryStart = 0;   // Decoded starting address for character memory.
+    // NOTES:
+    // - No overruns after screen_origin_y switchover.
+    // - No overruns after screen_origin_x switchover.
+    // - No overruns after num_of_columns switchover.
+    // - No overruns after num_of_rows switchover.
+    // - No overruns after last_line_of_cell switchover.
+    // - No overruns after char_size_shift switchover.
+    // - No overruns after colour index switchovers.
+    // - No overruns after non_reverse_mode switchover.
+    // - No overruns after screen_mem_start switchover.
+    // - No overruns after colour_mem_start switchover.
+    // - No overruns after char_mem_start switchover.
+    //uint8_t  screenOriginX = 12 + 6;     // 7-bit horiz counter value to match for left of video matrix
+    //uint8_t  screenOriginY = 38 * 2;     // 8-bit vert counter value (x 2) to match for top of video matrix
+    //uint8_t  numOfColumns = 22;          // 7-bit number of video matrix columns
+    //uint8_t  numOfRows = 23;             // 6-bit number of video matrix rows
+    //uint8_t  lastCellLine = 7;           // Last Cell Depth Counter value. Depends on double height mode.
+    //uint8_t  characterSizeShift = 3;     // Number of bits the Cell Depth Counter counts over.
+    //uint8_t  backgroundColourIndex = 1;  // 4-bit background colour index
+    //uint8_t  borderColourIndex = 3;      // 3-bit border colour index
+    //uint8_t  auxiliaryColourIndex = 0;   // 4-bit auxiliary colour index
+    //uint8_t  reverse = 0;                // 1-bit reverse state
+    //uint16_t videoMemoryStart = 0;       // Decoded starting address for screen memory.
+    //uint16_t colourMemoryStart = 0;      // Decoded starting address for colour memory.
+    //uint16_t characterMemoryStart = 0;   // Decoded starting address for character memory.
 
     // Counters.
     uint16_t videoMatrixCounter = 0;     // 12-bit video matrix counter (VMC)
@@ -437,23 +460,20 @@ void core1_entry_new(void) {
     uint16_t charDataOffset = 0;
 
     // TESTING: Remove after integration with control register changes.
-    videoMemoryStart = ADDR_UNEXPANDED_SCR;
-    colourMemoryStart = ADDR_COLOUR_RAM;
-    characterMemoryStart = ADDR_UPPERCASE_GLYPHS_CHRSET;
+    //videoMemoryStart = ADDR_UNEXPANDED_SCR;
+    //colourMemoryStart = ADDR_COLOUR_RAM;
+    //characterMemoryStart = ADDR_UPPERCASE_GLYPHS_CHRSET;
 
     // TESTING: Example of variables set up for certain border/background/aux colours.
     // TODO: Remove after switching to using xram control register addresses.
-    backgroundColourIndex = 1;
-    backgroundColourEven = pal_palette_e[backgroundColourIndex];
-    backgroundColourOdd = pal_palette_o[backgroundColourIndex];
+    backgroundColourEven = pal_palette_e[background_colour_index];
+    backgroundColourOdd = pal_palette_o[background_colour_index];
     backgroundColour = backgroundColourEven;
-    borderColourIndex = 3;
-    borderColourEven = pal_palette_e[borderColourIndex];
-    borderColourOdd = pal_palette_o[borderColourIndex];
+    borderColourEven = pal_palette_e[border_colour_index];
+    borderColourOdd = pal_palette_o[border_colour_index];
     borderColour = borderColourEven;
-    auxiliaryColourIndex = 0;
-    auxiliaryColourEven = pal_palette_e[auxiliaryColourIndex];
-    auxiliaryColourOdd = pal_palette_o[auxiliaryColourIndex];
+    auxiliaryColourEven = pal_palette_e[auxiliary_colour_index];
+    auxiliaryColourOdd = pal_palette_o[auxiliary_colour_index];
     auxiliaryColour = auxiliaryColourEven;
     multiColourTableEven[0] = backgroundColourEven;
     multiColourTableEven[1] = borderColourEven;
@@ -461,15 +481,6 @@ void core1_entry_new(void) {
     multiColourTableOdd[0] = backgroundColourOdd;
     multiColourTableOdd[1] = borderColourOdd;
     multiColourTableOdd[3] = auxiliaryColourOdd;
-
-    // Set up hard coded control registers for now (from default PAL VIC).
-    xram[0x1000] = 0x0C;    // Screen Origin X = 12
-    xram[0x1001] = 0x26;    // Screen Origin Y = 38
-    xram[0x1002] = 0x96;    // Number of Rows = 22 (bits 0-6) Video Mem Start (bit 7)
-    xram[0x1003] = 0x2E;    // Number of Columns = 23 (bits 1-6)
-    xram[0x1005] = 0xF0;    // Video Mem Start = 0x3E00 (bits 4-7), Char Mem Start = 0x0000 (bits 0-3)
-    xram[0x100e] = 0;       // Black auxiliary colour (bits 4-7)
-    xram[0x100f] = 0x1B;    // White background (bits 4-7), Cyan border (bits 0-2), Reverse OFF (bit 3)
 
     // Slight hack so that VC increments to 0 on first iteration.
     verticalCounter = 0xFFFF;
@@ -494,8 +505,8 @@ void core1_entry_new(void) {
             if (verticalCounter == PAL_LAST_LINE) {
                 // Last line. This is when VCC loads number of rows.
                 verticalCounter = 0;
-                verticalCellCounter = numOfRows;
-                if (screenOriginY == 0) {
+                verticalCellCounter = num_of_rows;
+                if (screen_origin_y == 0) {
                     fetchState = FETCH_IN_MATRIX_Y;
                 } else {
                     fetchState = FETCH_OUTSIDE_MATRIX;
@@ -504,7 +515,7 @@ void core1_entry_new(void) {
                 verticalCounter++;
 
                 // Check for Cell Depth Counter reset.
-                if (cellDepthCounter == lastCellLine) {
+                if (cellDepthCounter == last_line_of_cell) {
                     cellDepthCounter = 0;
 
                     // Vertical Cell Counter decrements when CDC resets, unless its the last line.
@@ -519,7 +530,7 @@ void core1_entry_new(void) {
                     // If the line that just ended was a video matrix line, then increment CDC.
                     cellDepthCounter++;
                 }
-                else if (verticalCounter == screenOriginY) {
+                else if (verticalCounter == screen_origin_y) {
                     // This is the line the video matrix starts on.
                     fetchState = FETCH_IN_MATRIX_Y;
                 }
@@ -589,7 +600,7 @@ void core1_entry_new(void) {
             videoMatrixCounter = videoMatrixLatch;
             
             // Horizontal Cell Counter is loaded at the start of each line with num of columns.
-            horizontalCellCounter = (numOfColumns << 1);
+            horizontalCellCounter = num_of_columns;
 
             horizontalCounter++;
         }
@@ -606,7 +617,7 @@ void core1_entry_new(void) {
                 // If the CDC is on the last of its lines, then we latch the VMC at the end of the line. In
                 // the real chip, this actually happens every cycle of the last CDC line, but that is 
                 // probably an optimisation and not needed.
-                if (cellDepthCounter == lastCellLine) {
+                if (cellDepthCounter == last_line_of_cell) {
                     videoMatrixLatch = videoMatrixCounter;
                 }
 
@@ -635,7 +646,7 @@ void core1_entry_new(void) {
                             pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                             pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                         }
-                        if (horizontalCounter == screenOriginX) {
+                        if (horizontalCounter == screen_origin_x) {
                             // Last 4 pixels before first char renders are still border.
                             pixel5 = pixel6 = pixel7 = pixel8 = borderColour;
                             fetchState = FETCH_SCREEN_CODE;
@@ -644,14 +655,14 @@ void core1_entry_new(void) {
 
                     case FETCH_SCREEN_CODE:
                         // Calculate address within video memory and fetch cell index.
-                        cellIndex = xram[videoMemoryStart + videoMatrixCounter];
+                        cellIndex = xram[screen_mem_start + videoMatrixCounter];
 
                         // Due to the way the colour memory is wired up, the above fetch of the cell index
                         // also happens to automatically fetch the foreground colour from the Colour Matrix
                         // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from 
                         // colour RAM in to the VIC chip. It gets latched at this point, but not made available
                         // to the pixel colour selection logic until the char data is fetched.
-                        colourDataLatch = xram[colourMemoryStart + videoMatrixCounter];
+                        colourDataLatch = xram[colour_mem_start + videoMatrixCounter];
 
                         // Output the 4 pixels for this cycle (usually second 4 pixels of a character).
                         if (horizontalCounter > PAL_HBLANK_END) {
@@ -667,12 +678,7 @@ void core1_entry_new(void) {
 
                     case FETCH_CHAR_DATA:
                         // Calculate offset of data.
-                        charDataOffset = characterMemoryStart + (cellIndex << characterSizeShift) + cellDepthCounter;
-
-                        // Adjust offset for memory wrap around (due to diff in VIC 20 mem map vs VIC chip mem map)
-                        if ((characterMemoryStart < 8192) && (charDataOffset >= 8192)) {
-                            charDataOffset += 24576;
-                        }
+                        charDataOffset = char_mem_start + (cellIndex << char_size_shift) + cellDepthCounter;
 
                         // Fetch cell data.
                         charData = xram[charDataOffset];
@@ -686,7 +692,7 @@ void core1_entry_new(void) {
                         // Determine character pixels.
                         if ((colourData & 0x08) == 0) {
                             // Hires mode.
-                            if (reverse == 0) {
+                            if (non_reverse_mode) {
                                 // Normal unreversed graphics.
                                 pixel1 = (charData & 0x80? foregroundColour : backgroundColour);
                                 pixel2 = (charData & 0x40? foregroundColour : backgroundColour);
@@ -727,8 +733,8 @@ void core1_entry_new(void) {
                         // Increment the video matrix counter to next cell.
                         videoMatrixCounter++;
 
-                        // Toggle fetch state. Close matrix if HCC hits zero.
-                        fetchState = (horizontalCellCounter--? FETCH_SCREEN_CODE : FETCH_MATRIX_LINE);
+                        // Toggle fetch state. For efficiency, HCC deliberately not checked here.
+                        fetchState = FETCH_SCREEN_CODE;
                         break;
                 }
 
@@ -740,7 +746,7 @@ void core1_entry_new(void) {
             // except that we don't output any pixels.
             if (horizontalCounter == PAL_HBLANK_START) {
                 horizontalCounter = 0;
-                if (cellDepthCounter == lastCellLine) {
+                if (cellDepthCounter == last_line_of_cell) {
                     videoMatrixLatch = videoMatrixCounter;
                 }
             }
@@ -753,7 +759,7 @@ void core1_entry_new(void) {
                         break;
                     case FETCH_IN_MATRIX_Y:
                     case FETCH_MATRIX_LINE:
-                        if (horizontalCounter == screenOriginX) {
+                        if (horizontalCounter == screen_origin_x) {
                             fetchState = FETCH_SCREEN_CODE;
                         }
                         break;
@@ -762,7 +768,7 @@ void core1_entry_new(void) {
                         break;
                     case FETCH_CHAR_DATA:
                         videoMatrixCounter++;
-                        fetchState = (horizontalCellCounter--? FETCH_SCREEN_CODE : FETCH_MATRIX_LINE);
+                        fetchState = FETCH_SCREEN_CODE;
                         break;
                 }
 
