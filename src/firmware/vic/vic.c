@@ -17,37 +17,47 @@
 #include <string.h>
 #include <stdio.h>
 
-// VIC chip control registers.
-#define vic_cr0 xram[0x9000]    // ABBBBBBB A=Interlace B=Screen Origin X (4 pixels granularity)
-#define vic_cr1 xram[0x9001]    // CCCCCCCC C=Screen Origin Y (2 pixel granularity)
-#define vic_cr2 xram[0x9002]    // HDDDDDDD D=Number of Columns
-#define vic_cr3 xram[0x9003]    // GEEEEEEF E=Number of Rows F=Double Size Chars
-#define vic_cr4 xram[0x9004]    // GGGGGGGG G=Raster Line
-#define vic_cr5 xram[0x9005]    // HHHHIIII H=Screen Mem Addr I=Char Mem Addr
-#define vic_cr6 xram[0x9006]    // JJJJJJJJ Light pen X
-#define vic_cr7 xram[0x9007]    // KKKKKKKK Light pen Y
-#define vic_cr8 xram[0x9008]    // LLLLLLLL Paddle X
-#define vic_cr9 xram[0x9009]    // MMMMMMMM Paddle Y
-#define vic_cra xram[0x900a]    // NRRRRRRR Sound voice 1
-#define vic_crb xram[0x900b]    // OSSSSSSS Sound voice 2
-#define vic_crc xram[0x900c]    // PTTTTTTT Sound voice 3
-#define vic_crd xram[0x900d]    // QUUUUUUU Noise voice
-#define vic_cre xram[0x900e]    // WWWWVVVV W=Auxiliary colour V=Volume control
-#define vic_crf xram[0x900f]    // XXXXYZZZ X=Background colour Y=Reverse Z=Border colour
+// NOTE: VIC chip vs VIC 20 memory map is different. This is why we have
+// the control registers appearing at $1000. The Chip Select for reading
+// and writing to the VIC chip registers is when A13=A11=A10=A9=A8=0 and 
+// A12=1, i.e. $10XX. Bottom 4 bits select one of the 16 registers.
+//
+// VIC chip addresses     VIC 20 addresses and their normal usage
+//
+// $0000                  $8000  Unreversed Character ROM
+// $0400                  $8400  Reversed Character ROM
+// $0800                  $8800  Unreversed upper/lower case ROM
+// $0C00                  $8C00  Reversed upper/lower case ROM
+// $1000                  $9000  VIC and VIA chips
+// $1400                  $9400  Colour memory (at either $9400 or $9600)
+// $1800                  $9800  Reserved for expansion (I/O #2)
+// $1C00                  $9C00  Reserved for expansion (I/O #3)
+// $2000                  $0000  System memory work area
+// $2400                  $0400  Reserved for 1st 1K of 3K expansion
+// $2800                  $0800  Reserved for 2nd 1K of 3K expansion
+// $2C00                  $0C00  Reserved for 3rd 1K of 3K expansion
+// $3000                  $1000  BASIC program area / Screen when using 8K+ exp
+// $3400                  $1400  BASIC program area
+// $3800                  $1800  BASIC program area
+// $3C00                  $1C00  BASIC program area / $1E00 screen mem for unexp VIC
 
-// A lookup table for determining the start of video memory.
-const uint16_t videoMemoryTable[32] = { 
-    0x8000, 0x8200, 0x8400, 0x8600, 0x8800, 0x8A00, 0x8C00, 0x8E00, 
-    0x9000, 0x9200, 0x9400, 0x9600, 0x9800, 0x9A00, 0x9C00, 0x9E00, 
-    0x0000, 0x0200, 0x0400, 0x0600, 0x0800, 0x0A00, 0x0C00, 0x0E00, 
-    0x1000, 0x1200, 0x1400, 0x1600, 0x1800, 0x1A00, 0x1C00, 0x1E00 
-};
-
-// A lookup table for determining the start of character memory.
-const uint16_t charMemoryTable[16] = { 
-    0x8000, 0x8400, 0x8800, 0x8C00, 0x9000, 0x9400, 0x9800, 0x9C00, 
-    0x0000, 0x0400, 0x0800, 0x0C00, 0x1000, 0x1400, 0x1800, 0x1C00 
-};
+// VIC chip control registers, starting at $1000, as per Chip Select.
+#define vic_cr0 xram[0x1000]    // ABBBBBBB A=Interlace B=Screen Origin X (4 pixels granularity)
+#define vic_cr1 xram[0x1001]    // CCCCCCCC C=Screen Origin Y (2 pixel granularity)
+#define vic_cr2 xram[0x1002]    // HDDDDDDD D=Number of Columns
+#define vic_cr3 xram[0x1003]    // GEEEEEEF E=Number of Rows F=Double Size Chars
+#define vic_cr4 xram[0x1004]    // GGGGGGGG G=Raster Line
+#define vic_cr5 xram[0x1005]    // HHHHIIII H=Screen Mem Addr I=Char Mem Addr
+#define vic_cr6 xram[0x1006]    // JJJJJJJJ Light pen X
+#define vic_cr7 xram[0x1007]    // KKKKKKKK Light pen Y
+#define vic_cr8 xram[0x1008]    // LLLLLLLL Paddle X
+#define vic_cr9 xram[0x1009]    // MMMMMMMM Paddle Y
+#define vic_cra xram[0x100a]    // NRRRRRRR Sound voice 1
+#define vic_crb xram[0x100b]    // OSSSSSSS Sound voice 2
+#define vic_crc xram[0x100c]    // PTTTTTTT Sound voice 3
+#define vic_crd xram[0x100d]    // QUUUUUUU Noise voice
+#define vic_cre xram[0x100e]    // WWWWVVVV W=Auxiliary colour V=Volume control
+#define vic_crf xram[0x100f]    // XXXXYZZZ X=Background colour Y=Reverse Z=Border colour
 
 // Expressions to access different parts of control registers.
 #define border_colour_index      (vic_crf & 0x07)
@@ -61,26 +71,29 @@ const uint16_t charMemoryTable[16] = {
 #define double_height_mode       (vic_cr3 & 0x01)
 #define last_line_of_cell        (7 | (double_height_mode << 3))
 #define char_size_shift          (3 + double_height_mode)
-#define screen_mem_start         videoMemoryTable[((vic_cr5 & 0xF0) >> 3) | ((vic_cr2 & 0x80) >> 7)]
-#define char_mem_start           charMemoryTable[vic_cr5 & 0x0F]
-#define colour_mem_start         ((vic_cr2 & 0x80)? 0x9400 : 0x9600)
+#define screen_mem_start         (((vic_cr5 & 0xF0) << 6) | ((vic_cr2 & 0x80) << 2))
+#define char_mem_start           ((vic_cr5 & 0x0F) << 10)
+#define colour_mem_start         ((vic_cr2 & 0x80)? 0x1400 : 0x1600)
 
 // These are the actual VIC 20 memory addresses, but note that the VIC chip sees memory a bit differently.
 // $8000-$83FF: 1 KB uppercase/glyphs
 // $8400-$87FF: 1 KB uppercase/lowercase
 // $8800-$8BFF: 1 KB inverse uppercase/glyphs
 // $8C00-$8FFF: 1 KB inverse uppercase/lowercase
-#define ADDR_UPPERCASE_GLYPHS_CHRSET            0x8000
-#define ADDR_UPPERCASE_LOWERCASE_CHRSET         0x8400
-#define ADDR_INVERSE_UPPERCASE_GLYPHS_CHRSET    0x8800
-#define ADDR_INVERSE_UPPERCASE_LOWERCASE_CHRSET 0x8C00
+// From the VIC chip's perspective, the following are the corresponding addresses:
+#define ADDR_UPPERCASE_GLYPHS_CHRSET            0x0000
+#define ADDR_UPPERCASE_LOWERCASE_CHRSET         0x0400
+#define ADDR_INVERSE_UPPERCASE_GLYPHS_CHRSET    0x0800
+#define ADDR_INVERSE_UPPERCASE_LOWERCASE_CHRSET 0x0C00
 
 // These are the 'standard' screen memory locations in the VIC 20 memory map, but in practice the 
 // programmer can set screen memory to several other locations.
-#define ADDR_UNEXPANDED_SCR  0x1E00
-#define ADDR_8KPLUS_EXP_SCR  0x1000
+#define ADDR_UNEXPANDED_SCR  0x3E00    // Equivalent to $1E00 in the VIC 20.
+#define ADDR_8KPLUS_EXP_SCR  0x3000    // Equivalent to $1000 in the VIC 20.
 
-#define ADDR_COLOUR_RAM      0x9600
+// Colour RAM addresses.
+#define ADDR_COLOUR_RAM      0x1600    // Equivalent to $9600 in the VIC 20
+#define ADDR_ALT_COLOUR_RAM  0x1400    // Equivalent to $9400 in the VIC 20
 
 // Constants for the fetch state of the optimised version of core1_loop.
 #define FETCH_OUTSIDE_MATRIX  0
@@ -450,13 +463,13 @@ void core1_entry_new(void) {
     multiColourTableOdd[3] = auxiliaryColourOdd;
 
     // Set up hard coded control registers for now (from default PAL VIC).
-    xram[0x9000] = 0x0C;    // Screen Origin X = 12
-    xram[0x9001] = 0x26;    // Screen Origin Y = 38
-    xram[0x9002] = 0x96;    // Number of Rows = 22 (bits 0-6) Video Mem Start (bit 7)
-    xram[0x9003] = 0x2E;    // Number of Columns = 23 (bits 1-6)
-    xram[0x9005] = 0xF0;    // Video Mem Start = 0x1E00 (bits 4-7), Char Mem Start = 0x8000 (bits 0-3)
-    xram[0x900e] = 0;       // Black auxiliary colour (bits 4-7)
-    xram[0x900f] = 0x1B;    // White background (bits 4-7), Cyan border (bits 0-2), Reverse OFF (bit 3)
+    xram[0x1000] = 0x0C;    // Screen Origin X = 12
+    xram[0x1001] = 0x26;    // Screen Origin Y = 38
+    xram[0x1002] = 0x96;    // Number of Rows = 22 (bits 0-6) Video Mem Start (bit 7)
+    xram[0x1003] = 0x2E;    // Number of Columns = 23 (bits 1-6)
+    xram[0x1005] = 0xF0;    // Video Mem Start = 0x3E00 (bits 4-7), Char Mem Start = 0x0000 (bits 0-3)
+    xram[0x100e] = 0;       // Black auxiliary colour (bits 4-7)
+    xram[0x100f] = 0x1B;    // White background (bits 4-7), Cyan border (bits 0-2), Reverse OFF (bit 3)
 
     // First iteration will start with HC=1, so that the VC starts cleanly.
     pio_sm_put(CVBS_PIO, CVBS_SM, PAL_FRONTPORCH_2);
