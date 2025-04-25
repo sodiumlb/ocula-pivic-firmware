@@ -471,17 +471,8 @@ void core1_entry_new(void) {
     xram[0x100e] = 0;       // Black auxiliary colour (bits 4-7)
     xram[0x100f] = 0x1B;    // White background (bits 4-7), Cyan border (bits 0-2), Reverse OFF (bit 3)
 
-    // First iteration will start with HC=1, so that the VC starts cleanly.
-    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_FRONTPORCH_2);
-    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_HSYNC);
-    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BREEZEWAY);
-    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_COLBURST_E);
-    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BACKPORCH);
-    horizontalCounter = 1;
-
-    // TODO: We probably don't need to set the cell counters up front. This is just for testing.
-    verticalCellCounter = numOfRows;
-    horizontalCellCounter = (numOfColumns << 1);
+    // Slight hack so that VC increments to 0 on first iteration.
+    verticalCounter = 0xFFFF;
 
     while (1) {
         // Poll for PIO IRQ 0. This is the rising edge of F1.
