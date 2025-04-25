@@ -369,35 +369,6 @@ void core1_entry_new(void) {
     // START OF VIC CHIP STATE
     //
 
-    // Hard coded control registers for now (from default PAL VIC).
-    // TODO: Remove after switching to using the xram VIC control register addresses.
-    // TODO: The +6 is for the in matrix delay.
-    // NOTES:
-    // - No overruns after screen_origin_y switchover.
-    // - No overruns after screen_origin_x switchover.
-    // - No overruns after num_of_columns switchover.
-    // - No overruns after num_of_rows switchover.
-    // - No overruns after last_line_of_cell switchover.
-    // - No overruns after char_size_shift switchover.
-    // - No overruns after colour index switchovers.
-    // - No overruns after non_reverse_mode switchover.
-    // - No overruns after screen_mem_start switchover.
-    // - No overruns after colour_mem_start switchover.
-    // - No overruns after char_mem_start switchover.
-    //uint8_t  screenOriginX = 12 + 6;     // 7-bit horiz counter value to match for left of video matrix
-    //uint8_t  screenOriginY = 38 * 2;     // 8-bit vert counter value (x 2) to match for top of video matrix
-    //uint8_t  numOfColumns = 22;          // 7-bit number of video matrix columns
-    //uint8_t  numOfRows = 23;             // 6-bit number of video matrix rows
-    //uint8_t  lastCellLine = 7;           // Last Cell Depth Counter value. Depends on double height mode.
-    //uint8_t  characterSizeShift = 3;     // Number of bits the Cell Depth Counter counts over.
-    //uint8_t  backgroundColourIndex = 1;  // 4-bit background colour index
-    //uint8_t  borderColourIndex = 3;      // 3-bit border colour index
-    //uint8_t  auxiliaryColourIndex = 0;   // 4-bit auxiliary colour index
-    //uint8_t  reverse = 0;                // 1-bit reverse state
-    //uint16_t videoMemoryStart = 0;       // Decoded starting address for screen memory.
-    //uint16_t colourMemoryStart = 0;      // Decoded starting address for colour memory.
-    //uint16_t characterMemoryStart = 0;   // Decoded starting address for character memory.
-
     // Counters.
     uint16_t videoMatrixCounter = 0;     // 12-bit video matrix counter (VMC)
     uint16_t videoMatrixLatch = 0;       // 12-bit latch that VMC is stored to and loaded from
@@ -411,26 +382,15 @@ void core1_entry_new(void) {
     uint8_t  cellIndex = 0;              // 8 bits fetched from screen memory.
     uint8_t  charData = 0;               // 8 bits of bitmap data fetched from character memory.
     uint8_t  colourData = 0;             // 4 bits fetched from colour memory (top bit multi/hires mode)
-    uint8_t  colourDataLatch = 0;        // 4 bits latched from colour memory during cell index fetch.
 
-    // Holds the colour commands for border, background and auxiliary.
-    // TODO: Remove after switching to using pointer that alternates between pal_palette_o/pal_palette_e.
+    // Holds the colour commands for foreground, border, background and auxiliary.
     uint32_t foregroundColour = 0;       // CVBS command for the foreground colour.
     uint32_t borderColour = 0;           // Points to either odd or even border colour.
-    uint32_t borderColourOdd = 0;        // CVBS command for border colour on odd line.
-    uint32_t borderColourEven = 0;       // CVBS command for border colour on even line.
     uint32_t backgroundColour = 0;       // Points to either odd or even background colour.
-    uint32_t backgroundColourOdd = 0;    // CVBS command for background colour on odd line.
-    uint32_t backgroundColourEven = 0;   // CVBS command for background colour on even line.
     uint32_t auxiliaryColour = 0;        // Points to odd or even auxiliary colour.
-    uint32_t auxiliaryColourOdd = 0;     // CVBS command for auxiliary colour on odd line.
-    uint32_t auxiliaryColourEven = 0;    // CVBS command for auxiliary colour on even line.
 
-    // Holds the colour commands for each multi colour colour for odd and even lines.
-    // TODO: Switch to using a single multiColourTable that is populated from control registers in real time.
-    uint32_t multiColourTableOdd[4] = { 0, 0, 0, 0};
-    uint32_t multiColourTableEven[4] = { 0, 0, 0, 0};
-    uint32_t *multiColourTable = multiColourTableEven;
+    // Holds the colour commands for each multi colour colours.
+    uint32_t multiColourTable[4] = { 0, 0, 0, 0};
 
     // Every cpu cycle, we output four pixels. The values are temporarily stored in these vars.
     uint32_t pixel1 = 0;
@@ -443,8 +403,7 @@ void core1_entry_new(void) {
     uint32_t pixel8 = 0;
 
     // Pointer that alternates on each line between even and odd palettes.
-    // TODO: This outputs a warning if palette arrays are const.
-    //uint32_t *pal_palette = pal_palette_e;
+    uint32_t *pal_palette = pal_palette_e;
 
     // Optimisation to represent "in matrix", "address output enabled", and "pixel output enabled" 
     // all with one simple state variable. It might not be 100% accurate but should work for most 
@@ -458,29 +417,6 @@ void core1_entry_new(void) {
 
     // Temporary variables, not a core part of the state.
     uint16_t charDataOffset = 0;
-
-    // TESTING: Remove after integration with control register changes.
-    //videoMemoryStart = ADDR_UNEXPANDED_SCR;
-    //colourMemoryStart = ADDR_COLOUR_RAM;
-    //characterMemoryStart = ADDR_UPPERCASE_GLYPHS_CHRSET;
-
-    // TESTING: Example of variables set up for certain border/background/aux colours.
-    // TODO: Remove after switching to using xram control register addresses.
-    backgroundColourEven = pal_palette_e[background_colour_index];
-    backgroundColourOdd = pal_palette_o[background_colour_index];
-    backgroundColour = backgroundColourEven;
-    borderColourEven = pal_palette_e[border_colour_index];
-    borderColourOdd = pal_palette_o[border_colour_index];
-    borderColour = borderColourEven;
-    auxiliaryColourEven = pal_palette_e[auxiliary_colour_index];
-    auxiliaryColourOdd = pal_palette_o[auxiliary_colour_index];
-    auxiliaryColour = auxiliaryColourEven;
-    multiColourTableEven[0] = backgroundColourEven;
-    multiColourTableEven[1] = borderColourEven;
-    multiColourTableEven[3] = auxiliaryColourEven;
-    multiColourTableOdd[0] = backgroundColourOdd;
-    multiColourTableOdd[1] = borderColourOdd;
-    multiColourTableOdd[3] = auxiliaryColourOdd;
 
     // Slight hack so that VC increments to 0 on first iteration.
     verticalCounter = 0xFFFF;
@@ -538,13 +474,8 @@ void core1_entry_new(void) {
                 if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
                     // Switch the CVBS commands at the start of each visible line.
                     if (verticalCounter & 1) {
-                        // Odd line.
-                        borderColour = borderColourOdd;
-                        backgroundColour = backgroundColourOdd;
-                        auxiliaryColour = auxiliaryColourOdd;
-                        multiColourTable = multiColourTableOdd;
-                        // TODO: Remove above and use pal_palette in realtime.
-                        //pal_palette = pal_palette_o;
+                        // Odd line. Switch colour palettes.
+                        pal_palette = pal_palette_o;
 
                         pio_sm_put(CVBS_PIO, CVBS_SM, PAL_FRONTPORCH_2);
                         pio_sm_put(CVBS_PIO, CVBS_SM, PAL_HSYNC);
@@ -552,13 +483,8 @@ void core1_entry_new(void) {
                         pio_sm_put(CVBS_PIO, CVBS_SM, PAL_COLBURST_O);
                         pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BACKPORCH);
                     } else {
-                        // Even line.
-                        borderColour = borderColourEven;
-                        backgroundColour = backgroundColourEven;
-                        auxiliaryColour = auxiliaryColourEven;
-                        multiColourTable = multiColourTableEven;
-                        // TODO: Remove above and use pal_palette in realtime.
-                        //pal_palette = pal_palette_e;
+                        // Even line. Switch colour palettes.
+                        pal_palette = pal_palette_e;
 
                         pio_sm_put(CVBS_PIO, CVBS_SM, PAL_FRONTPORCH_2);
                         pio_sm_put(CVBS_PIO, CVBS_SM, PAL_HSYNC);
@@ -610,6 +536,7 @@ void core1_entry_new(void) {
                 // Horizontal blanking doesn't actually start until 2 pixels in.
                 // TODO: Decide whether it is appropriate to always assume border colour for first 2 pixels.
                 // TODO: Should it instead be the next two pixels from the char, if there are any?
+                borderColour = pal_palette[border_colour_index];
                 pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                 pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_FRONTPORCH_1);
@@ -629,6 +556,7 @@ void core1_entry_new(void) {
                     case FETCH_OUTSIDE_MATRIX:
                         if (horizontalCounter > PAL_HBLANK_END) {
                             // Output four border pixels.
+                            borderColour = pal_palette[border_colour_index];
                             pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                             pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                             pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
@@ -641,13 +569,22 @@ void core1_entry_new(void) {
                     case FETCH_MATRIX_LINE:
                         if (horizontalCounter > PAL_HBLANK_END) {
                             // Output four border pixels.
+                            borderColour = pal_palette[border_colour_index];
                             pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                             pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                             pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
                             pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+
+                            if (horizontalCounter == screen_origin_x) {
+                                // Last 4 pixels before first char renders are still border.
+                                pixel5 = pixel6 = pixel7 = pixel8 = borderColour;
+                                fetchState = FETCH_SCREEN_CODE;
+                            }
                         }
-                        if (horizontalCounter == screen_origin_x) {
-                            // Last 4 pixels before first char renders are still border.
+                        else if (horizontalCounter == screen_origin_x) {
+                            // Still in horizontal blanking, but we still need to prepare for the case
+                            // where the next cycle isn't in horiz blanking, i.e. when HC=11 this cycle.
+                            borderColour = pal_palette[border_colour_index];
                             pixel5 = pixel6 = pixel7 = pixel8 = borderColour;
                             fetchState = FETCH_SCREEN_CODE;
                         }
@@ -660,9 +597,14 @@ void core1_entry_new(void) {
                         // Due to the way the colour memory is wired up, the above fetch of the cell index
                         // also happens to automatically fetch the foreground colour from the Colour Matrix
                         // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from 
-                        // colour RAM in to the VIC chip. It gets latched at this point, but not made available
-                        // to the pixel colour selection logic until the char data is fetched.
-                        colourDataLatch = xram[colour_mem_start + videoMatrixCounter];
+                        // colour RAM in to the VIC chip.
+                        colourData = xram[colour_mem_start + videoMatrixCounter];
+                        
+                        // Lookup the CVBS commands for each colour in preparation for pixel output.
+                        multiColourTable[0] = backgroundColour = pal_palette[background_colour_index];
+                        multiColourTable[1] = borderColour = pal_palette[border_colour_index];
+                        multiColourTable[2] = foregroundColour = pal_palette[colourData & 0x07];
+                        multiColourTable[3] = auxiliaryColour = pal_palette[auxiliary_colour_index];
 
                         // Output the 4 pixels for this cycle (usually second 4 pixels of a character).
                         if (horizontalCounter > PAL_HBLANK_END) {
@@ -682,12 +624,6 @@ void core1_entry_new(void) {
 
                         // Fetch cell data.
                         charData = xram[charDataOffset];
-
-                        // Now that the char data is available, we can let the colour data "in".
-                        colourData = colourDataLatch;
-                        foregroundColour = (verticalCounter & 1? 
-                            pal_palette_o[colourData] : 
-                            pal_palette_e[colourData]);
 
                         // Determine character pixels.
                         if ((colourData & 0x08) == 0) {
@@ -715,7 +651,6 @@ void core1_entry_new(void) {
                             }
                         } else {
                             // Multicolour graphics.
-                            multiColourTable[2] = foregroundColour;
                             pixel1 = pixel2 = multiColourTable[(charData >> 6) & 0x03];
                             pixel3 = pixel4 = multiColourTable[(charData >> 4) & 0x03];
                             pixel5 = pixel6 = multiColourTable[(charData >> 2) & 0x03];
