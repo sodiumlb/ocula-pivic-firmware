@@ -373,22 +373,21 @@ void vic_core1_loop(void) {
         // HC = 0 is handled in a single block for all lines.
         if (horizontalCounter == 0) {
             if (verticalCounter == PAL_LAST_LINE) {
-                // Last line. This is when VCC loads number of rows.
+                // Previous cycle was end of last line. This is when VCC loads number of rows.
                 verticalCounter = 0;
                 verticalCellCounter = num_of_rows;
-                if (screen_origin_y == 0) {
-                    fetchState = FETCH_IN_MATRIX_Y;
-                } else {
-                    fetchState = FETCH_OUTSIDE_MATRIX;
-                }
+                fetchState = FETCH_OUTSIDE_MATRIX;
             } else {
                 verticalCounter++;
+            }
 
-                // Check for Cell Depth Counter reset.
-                if (cellDepthCounter == last_line_of_cell) {
-                    cellDepthCounter = 0;
+            // Check for Cell Depth Counter reset.
+            if (cellDepthCounter == last_line_of_cell) {
+                cellDepthCounter = 0;
 
-                    // Vertical Cell Counter decrements when CDC resets, unless its the last line.
+                // Vertical Cell Counter decrements when CDC resets, unless its the first line, 
+                // since it was loaded instead (see VC reset logic above).
+                if (verticalCounter > 0) {
                     verticalCellCounter--;
 
                     if (verticalCellCounter == 0) {
@@ -396,59 +395,59 @@ void vic_core1_loop(void) {
                         fetchState = FETCH_OUTSIDE_MATRIX;
                     }
                 }
-                else if (fetchState == FETCH_MATRIX_LINE) {
-                    // If the line that just ended was a video matrix line, then increment CDC.
-                    cellDepthCounter++;
-                }
-                else if (verticalCounter == screen_origin_y) {
-                    // This is the line the video matrix starts on. As in the real chip, we use
-                    // a different state for the first part of the first video matrix line.
-                    fetchState = FETCH_IN_MATRIX_Y;
-                }
+            }
+            else if (fetchState == FETCH_MATRIX_LINE) {
+                // If the line that just ended was a video matrix line, then increment CDC.
+                cellDepthCounter++;
+            }
+            else if (verticalCounter == screen_origin_y) {
+                // This is the line the video matrix starts on. As in the real chip, we use
+                // a different state for the first part of the first video matrix line.
+                fetchState = FETCH_IN_MATRIX_Y;
+            }
 
-                if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
-                    // In HC=0 for visible lines, we start with output the full sequence of CVBS
-                    // commands for horizontal blanking, including the hsync and colour burst.
-                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_FRONTPORCH_2);
-                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_HSYNC);
-                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BREEZEWAY);
-                    if (verticalCounter & 1) {
-                        // Odd line. Switch colour palettes.
-                        pal_palette = pal_palette_o;
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_COLBURST_O);
-                    } else {
-                        // Even line. Switch colour palettes.
-                        pal_palette = pal_palette_e;
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_COLBURST_E);
-                    }
-                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BACKPORCH);
+            if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
+                // In HC=0 for visible lines, we start with output the full sequence of CVBS
+                // commands for horizontal blanking, including the hsync and colour burst.
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_FRONTPORCH_2);
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_HSYNC);
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BREEZEWAY);
+                if (verticalCounter & 1) {
+                    // Odd line. Switch colour palettes.
+                    pal_palette = pal_palette_o;
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_COLBURST_O);
+                } else {
+                    // Even line. Switch colour palettes.
+                    pal_palette = pal_palette_e;
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_COLBURST_E);
+                }
+                pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BACKPORCH);
+            }
+            else {
+                // Vertical blanking and sync - Lines 1-9.
+                if (verticalCounter < PAL_VSYNC_START) {
+                    // Lines 1, 2, 3.
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
+                }
+                else if (verticalCounter <= PAL_VSYNC_END) {
+                    // Vertical sync, lines 4, 5, 6.
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_L);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_H);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_L);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_H);
+
+                    // Vertical sync is what resets the video matrix latch.
+                    videoMatrixLatch = videoMatrixCounter = 0;
                 }
                 else {
-                    // Vertical blanking and sync - Lines 1-9.
-                    if (verticalCounter < PAL_VSYNC_START) {
-                        // Lines 1, 2, 3.
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
-                    }
-                    else if (verticalCounter <= PAL_VSYNC_END) {
-                        // Vertical sync, lines 4, 5, 6.
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_H);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_H);
-
-                        // Vertical sync is what resets the video matrix latch.
-                        videoMatrixLatch = videoMatrixCounter = 0;
-                    }
-                    else {
-                        // Lines 7, 8, 9.
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
-                    }
+                    // Lines 7, 8, 9.
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
                 }
             }
 
