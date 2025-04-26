@@ -31,6 +31,7 @@
 #endif
 
 #ifdef PIVIC
+#include "vic/aud.h"
 #include "vic/vic.h"
 #include "vic/cvbs.h"
 #endif
@@ -59,6 +60,7 @@ static void init(void)
 #ifdef PIVIC
     vic_init();
     //cvbs_init();
+    aud_init();
 #endif
 #ifdef OCULA
     ula_init();
@@ -72,6 +74,7 @@ static void task(void)
 #ifdef PIVIC
     vic_task();
     //cvbs_task();
+    aud_task();
 #endif
 #ifdef OCULA
     ula_task();
