@@ -1,0 +1,66 @@
+/*
+ * Copyright (c) 2025 Sodiumlightbaby
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+
+; RAM emulation - read & write from/to xram
+; Address of the memory to read from is set in x by setup
+; DMA setup required to take the address, fetch data and return
+; Autopull and autpush used
+.program xread
+.in 14 left auto 14
+.out 8 right auto 8
+.wrap_target
+    mov isr x           ; Base address to fetch from in the system
+    wait 1 gpio 8  [12] ; sample address after phi0 rising edge 
+    in pins 14          ; Pull in rest of address from 6502
+    out pins 8          ; Blocking till data returns. pindirs set elsewhere
+    wait 0 gpio 8       ; Make sure only one iteration per phi clock
+.wrap
+
+; Address of the memory to write to is set in x by setup
+; DMA setup required to take the address then data and write to memory
+.program xwrite
+.in 32 left
+.out 32 right
+.wrap_target
+start:
+    mov isr x           ; System top address bits
+    wait 1 gpio 8  [12] ; Wait for phi0 rising edge 
+    jmp pin start       ; If read, go back to start
+    mov osr pins        ; Capture D[7:0],D[11:8],A[15:0],RnW
+    out null 12         ; Spool out D[11:0]
+    in osr 14           ; shift in bottom address
+    wait 0 gpio 8       ; Wait for phi0 falling edge before capturing data
+    push noblock        ; Send address to FIFO
+    mov isr pins        ; Move data to isr
+    push noblock        ; Send data to FIFO
+.wrap
+
+; Direction control of data bus
+; Enable output when address in x (set by setup)
+; matches incoming address and read is enabled
+
+.program xdir
+.in 7 left
+.out 8 right
+.wrap_target
+start:
+    wait 0 gpio 0  [10] ; Wait for phi0 falling edge + ca 80ns for data hold
+    mov pindirs null    ; Disable data pins output
+    wait 1 gpio 8  [12] ; Wait for phi0 rising edge + ca 100ns for address hold
+    mov y pins          ; Get A[13:8],RnW
+    jmp x!=y start      ; If not reading of registers, goto start 
+    mov pindirs ~null   ; Set data pins to output
+.wrap
+
+; Bus tracing function
+; TODO Not updated for VIC integration yet
+.program trace
+.in 27 left auto 27
+.wrap_target
+    wait 1 irq 2 [12]
+    in pins 27
+.wrap
