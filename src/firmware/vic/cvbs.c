@@ -186,7 +186,8 @@ void cvbs_init(void){
    pio_set_gpio_base (CVBS_PIO, CVBS_PIN_BANK);
    for(uint32_t i = 0; i < 5; i++){
       pio_gpio_init(CVBS_PIO, CVBS_PIN_BASE+i);
-      gpio_set_drive_strength(CVBS_PIN_BASE, GPIO_DRIVE_STRENGTH_2MA);
+      gpio_set_drive_strength(CVBS_PIN_BASE+i, GPIO_DRIVE_STRENGTH_2MA);
+      gpio_set_slew_rate(CVBS_PIN_BASE+i, GPIO_SLEW_RATE_SLOW);
    }
    pio_sm_set_consecutive_pindirs(CVBS_PIO, CVBS_SM, CVBS_PIN_BASE, 5, true);
    uint offset = pio_add_program(CVBS_PIO, &cvbs_program);
