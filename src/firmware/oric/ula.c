@@ -59,6 +59,7 @@ const uint32_t pixel2mask[64] = {
 
 uint16_t verticalCounter = 0;
 uint8_t horizontalCounter = 0;
+uint8_t flashCounter = 0;
 
 #define ADDR_LORES_STD_CHRSET 0xB400
 #define ADDR_LORES_ALT_CHRSET 0xB800
@@ -89,8 +90,8 @@ uint8_t horizontalCounter = 0;
 uint32_t inline __attribute__((always_inline)) rgbs_cmd_pixel(uint8_t ink, uint8_t paper, uint8_t data){
     uint32_t cmd = 0x00111111;                   //Default repeat=0, sync=1 for 6 values
     if(data & ULA_INVERT){
-        ink = ~ink & 0x7;
-        paper = ~paper & 0x7;
+        ink ^= 0x7;
+        paper ^= 0x7;
     }
     // Lookup table + multiply was faster than this assembly
     /* Corex-M33 assembly for building the command word
@@ -152,6 +153,7 @@ void core1_loop(void){
     static bool vsync = false;
     static bool mode_50hz = true;      //Updated only at the end of frame
     static bool force_txt = false;      //Forced text mode at the bottom of hires
+    static bool hattrib = false;
 
     uint8_t screen_data;
     uint8_t char_data;
@@ -176,7 +178,7 @@ void core1_loop(void){
             RGBS_TX = RGBS_CMD1(VAL_SYNC,1);
         }else if(hscan && vscan){
             //output pixeldata with invertion
-            RGBS_TX = rgbs_cmd_pixel(ula.ink,ula.paper,char_data | invert_flag);
+            RGBS_TX = rgbs_cmd_pixel(ula.ink,ula.paper, (char_data & 0x3F) | invert_flag);
         }else{
             RGBS_TX = RGBS_CMD1(VAL_BLANK,1);
         }
@@ -189,19 +191,28 @@ void core1_loop(void){
         }
         //Check for and update attribute registers
 
-        if((screen_data & ULA_MASK_ATTRIB_MARK)==0x00){
+        if(hattrib && vscan && (screen_data & ULA_MASK_ATTRIB_MARK)==0x00){
             uint8_t value = screen_data & ULA_MASK_ATTRIB_VALUE;
             uint8_t index = (screen_data & ULA_MASK_ATTRIB_INDEX)>>3;
             ula.attrib[index] = value;
             char_data = 0x00;   //Show paper when on attributes
         }else{
             // ULA Phase 2
-            uint16_t ch_offs = ((screen_data & ULA_MASK_CHAR)*8) + (verticalCounter & 0x7);
+            uint16_t ch_offs;
+            if(ula.style & ULA_DOUBLE){
+                ch_offs = ((screen_data & ULA_MASK_CHAR)*8) + ((verticalCounter >> 1) & 0x7);
+            }else{
+                ch_offs = ((screen_data & ULA_MASK_CHAR)*8) + (verticalCounter & 0x7); 
+            }
             if(ula.mode & ULA_HIRES){
-                if(ula.style & ULA_ALTCHR){
-                    char_data = xram[ADDR_HIRES_ALT_CHRSET + ch_offs];
-                }else{ //STDCHAR
-                    char_data = xram[ADDR_HIRES_STD_CHRSET + ch_offs];
+                if(force_txt){
+                    if(ula.style & ULA_ALTCHR){
+                        char_data = xram[ADDR_HIRES_ALT_CHRSET + ch_offs];
+                    }else{ //STDCHAR
+                        char_data = xram[ADDR_HIRES_STD_CHRSET + ch_offs];
+                    }
+                }else{
+                    char_data = screen_data;
                 }
             }else{ //LORES
                 if(ula.style & ULA_ALTCHR){
@@ -209,6 +220,9 @@ void core1_loop(void){
                 }else{ //STDCHAR
                     char_data = xram[ADDR_LORES_STD_CHRSET + ch_offs];
                 }
+            }
+            if((ula.style & ULA_FLASH) && flashCounter & 0x20){
+                char_data = 0;
             }
         }
         invert_flag = screen_data & ULA_INVERT;
@@ -219,6 +233,9 @@ void core1_loop(void){
         switch(++horizontalCounter){
             case(1):
                 hscan = true;
+                break;
+            case(40):
+                hattrib = false;
                 break;
             case(41):   
                 hscan = false;
@@ -235,6 +252,7 @@ void core1_loop(void){
                 ula.ink = 0x07;
                 ula.paper = 0x00;
                 ula.style = 0x00;
+                hattrib = true;
                 break;
             default:    
                 break;
@@ -260,7 +278,8 @@ void core1_loop(void){
                         break;
                     case(312):
                         verticalCounter = 0;
-                        mode_50hz = true; //!!(ula_mode & ULA_50HZ);
+                        flashCounter++;
+                        mode_50hz = !!(ula.mode & ULA_50HZ);
                         force_txt = false;
                         break;
                     default:
@@ -285,7 +304,8 @@ void core1_loop(void){
                         break;
                     case(264):
                         verticalCounter = 0;
-                        mode_50hz = true; //!!(ula_mode & ULA_50HZ);
+                        flashCounter++;
+                        mode_50hz = !!(ula.mode & ULA_50HZ);
                         force_txt = false;
                         break;
                     default:
