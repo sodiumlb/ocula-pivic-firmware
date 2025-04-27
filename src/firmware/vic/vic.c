@@ -226,7 +226,7 @@ void vic_pio_init(void) {
     pio_sm_set_consecutive_pindirs(VIC_PIO, VIC_SM, VIC_PIN_BASE, 1, true);
     uint offset = pio_add_program(VIC_PIO, &clkgen_program);
     pio_sm_config config = clkgen_program_get_default_config(offset);
-    sm_config_set_out_pins(&config, VIC_PIN_BASE, 1);
+    sm_config_set_sideset_pin_base(&config, VIC_PIN_BASE);
     pio_sm_init(VIC_PIO, VIC_SM, offset, &config);
     pio_sm_set_enabled(VIC_PIO, VIC_SM, true);   
     printf("VIC init done\n");
