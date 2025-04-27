@@ -183,7 +183,7 @@ uint32_t test_blanking_line_even[] = {
 
 
 void cvbs_init(void){ 
-   pio_set_gpio_base (CVBS_PIO, CVBS_PIN_BANK);
+   pio_set_gpio_base (CVBS_PIO, CVBS_PIN_OFFS);
    for(uint32_t i = 0; i < 5; i++){
       pio_gpio_init(CVBS_PIO, CVBS_PIN_BASE+i);
       gpio_set_drive_strength(CVBS_PIN_BASE+i, GPIO_DRIVE_STRENGTH_2MA);

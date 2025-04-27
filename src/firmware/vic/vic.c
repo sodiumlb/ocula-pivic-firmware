@@ -218,7 +218,7 @@ volatile uint32_t overruns = 0;
 
 void vic_pio_init(void) {
     // Set up VIC PIO.
-    pio_set_gpio_base(VIC_PIO, VIC_PIN_BANK);
+    pio_set_gpio_base(VIC_PIO, VIC_PIN_OFFS);
     // TODO: We might add the second output clock in the future.
     pio_gpio_init(VIC_PIO, VIC_PIN_BASE);
     // TODO: Check if the drive strength is appropriate for the clock.
