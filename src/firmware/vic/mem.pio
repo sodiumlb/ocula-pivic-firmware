@@ -14,10 +14,10 @@
 .out 8 right auto 8
 .wrap_target
     mov isr x           ; Base address to fetch from in the system
-    wait 1 gpio 8  [12] ; sample address after phi0 rising edge 
+    wait 0 gpio 8  [12] ; sample address after phi1 falling edge 
     in pins 14          ; Pull in rest of address from 6502
     out pins 8          ; Blocking till data returns. pindirs set elsewhere
-    wait 0 gpio 8       ; Make sure only one iteration per phi clock
+    wait 1 gpio 8       ; Make sure only one iteration per phi clock
 .wrap
 
 ; Address of the memory to write to is set in x by setup
@@ -48,9 +48,9 @@ start:
 .out 8 right
 .wrap_target
 start:
-    wait 0 gpio 0  [10] ; Wait for phi0 falling edge + ca 80ns for data hold
+    wait 1 gpio 8  [10] ; Wait for phi1 rising edge + ca 80ns for data hold
     mov pindirs null    ; Disable data pins output
-    wait 1 gpio 8  [12] ; Wait for phi0 rising edge + ca 100ns for address hold
+    wait 0 gpio 8  [12] ; Wait for phi1 falling edge + ca 100ns for address hold
     mov y pins          ; Get A[13:8],RnW
     jmp x!=y start      ; If not reading of registers, goto start 
     mov pindirs ~null   ; Set data pins to output
