@@ -217,6 +217,10 @@ volatile uint32_t overruns = 0;
 
 
 void vic_pio_init(void) {
+    //Make PHI PIN possible to also sample as input
+    gpio_init(PHI_PIN);
+    gpio_set_input_enabled(PHI_PIN, true);
+
     // Set up VIC PIO.
     pio_set_gpio_base(VIC_PIO, VIC_PIN_OFFS);
     // TODO: We might add the second output clock in the future.
