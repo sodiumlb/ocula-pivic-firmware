@@ -23,6 +23,7 @@ void xread_pio_init(void){
     for(uint32_t i = 0; i < DATA_PIN_COUNT; i++){
         gpio_init(DATA_PIN_BASE+i);
         gpio_set_input_enabled(DATA_PIN_BASE+i, true);
+        gpio_set_pulls(DATA_PIN_BASE+i, false, false);              //E9 work-around
         pio_gpio_init(XREAD_PIO, DATA_PIN_BASE+i);
         gpio_set_drive_strength(DATA_PIN_BASE+i, GPIO_DRIVE_STRENGTH_2MA);
     }
@@ -32,6 +33,7 @@ void xread_pio_init(void){
         pio_gpio_init(XREAD_PIO, ADDR_PIN_BASE+i);
         gpio_set_input_enabled(ADDR_PIN_BASE+i, true);
     }
+    pio_sm_set_consecutive_pindirs(XREAD_PIO, XREAD_SM, DATA_PIN_BASE, DATA_PIN_COUNT, false);
     pio_sm_set_consecutive_pindirs(XREAD_PIO, XREAD_SM, ADDR_PIN_BASE, ADDR_PIN_COUNT, false);
     gpio_init(RNW_PIN);
     gpio_set_input_enabled(RNW_PIN, true);
@@ -43,7 +45,7 @@ void xread_pio_init(void){
     sm_config_set_in_pin_base(&config, ADDR_PIN_BASE);  
     sm_config_set_out_pin_base(&config, DATA_PIN_BASE);
     pio_sm_init(XREAD_PIO, XREAD_SM, offset, &config);
-    pio_sm_put_blocking(XREAD_PIO, XREAD_SM, (uintptr_t)xram >> 16);
+    pio_sm_put_blocking(XREAD_PIO, XREAD_SM, ((uintptr_t)xram >> 14));
     pio_sm_exec_wait_blocking(XREAD_PIO, XREAD_SM, pio_encode_pull(false, true));
     //pio_sm_exec_wait_blocking(XREAD_PIO, XREAD_SM, pio_encode_mov(pio_x, pio_osr));
     pio_sm_exec_wait_blocking(XREAD_PIO, XREAD_SM, pio_encode_out(pio_x, 32));
@@ -97,9 +99,9 @@ void xwrite_pio_init(void){
     uint offset = pio_add_program(XWRITE_PIO, &xwrite_program);
     pio_sm_config config = xwrite_program_get_default_config(offset);
     sm_config_set_in_pin_base(&config, DATA_PIN_BASE); 
-    sm_config_set_jmp_pin(&config, RNW_PIN); 
+    sm_config_set_jmp_pin(&config, ADDR_PIN_BASE+13);   //BLK4 detection 
     pio_sm_init(XWRITE_PIO, XWRITE_SM, offset, &config);
-    pio_sm_put_blocking(XWRITE_PIO, XWRITE_SM, (uintptr_t)xram >> 16);
+    pio_sm_put_blocking(XWRITE_PIO, XWRITE_SM, (uintptr_t)xram >> 14);
     pio_sm_exec_wait_blocking(XWRITE_PIO, XWRITE_SM, pio_encode_pull(false, true));
     pio_sm_exec_wait_blocking(XWRITE_PIO, XWRITE_SM, pio_encode_mov(pio_x, pio_osr));
     pio_sm_set_enabled(XWRITE_PIO, XWRITE_SM, true);
@@ -113,7 +115,7 @@ void xwrite_pio_init(void){
     // DMA move the requested memory data to PIO for output
     dma_channel_config data_dma = dma_channel_get_default_config(data_chan);
     channel_config_set_high_priority(&data_dma, true);
-    //channel_config_set_dreq(&data_dma, pio_get_dreq(XWRITE_PIO, XWRITE_SM, false));
+    channel_config_set_dreq(&data_dma, pio_get_dreq(XWRITE_PIO, XWRITE_SM, false));
     channel_config_set_read_increment(&data_dma, false);
     channel_config_set_write_increment(&data_dma, false);
     channel_config_set_transfer_data_size(&data_dma, DMA_SIZE_8);
@@ -177,8 +179,6 @@ void trace_pio_init(void){
 
 void xdir_pio_init(void){
     pio_set_gpio_base (XDIR_PIO, XDIR_PIN_OFFS);
-    pio_gpio_init(XDIR_PIO, DIR_PIN);
-    gpio_set_drive_strength(DIR_PIN, GPIO_DRIVE_STRENGTH_2MA);
     uint offset = pio_add_program(XDIR_PIO, &xdir_program);
     pio_sm_config config = xdir_program_get_default_config(offset);
     sm_config_set_out_pin_base(&config, DATA_PIN_BASE);
@@ -192,7 +192,7 @@ void mem_init(void){
     //Only using input address bus. Put DIR to input
     gpio_set_function(DIR_PIN, GPIO_FUNC_SIO);
     gpio_set_dir(DIR_PIN, true);
-    gpio_put(DIR_PIN, true);
+    gpio_put(DIR_PIN, false);
 
     xread_pio_init();
     xdir_pio_init();
