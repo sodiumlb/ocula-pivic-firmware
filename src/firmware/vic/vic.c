@@ -381,6 +381,7 @@ void vic_core1_loop(void) {
                 verticalCounter = 0;
                 verticalCellCounter = num_of_rows;
                 fetchState = FETCH_OUTSIDE_MATRIX;
+                cellDepthCounter = 0;
             } else {
                 verticalCounter++;
             }
