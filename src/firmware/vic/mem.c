@@ -23,7 +23,7 @@ void xread_pio_init(void){
     for(uint32_t i = 0; i < DATA_PIN_COUNT; i++){
         gpio_init(DATA_PIN_BASE+i);
         gpio_set_input_enabled(DATA_PIN_BASE+i, true);
-        gpio_set_pulls(DATA_PIN_BASE+i, false, false);              //E9 work-around
+        gpio_set_pulls(DATA_PIN_BASE+i, false, true);              //E9 work-around
         pio_gpio_init(XREAD_PIO, DATA_PIN_BASE+i);
         gpio_set_drive_strength(DATA_PIN_BASE+i, GPIO_DRIVE_STRENGTH_2MA);
     }
@@ -185,6 +185,9 @@ void xdir_pio_init(void){
     sm_config_set_out_pin_count(&config, 8);                        //Only output on lower 8 bit of data bus
     sm_config_set_in_pin_base(&config, ADDR_PIN_BASE+8);
     pio_sm_init(XDIR_PIO, XDIR_SM, offset, &config);
+    pio_sm_put_blocking(XDIR_PIO, XDIR_SM, 0b1010000);  //Matching value RnW='1', A[13:8]=0b010000
+    pio_sm_exec_wait_blocking(XDIR_PIO, XDIR_SM, pio_encode_pull(false, true));
+    pio_sm_exec_wait_blocking(XDIR_PIO, XDIR_SM, pio_encode_mov(pio_x, pio_osr));
     pio_sm_set_enabled(XDIR_PIO, XDIR_SM, true);   
 }
 
