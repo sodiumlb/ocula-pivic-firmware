@@ -14,10 +14,9 @@
 .out 8 right auto 8
 .wrap_target
     mov isr x           ; Base address to fetch from in the system
-    wait 0 gpio 8  [12] ; sample address after phi1 falling edge 
+    wait 1 irq 0   [20] ; sample address after phi1 falling edge 
     in pins 14          ; Pull in rest of address from 6502
     out pins 8          ; Blocking till data returns. pindirs set elsewhere
-    wait 1 gpio 8       ; Make sure only one iteration per phi clock
 .wrap
 
 ; Address of the memory to write to is set in x by setup
@@ -31,11 +30,11 @@
 .wrap_target
 start:
     mov isr x           ; System top address bits
-    wait 0 pin 27       ; Wait for RnW falling edge == write
+    wait 0 pin 26  [24] ; Wait for RnW falling edge == write + 200ns
     mov osr pins        ; Capture D[7:0],D[11:8],A[13:0],RnW
     out y 12            ; Keep D[11:0] in y (in case BLK4)
     in osr 14           ; shift in bottom address
-    wait 1 pin 27       ; Wait for RnW rising edge before capturing not BLK4 data
+    wait 1 pin 26       ; Wait for RnW rising edge before capturing not BLK4 data
     push noblock   [24] ; Send address to FIFO + 200ns data setup time
     mov isr pins        ; Assume not BLK4, capture new data in isr
     jmp pin not_blk4    ; If A13=='1', this write is not for BLK4
@@ -53,9 +52,9 @@ not_blk4:
 .out 8 right
 .wrap_target
 start:
-    wait 1 gpio 8  [10] ; Wait for phi1 rising edge + ca 80ns for data hold
+    wait 1 irq 1   [20] ; Wait for phi1 rising edge + ca 150ns for data hold
     mov pindirs null    ; Disable data pins output
-    wait 0 gpio 8  [12] ; Wait for phi1 falling edge + ca 100ns for address hold
+    wait 1 irq 0   [20] ; Wait for phi1 falling edge + ca 150ns for address hold
     mov y pins          ; Get A[13:8],RnW
     jmp x!=y start      ; If not reading of registers, goto start 
     mov pindirs ~null   ; Set data pins to output
@@ -66,6 +65,6 @@ start:
 .program trace
 .in 27 left auto 27
 .wrap_target
-    wait 1 irq 2 [12]
+    wait 1 irq 0 [12]
     in pins 27
 .wrap
