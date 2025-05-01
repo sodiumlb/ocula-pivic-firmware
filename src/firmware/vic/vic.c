@@ -386,6 +386,14 @@ void vic_core1_loop(void) {
                 verticalCounter++;
             }
 
+            // Update raster line in VIC registers 3 & 4.
+            vic_cr4 = (verticalCounter >> 1);
+            if ((verticalCounter & 0x01) == 0) {
+                vic_cr3 &= 0x7F;
+            } else {
+                vic_cr3 |= 0x80;
+            }
+
             // Check for Cell Depth Counter reset.
             if (cellDepthCounter == last_line_of_cell) {
                 cellDepthCounter = 0;
