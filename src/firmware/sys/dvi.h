@@ -32,5 +32,6 @@ int16_t dvi_canvas_height(void);
 void dvi_init(void);
 void dvi_task(void);
 
+void dvi_print_status(void);
 
 #endif /* _DVI_H_ */

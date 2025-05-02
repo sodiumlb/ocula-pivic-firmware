@@ -9,5 +9,7 @@
 
  void ula_init(void);
  void ula_task(void);
+
+ void ula_print_status(void);
  
  #endif /* _ULA_H_ */

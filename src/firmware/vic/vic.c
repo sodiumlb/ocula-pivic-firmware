@@ -680,3 +680,23 @@ void vic_task(void) {
         overruns = 0;
     }
 }
+
+void vic_print_status(void){
+    printf("VIC registers\n");
+        printf(" CR0 %02x %d X-Orig %s\n", vic_cr0, vic_cr0 & 0x7F, (vic_cr0 & 0x80 ? "(intl)" : "" ));
+        printf(" CR1 %02x %d Y-Orig\n", vic_cr1, vic_cr1);
+        printf(" CR2 %02x %d Columns\n", vic_cr2, vic_cr2 & 0x7F);
+        printf(" CR3 %02x %d Rows D:%d\n", vic_cr3, (vic_cr3 >> 1) & 0x3F, vic_cr3 & 1u);
+        printf(" CR4 %02x %d Raster\n", vic_cr4, (vic_cr4 << 1) | (vic_cr3 >> 7));
+        printf(" CR5 %02x BV:%04x BC:%04x\n", vic_cr5, (vic_cr5 & 0xF0) << (10-4), (vic_cr5 & 0x0F) << 10);
+        printf(" CR6 %02x %d LP X\n", vic_cr6, vic_cr6);
+        printf(" CR7 %02x %d LP Y\n", vic_cr7, vic_cr7);
+        printf(" CR8 %02x %d POT X\n", vic_cr8, vic_cr8);
+        printf(" CR9 %02x %d POT Y\n", vic_cr9, vic_cr9);
+        printf(" CRA %02x %d V1 E:%d\n", vic_cra, vic_cra & 0x7F, (vic_cra >> 7));
+        printf(" CRB %02x %d V2 E:%d\n", vic_crb, vic_crb & 0x7F, (vic_crb >> 7));
+        printf(" CRC %02x %d V3 E:%d\n", vic_crc, vic_crc & 0x7F, (vic_crc >> 7));
+        printf(" CRD %02x %d No E:%d\n", vic_crd, vic_crd & 0x7F, (vic_crd >> 7));
+        printf(" CRE %02x %d Vol CA:%d\n", vic_cre, vic_cre & 0x0F, (vic_cre >> 4));
+        printf(" CRF %02x CB:%d R:%d CE:%d\n", vic_crf, (vic_crf >> 4), (vic_crf >> 3) & 1u, (vic_crf & 0x7));
+}

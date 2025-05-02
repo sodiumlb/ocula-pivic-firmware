@@ -9,14 +9,15 @@
 #include "sys/cpu.h"
 #include "sys/lfs.h"
 #include "sys/mem.h"
-#include "sys/vga.h"
+#include "sys/dvi.h"
 
 // Configuration is a plain ASCII file on the LFS. e.g.
 // +V1         | Version - Must be first
 // +P8000      | PHI2
 // +C0         | Caps
-// +S437       | Code Page
-// +D0         | VGA display type
+// +S1         | Splash screen enable
+// +D0         | DVI display type
+
 // BASIC       | Boot ROM - Must be last
 
 #define CFG_VERSION 1
@@ -24,8 +25,8 @@ static const char filename[] = "CONFIG.SYS";
 
 static uint32_t cfg_phi2_khz;
 static uint8_t cfg_caps;
-static uint32_t cfg_codepage;
-static uint8_t cfg_vga_display;
+static uint8_t cfg_splash;
+static uint8_t cfg_dvi_display;
 
 // Optional string can replace boot string
 static void cfg_save_with_boot_opt(char *opt_str)
@@ -67,8 +68,8 @@ static void cfg_save_with_boot_opt(char *opt_str)
                                CFG_VERSION,
                                cfg_phi2_khz,
                                cfg_caps,
-                               cfg_codepage,
-                               cfg_vga_display,
+                               cfg_splash,
+                               cfg_dvi_display,
                                opt_str);
         if (lfsresult < 0)
             printf("?Unable to write %s contents (%d)\n", filename, lfsresult);
@@ -114,10 +115,10 @@ static void cfg_load_with_boot_opt(bool boot_only)
                 cfg_caps = val;
                 break;
             case 'S':
-                cfg_codepage = val;
+                cfg_splash = val;
                 break;
             case 'D':
-                cfg_vga_display = val;
+                cfg_dvi_display = val;
                 break;
             default:
                 break;
@@ -182,36 +183,35 @@ uint8_t cfg_get_caps(void)
     return cfg_caps;
 }
 
-// bool cfg_set_codepage(uint32_t cp)
-// {
-//     if (cp > UINT16_MAX)
-//         return false;
-//     uint32_t old_val = cfg_codepage;
-//     cfg_codepage = oem_set_codepage(cp);
-//     if (old_val != cfg_codepage)
-//         cfg_save_with_boot_opt(NULL);
-//     return true;
-// }
+bool cfg_set_splash(uint8_t enable)
+{
+    if (enable <= 1 && cfg_splash != enable){ 
+        cfg_splash = enable;
+        cfg_save_with_boot_opt(NULL);
+        return true;
+    }else{
+        return false;
+    }
+}
 
-// uint16_t cfg_get_codepage(void)
-// {
-//     return cfg_codepage;
-// }
+uint8_t cfg_get_splash(void)
+{
+    return cfg_splash;
+}
 
-bool cfg_set_vga(uint8_t disp)
+bool cfg_set_dvi(uint8_t disp)
 {
     bool ok = true;
-    if (disp <= 2 && cfg_vga_display != disp)
+    if (disp <= 2 && cfg_dvi_display != disp)
     {
-        cfg_vga_display = disp;
-        //ok = vga_set_vga(cfg_vga_display);
-        if (ok)
-            cfg_save_with_boot_opt(NULL);
+        cfg_dvi_display = disp;
+        dvi_set_display(cfg_dvi_display);
+        cfg_save_with_boot_opt(NULL);
     }
     return ok;
 }
 
-uint8_t cfg_get_vga(void)
+uint8_t cfg_get_dvi(void)
 {
-    return cfg_vga_display;
+    return cfg_dvi_display;
 }

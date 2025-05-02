@@ -6,7 +6,13 @@
 
 #include "main.h"
 #include "sys/sys.h"
-#include "sys/vga.h"
+#include "sys/dvi.h"
+#ifdef PIVIC
+#include "vic/vic.h"
+#endif
+#ifdef OCULA
+#include "oric/ula.h"
+#endif
 #include "pico/stdlib.h"
 #include "hardware/watchdog.h"
 #include <stdio.h>
@@ -40,7 +46,13 @@ void sys_mon_status(const char *args, size_t len)
     (void)(args);
     (void)(len);
     sys_print_status();
-    //vga_print_status();
+    dvi_print_status();
+#ifdef PIVIC
+    vic_print_status();
+#endif
+#ifdef OCULA
+    ula_print_status();
+#endif
 }
 
 void sys_init(void)
