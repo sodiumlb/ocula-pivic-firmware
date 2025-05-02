@@ -26,12 +26,12 @@ static const char __in_flash("helptext") hlp_text_set[] =
     "HELP SET attr       - Show information about a setting.\n"
     "SET CAPS (0|1|2)    - Invert or force caps while 6502 is running.\n"
     "SET PHI2 (kHz)      - Query or set PHI2 speed. This is the 6502 clock.\n"
-    "SET RESB (ms)       - Query or set RESB hold time. Set to 0 for auto.\n"
     "SET BOOT (rom|-)    - Select ROM to boot from cold start. \"-\" for none.\n"
-    "SET CP (cp)         - Query or set code page.\n"
-    "SET VGA (0|1|2)     - Query or set display type for VGA output.";
+    "SET SPLASH (0|1)    - Disable or enable splash screen.\n"
+    "SET DVI (0|1|2)     - Query or set display type for DVI output.";
 
 static const char __in_flash("helptext") hlp_text_about[] =
+    "    OCULA & PIVIC - Copyright (c) 2025 Sodiumlightbaby & Dreamseal\n"
     "Picocomputer 6502 - Copyright (c) 2023 Rumbledethumps.\n"
     "     Pi Pico SDKs - Copyright (c) 2020 Raspberry Pi (Trading) Ltd.\n"
     "      Tiny printf - Copyright (c) 2014-2019 Marco Paland, PALANDesign.\n"
@@ -135,27 +135,22 @@ static const char __in_flash("helptext") hlp_text_boot[] =
     "the argument will have the system boot into the monitor you are using now.\n"
     "Setting is saved on the RIA flash.";
 
-static const char __in_flash("helptext") hlp_text_code_page[] =
-    "SET CP selects a code page for system text. The following is supported:\n"
-    "437, 720, 737, 771, 775, 850, 852, 855, 857, 860, 861, 862, 863, 864, 865,\n"
-    "866, 869, 932, 936, 949, 950.  Code pages 720, 932, 936, 949, 950 do not have\n"
-    "VGA fonts."
-#if RP6502_CODE_PAGE
-#define xstr(s) str(s)
-#define str(s) #s
-    "\nThis is a development build. Only " xstr(RP6502_CODE_PAGE) " is available.";
-#else
-    "";
-#endif
+static const char __in_flash("helptext") hlp_text_splash[] =
+    "SET SPLASH enables or disables splash screen shown before the computer\n"
+    "clears the screen memory at boot\n"
+    " 0 - disable splash screen\n"
+    " 1 - enable spash screen";
 
-static const char __in_flash("helptext") hlp_text_vga[] =
-    "SET VGA selects the display type for VGA output. All canvas resolutions are\n"
-    "supported by all display types. Display type is used to maintain square\n"
-    "pixels and minimize letterboxing. Note that 1280x1024 is 5:4 so 4:3 graphics\n"
-    "will be letterboxed slightly but you'll get 2 extra rows on the terminal.\n"
-    "  0 - 640x480\n"
-    "  1 - 640x480 and 1280x720, 16:9 modes will not letterbox\n"
-    "  2 - 1280x1024, all graphics modes will letterbox";
+static const char __in_flash("helptext") hlp_text_dvi[] =
+    "SET DVI selects the display type for DVI output.\n"
+    "  0 - 640x480 @ 60Hz\n"
+    "  1 - 720x480 @ 60Hz\n"
+    "  2 - 720x576 @ 50Hz";
+
+static const char __in_flash("helptext") hlp_text_mode[] =
+    "SET MODE selects the type of VIC emulation(PIVIC only)\n"
+    "  0 - VIC 6560 NTSC 60Hz\n"
+    "  1 - VIC 6561 PAL 50Hz";
 
 static struct
 {
@@ -187,8 +182,9 @@ static struct
     {4, "phi2", hlp_text_phi2},
     {4, "resb", hlp_text_resb},
     {4, "boot", hlp_text_boot},
-    {2, "cp", hlp_text_code_page},
-    {3, "vga", hlp_text_vga},
+    {6, "splash", hlp_text_splash},
+    {3, "dvi", hlp_text_dvi},
+    {4, "mode", hlp_text_mode},
 };
 static const size_t SETTINGS_COUNT = sizeof SETTINGS / sizeof *SETTINGS;
 

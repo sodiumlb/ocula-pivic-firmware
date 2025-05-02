@@ -12,7 +12,7 @@
 static void set_print_phi2(void)
 {
     uint32_t phi2_khz = cfg_get_phi2_khz();
-    printf("PHI2: %ld kHz", phi2_khz);
+    printf("PHI2  : %ld kHz", phi2_khz);
     if (phi2_khz < RP6502_MIN_PHI2 || phi2_khz > RP6502_MAX_PHI2)
         printf(" (!!!)");
     printf("\n");
@@ -43,7 +43,7 @@ static void set_print_boot(void)
     const char *rom = cfg_get_boot();
     if (!rom[0])
         rom = "(none)";
-    printf("BOOT: %s\n", rom);
+    printf("BOOT  : %s\n", rom);
 }
 
 static void set_boot(const char *args, size_t len)
@@ -78,7 +78,7 @@ static void set_boot(const char *args, size_t len)
 static void set_print_caps(void)
 {
     const char *const caps_labels[] = {"normal", "inverted", "forced"};
-    printf("CAPS: %s\n", caps_labels[cfg_get_caps()]);
+    printf("CAPS  : %s\n", caps_labels[cfg_get_caps()]);
 }
 
 static void set_caps(const char *args, size_t len)
@@ -100,38 +100,34 @@ static void set_caps(const char *args, size_t len)
     set_print_caps();
 }
 
-// static void set_print_code_page()
-// {
-// #if (RP6502_CODE_PAGE)
-//     printf("CP  : %d (dev)\n", RP6502_CODE_PAGE);
-// #else
-//     printf("CP  : %d\n", cfg_get_codepage());
-// #endif
-// }
-
-// static void set_code_page(const char *args, size_t len)
-// {
-//     uint32_t val;
-//     if (len)
-//     {
-//         if (!parse_uint32(&args, &len, &val) ||
-//             !parse_end(args, len) ||
-//             !cfg_set_codepage(val))
-//         {
-//             printf("?invalid argument\n");
-//             return;
-//         }
-//     }
-//     set_print_code_page();
-// }
-
-static void set_print_vga(void)
+static void set_print_splash()
 {
-    const char *const vga_labels[] = {"640x480", "640x480 and 1280x720", "1280x1024"};
-    printf("VGA : %s\n", vga_labels[cfg_get_vga()]);
+    printf("SPLASH: %d\n", cfg_get_splash());
 }
 
-static void set_vga(const char *args, size_t len)
+static void set_splash(const char *args, size_t len)
+{
+    uint32_t val;
+    if (len)
+    {
+        if (!parse_uint32(&args, &len, &val) ||
+            !parse_end(args, len) ||
+            !cfg_set_splash(val))
+        {
+            printf("?invalid argument\n");
+            return;
+        }
+    }
+    set_print_splash();
+}
+
+static void set_print_dvi(void)
+{
+    const char *const dvi_labels[] = {"640x480 @ 60Hz", "720x480 @ 60Hz", "720x576 @ 50Hz"};
+    printf("DVI   : %s\n", dvi_labels[cfg_get_dvi()]);
+}
+
+static void set_dvi(const char *args, size_t len)
 {
     uint32_t val;
     if (len)
@@ -139,7 +135,7 @@ static void set_vga(const char *args, size_t len)
         if (parse_uint32(&args, &len, &val) &&
             parse_end(args, len))
         {
-            cfg_set_vga(val);
+            cfg_set_dvi(val);
         }
         else
         {
@@ -147,8 +143,31 @@ static void set_vga(const char *args, size_t len)
             return;
         }
     }
-    set_print_vga();
+    set_print_dvi();
 }
+
+static void set_print_mode()
+{
+    const char *const mode_labels[] = {"VIC 6560 PAL/50", "VIC 6561 NTSC/60"};
+    printf("MODE: %s\n", mode_labels[cfg_get_mode()]);
+}
+
+static void set_mode(const char *args, size_t len)
+{
+    uint32_t val;
+    if (len)
+    {
+        if (!parse_uint32(&args, &len, &val) ||
+            !parse_end(args, len) ||
+            !cfg_set_mode(val))
+        {
+            printf("?invalid argument\n");
+            return;
+        }
+    }
+    set_print_mode();
+}
+
 
 typedef void (*set_function)(const char *, size_t);
 static struct
@@ -160,7 +179,9 @@ static struct
     {4, "caps", set_caps},
     {4, "phi2", set_phi2},
     {4, "boot", set_boot},
-    {3, "vga", set_vga},
+    {6, "splash", set_splash},
+    {3, "dvi", set_dvi},
+    {4, "mode", set_mode}
 };
 static const size_t SETTERS_COUNT = sizeof SETTERS / sizeof *SETTERS;
 
@@ -169,7 +190,9 @@ static void set_print_all(void)
     set_print_phi2();
     set_print_caps();
     set_print_boot();
-    set_print_vga();
+    set_print_splash();
+    set_print_dvi();
+    set_print_mode();
 }
 
 void set_mon_set(const char *args, size_t len)

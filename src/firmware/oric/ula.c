@@ -687,3 +687,7 @@ void ula_task(void){
     // }
 
 }
+
+void ula_print_status(void){
+    printf("ULA status placeholder\n");
+}

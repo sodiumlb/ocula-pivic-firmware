@@ -104,6 +104,10 @@ static uint32_t vactive_line[] = {
     HSTX_CMD_TMDS       | MODE_H_ACTIVE_PIXELS
 };
 
+void dvi_set_display(dvi_display_t display){
+    //TODO
+}
+
 // ----------------------------------------------------------------------------
 // DMA logic
 
@@ -279,4 +283,9 @@ void dvi_task(void){
     if(++x > 640){
         x = 0;
     }
+}
+
+void dvi_print_status(void){
+    const char *msg = "DVI status placeholder";
+    puts(msg);
 }

@@ -24,9 +24,11 @@ void cfg_set_caps(uint8_t mode);
 uint8_t cfg_get_caps(void);
 void cfg_set_boot(char *rom);
 char *cfg_get_boot(void);
-// bool cfg_set_codepage(uint32_t cp);
-// uint16_t cfg_get_codepage(void);
-bool cfg_set_vga(uint8_t disp);
-uint8_t cfg_get_vga(void);
+bool cfg_set_splash(uint8_t enable);
+uint8_t cfg_get_splash(void);
+bool cfg_set_dvi(uint8_t disp);
+uint8_t cfg_get_dvi(void);
+bool cfg_set_mode(uint8_t mode);
+uint8_t cfg_get_mode(void);
 
 #endif /* _CFG_H_ */
