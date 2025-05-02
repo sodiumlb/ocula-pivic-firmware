@@ -23,11 +23,36 @@ bool main_prog(uint16_t *xregs);
 
 //PIVIC CVBS aka luma/chroma DAC
 #ifdef PIVIC
+#define PIO0_PIN_OFFS 0
+#define PIO1_PIN_OFFS 0
+#define PIO2_PIN_OFFS 16
+
 #define CVBS_PIO pio0
 #define CVBS_SM 0
-#define CVBS_PIN_BANK 0
+#define CVBS_PIN_OFFS PIO0_PIN_OFFS
 #define CVBS_PIN_BASE 3
 #define CVBS_PIN_COUNT 5
+
+#define VIC_PIO pio1
+#define VIC_SM 0
+#define VIC_PIN_OFFS PIO1_PIN_OFFS
+#define VIC_PIN_BASE 8
+
+#define XREAD_PIN_OFFS PIO2_PIN_OFFS
+#define XREAD_PIO pio2
+#define XREAD_SM 0
+
+#define XWRITE_PIN_OFFS PIO2_PIN_OFFS
+#define XWRITE_PIO pio2
+#define XWRITE_SM 1
+
+#define XDIR_PIN_OFFS PIO2_PIN_OFFS
+#define XDIR_PIO pio2
+#define XDIR_SM 2
+
+#define TRACE_PIN_OFFS PIO2_PIN_OFFS
+#define TRACE_PIO pio2
+#define TRACE_SM 3
 
 #define AUDIO_PWM_PIN 2
 #define AUDIO_PWM_SLICE 1

@@ -34,6 +34,8 @@ void cpu_init(void)
     //Test hack 
     #ifdef PIVIC
     set_sys_clock_khz(133000, true);
+    //set_sys_clock_khz(266000, true);
+    clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 266000000, 133000000);
     #endif
     #ifdef OCULA
     set_sys_clock_khz(138000, true);

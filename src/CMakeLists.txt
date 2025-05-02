@@ -120,6 +120,9 @@ target_sources(pivic PRIVATE
     firmware/mon/ram.c
     firmware/mon/set.c
     firmware/mon/vip.c
+    firmware/vic/aud.c
+    firmware/vic/mem.c
+    firmware/vic/vic.c
     firmware/sys/cfg.c
     firmware/sys/com.c
     firmware/sys/cpu.c
@@ -157,6 +160,8 @@ target_link_libraries(pivic PRIVATE
 
 pico_generate_pio_header(pivic
     ${CMAKE_CURRENT_LIST_DIR}/firmware/vic/cvbs.pio
+    ${CMAKE_CURRENT_LIST_DIR}/firmware/vic/vic.pio
+    ${CMAKE_CURRENT_LIST_DIR}/firmware/vic/mem.pio
 )
 
 target_compile_definitions(pivic PRIVATE
