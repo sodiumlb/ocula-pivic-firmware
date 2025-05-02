@@ -52,11 +52,12 @@ not_blk4:
 .out 8 right
 .wrap_target
 start:
-    wait 1 irq 1   [20] ; Wait for phi1 rising edge + ca 150ns for data hold
+    wait 1 irq 1   [24] ; Wait for phi1 rising edge + ca 200ns for data hold
     mov pindirs null    ; Disable data pins output
-    wait 1 irq 0   [20] ; Wait for phi1 falling edge + ca 150ns for address hold
+    wait 1 irq 0   [24] ; Wait for phi1 falling edge + ca 200ns for address hold
     mov y pins          ; Get A[13:8],RnW
     jmp x!=y start      ; If not reading of registers, goto start 
+    irq set 2           ; Signal trace
     mov pindirs ~null   ; Set data pins to output
 .wrap
 
@@ -65,6 +66,6 @@ start:
 .program trace
 .in 27 left auto 27
 .wrap_target
-    wait 1 irq 0 [12]
+    wait 1 irq 2 [0]
     in pins 27
 .wrap
