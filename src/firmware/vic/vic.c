@@ -8,6 +8,7 @@
 #include "vic/vic.h"
 #include "vic/char_rom.h"
 #include "vic/cvbs.h"
+#include "sys/cfg.h"
 #include "sys/mem.h"
 #include "vic.pio.h"
 #include "pico/stdlib.h"
@@ -301,7 +302,8 @@ void vic_core1_loop(void) {
     // Initialisation.
     cvbs_init();
     vic_pio_init();
-    vic_memory_init();
+    if(cfg_get_splash())
+        vic_memory_init();
 
     //
     // START OF VIC CHIP STATE
