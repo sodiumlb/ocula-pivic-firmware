@@ -28,5 +28,7 @@ bool cfg_set_splash(uint8_t enable);
 uint8_t cfg_get_splash(void);
 bool cfg_set_dvi(uint8_t disp);
 uint8_t cfg_get_dvi(void);
+bool cfg_set_mode(uint8_t mode);
+uint8_t cfg_get_mode(void);
 
 #endif /* _CFG_H_ */

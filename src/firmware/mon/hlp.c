@@ -147,6 +147,11 @@ static const char __in_flash("helptext") hlp_text_dvi[] =
     "  1 - 720x480 @ 60Hz\n"
     "  2 - 720x576 @ 50Hz";
 
+static const char __in_flash("helptext") hlp_text_mode[] =
+    "SET MODE selects the type of VIC emulation(PIVIC only)\n"
+    "  0 - VIC 6560 NTSC 60Hz\n"
+    "  1 - VIC 6561 PAL 50Hz";
+
 static struct
 {
     size_t cmd_len;
@@ -179,6 +184,7 @@ static struct
     {4, "boot", hlp_text_boot},
     {6, "splash", hlp_text_splash},
     {3, "dvi", hlp_text_dvi},
+    {4, "mode", hlp_text_mode},
 };
 static const size_t SETTINGS_COUNT = sizeof SETTINGS / sizeof *SETTINGS;
 

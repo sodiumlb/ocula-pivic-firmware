@@ -146,6 +146,29 @@ static void set_dvi(const char *args, size_t len)
     set_print_dvi();
 }
 
+static void set_print_mode()
+{
+    const char *const mode_labels[] = {"VIC 6560 PAL/50", "VIC 6561 NTSC/60"};
+    printf("MODE: %s\n", mode_labels[cfg_get_mode()]);
+}
+
+static void set_mode(const char *args, size_t len)
+{
+    uint32_t val;
+    if (len)
+    {
+        if (!parse_uint32(&args, &len, &val) ||
+            !parse_end(args, len) ||
+            !cfg_set_mode(val))
+        {
+            printf("?invalid argument\n");
+            return;
+        }
+    }
+    set_print_mode();
+}
+
+
 typedef void (*set_function)(const char *, size_t);
 static struct
 {
@@ -158,6 +181,7 @@ static struct
     {4, "boot", set_boot},
     {6, "splash", set_splash},
     {3, "dvi", set_dvi},
+    {4, "mode", set_mode}
 };
 static const size_t SETTERS_COUNT = sizeof SETTERS / sizeof *SETTERS;
 
@@ -168,6 +192,7 @@ static void set_print_all(void)
     set_print_boot();
     set_print_splash();
     set_print_dvi();
+    set_print_mode();
 }
 
 void set_mon_set(const char *args, size_t len)

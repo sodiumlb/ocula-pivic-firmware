@@ -17,7 +17,7 @@
 // +C0         | Caps
 // +S1         | Splash screen enable
 // +D0         | DVI display type
-
+// +M0         | Mode (e.g. VIC PAL/NTSC for PIVIC)
 // BASIC       | Boot ROM - Must be last
 
 #define CFG_VERSION 1
@@ -27,6 +27,7 @@ static uint32_t cfg_phi2_khz;
 static uint8_t cfg_caps;
 static uint8_t cfg_splash;
 static uint8_t cfg_dvi_display;
+static uint8_t cfg_mode;
 
 // Optional string can replace boot string
 static void cfg_save_with_boot_opt(char *opt_str)
@@ -64,12 +65,14 @@ static void cfg_save_with_boot_opt(char *opt_str)
                                "+C%d\n"
                                "+S%d\n"
                                "+D%d\n"
+                               "+M%d\n"
                                "%s",
                                CFG_VERSION,
                                cfg_phi2_khz,
                                cfg_caps,
                                cfg_splash,
                                cfg_dvi_display,
+                               cfg_mode,
                                opt_str);
         if (lfsresult < 0)
             printf("?Unable to write %s contents (%d)\n", filename, lfsresult);
@@ -120,6 +123,8 @@ static void cfg_load_with_boot_opt(bool boot_only)
             case 'D':
                 cfg_dvi_display = val;
                 break;
+            case 'M':
+                cfg_mode = val;
             default:
                 break;
             }
@@ -185,13 +190,13 @@ uint8_t cfg_get_caps(void)
 
 bool cfg_set_splash(uint8_t enable)
 {
-    if (enable <= 1 && cfg_splash != enable){ 
+    if(enable > 1)
+        return false;
+    if(cfg_splash != enable){ 
         cfg_splash = enable;
         cfg_save_with_boot_opt(NULL);
-        return true;
-    }else{
-        return false;
     }
+    return true;
 }
 
 uint8_t cfg_get_splash(void)
@@ -201,17 +206,30 @@ uint8_t cfg_get_splash(void)
 
 bool cfg_set_dvi(uint8_t disp)
 {
-    bool ok = true;
-    if (disp <= 2 && cfg_dvi_display != disp)
-    {
+    if(disp > 2)
+        return false;
+    if(cfg_dvi_display != disp){
         cfg_dvi_display = disp;
         dvi_set_display(cfg_dvi_display);
         cfg_save_with_boot_opt(NULL);
     }
-    return ok;
+    return true;
 }
 
 uint8_t cfg_get_dvi(void)
 {
     return cfg_dvi_display;
+}
+
+bool cfg_set_mode(uint8_t mode){
+    if(mode > 1)
+        return false;
+    if(cfg_mode != mode){
+        cfg_mode = mode;
+    }
+    return true;
+}
+
+uint8_t cfg_get_mode(void){
+    return cfg_mode;
 }
