@@ -572,8 +572,8 @@ void vic_core1_loop(void) {
                         // Calculate offset of data.
                         charDataOffset = char_mem_start + (cellIndex << char_size_shift) + cellDepthCounter;
 
-                        // Fetch cell data.
-                        charData = xram[charDataOffset];
+                        // Fetch cell data. It can wrap around, which is why we & with 0x3FFF.
+                        charData = xram[(charDataOffset & 0x3FFF)];
 
                         // Determine character pixels.
                         if ((colourData & 0x08) == 0) {
