@@ -65,7 +65,7 @@
 #define background_colour_index  (vic_crf >> 4)
 #define auxiliary_colour_index   (vic_cre >> 4)
 #define non_reverse_mode         (vic_crf & 0x08)
-#define screen_origin_x          ((vic_cr0 & 0x7F) + 6)
+#define screen_origin_x          ((vic_cr0 & 0x7F))
 #define screen_origin_y          (vic_cr1 << 1)
 #define num_of_columns           (vic_cr2 & 0x7F)
 #define num_of_rows              ((vic_cr3 & 0x7E) >> 1)
@@ -100,8 +100,11 @@
 #define FETCH_OUTSIDE_MATRIX  0
 #define FETCH_IN_MATRIX_Y     1
 #define FETCH_MATRIX_LINE     2
-#define FETCH_SCREEN_CODE     3
-#define FETCH_CHAR_DATA       4
+#define FETCH_MATRIX_DLY_1    3
+#define FETCH_MATRIX_DLY_2    4
+#define FETCH_MATRIX_DLY_3    5
+#define FETCH_SCREEN_CODE     6
+#define FETCH_CHAR_DATA       7
 
 // Constants related to video timing for PAL and NTSC.
 #define PAL_HBLANK_END        11
@@ -421,6 +424,11 @@ void vic_core1_loop(void) {
                 fetchState = FETCH_IN_MATRIX_Y;
             }
 
+            // Covers special case when Screen Origin X is set to 0.
+            if ((fetchState > FETCH_OUTSIDE_MATRIX) && (horizontalCounter == screen_origin_x)) {
+                fetchState = FETCH_MATRIX_DLY_1;
+            }
+
             if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
                 // In HC=0 for visible lines, we start with output the full sequence of CVBS
                 // commands for horizontal blanking, including the hsync and colour burst.
@@ -477,12 +485,36 @@ void vic_core1_loop(void) {
         // Line 0, and Lines after 9, are "visible", i.e. not within the vertical blanking.
         else if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
             if (horizontalCounter == PAL_HBLANK_START) {
-                // Horizontal blanking doesn't actually start until 2 pixels in.
-                // TODO: Decide whether it is appropriate to always assume border colour for first 2 pixels.
-                // TODO: Should it instead be the next two pixels from the char, if there are any?
-                borderColour = pal_palette[border_colour_index];
-                pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                if (fetchState > FETCH_MATRIX_LINE) {
+                    // Horizontal blanking doesn't actually start until 2 pixels in. What exactly 
+                    // those two pixels are depends on the state.
+                    if (fetchState == FETCH_CHAR_DATA) {
+                        pio_sm_put(CVBS_PIO, CVBS_SM, pixel1);
+                        pio_sm_put(CVBS_PIO, CVBS_SM, pixel2);
+                        
+                        // If the matrix hadn't yet closed, then in the FETCH_CHAR_DATA 
+                        // state, we need to increment the video matrix counter once more.
+                        videoMatrixCounter++;
+                    }
+                    else if (fetchState == FETCH_SCREEN_CODE) {
+                        pio_sm_put(CVBS_PIO, CVBS_SM, pixel5);
+                        pio_sm_put(CVBS_PIO, CVBS_SM, pixel6);
+                    }
+                    
+                    // If the video matrix hasn't closed yet, then its still either FETCH_SCREEN_CODE 
+                    // or FETCH_CHAR_DATA. In that scenario, we need to close it by setting fetchState
+                    // to FETCH_MATRIX_LINE so that the next line starts with border as expected, i.e.
+                    // the "In Matrix" state ends either when HCC counts down OR the end of the line.
+                    fetchState = FETCH_MATRIX_LINE;
+                }
+                else {
+                    // If the matrix was already closed, then the two visible pixels are border.
+                    borderColour = pal_palette[border_colour_index];
+                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                }
+                
+                // After the two visible pixels, we now output the start of horiz blanking.
                 pio_sm_put(CVBS_PIO, CVBS_SM, PAL_FRONTPORCH_1);
                 
                 // If the CDC is on the last of its lines, then we latch the VMC at the end of the line. In
@@ -491,15 +523,7 @@ void vic_core1_loop(void) {
                 if (cellDepthCounter == last_line_of_cell) {
                     videoMatrixLatch = videoMatrixCounter;
                 }
-
-                // If the video matrix hasn't closed yet, then its still either FETCH_SCREEN_CODE 
-                // or FETCH_CHAR_DATA. In that scenario, we need to close it by setting fetchState
-                // to FETCH_MATRIX_LINE so that the next line starts with border as expected, i.e.
-                // the "In Matrix" state ends either when HCC counts down OR the end of the line.
-                if (fetchState > FETCH_MATRIX_LINE) {
-                    fetchState = FETCH_MATRIX_LINE;
-                }
-
+  
                 // Nothing else to do at this point, so reset HC and skip rest of loop.
                 horizontalCounter = 0;
             }
@@ -530,7 +554,7 @@ void vic_core1_loop(void) {
                             if (horizontalCounter == screen_origin_x) {
                                 // Last 4 pixels before first char renders are still border.
                                 pixel5 = pixel6 = pixel7 = pixel8 = borderColour;
-                                fetchState = FETCH_SCREEN_CODE;
+                                fetchState = FETCH_MATRIX_DLY_1;
                             }
                         }
                         else if (horizontalCounter == screen_origin_x) {
@@ -538,8 +562,26 @@ void vic_core1_loop(void) {
                             // where the next cycle isn't in horiz blanking, i.e. when HC=11 this cycle.
                             borderColour = pal_palette[border_colour_index];
                             pixel5 = pixel6 = pixel7 = pixel8 = borderColour;
-                            fetchState = FETCH_SCREEN_CODE;
+                            fetchState = FETCH_MATRIX_DLY_1;
                         }
+                        break;
+
+                    case FETCH_MATRIX_DLY_1:
+                    case FETCH_MATRIX_DLY_2:
+                    case FETCH_MATRIX_DLY_3:
+                        if (horizontalCounter > PAL_HBLANK_END) {
+                            // Output four border pixels.
+                            borderColour = pal_palette[border_colour_index];
+                            pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                        }
+                        else {
+                            borderColour = pal_palette[border_colour_index];
+                            pixel5 = pixel6 = pixel7 = pixel8 = borderColour;
+                        }
+                        fetchState++;
                         break;
 
                     case FETCH_SCREEN_CODE:
@@ -632,10 +674,16 @@ void vic_core1_loop(void) {
             // HC=0. For the rest of the line, it is a simplified version of the standard line, 
             // except that we don't output any pixels.
             if (horizontalCounter == PAL_HBLANK_START) {
-                horizontalCounter = 0;
+                if (fetchState > FETCH_MATRIX_LINE) {
+                    if (fetchState == FETCH_CHAR_DATA) {
+                        videoMatrixCounter++;
+                    }
+                    fetchState = FETCH_MATRIX_LINE;
+                }
                 if (cellDepthCounter == last_line_of_cell) {
                     videoMatrixLatch = videoMatrixCounter;
                 }
+                horizontalCounter = 0;
             }
             else {
                 // In case the screen origin Y is set within the vertical blanking lines, we still need 
@@ -647,8 +695,13 @@ void vic_core1_loop(void) {
                     case FETCH_IN_MATRIX_Y:
                     case FETCH_MATRIX_LINE:
                         if (horizontalCounter == screen_origin_x) {
-                            fetchState = FETCH_SCREEN_CODE;
+                            fetchState = FETCH_MATRIX_DLY_1;
                         }
+                        break;
+                    case FETCH_MATRIX_DLY_1:
+                    case FETCH_MATRIX_DLY_2:
+                    case FETCH_MATRIX_DLY_3:
+                        fetchState++;
                         break;
                     case FETCH_SCREEN_CODE:
                         fetchState = (horizontalCellCounter--? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
