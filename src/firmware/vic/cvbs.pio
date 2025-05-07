@@ -8,7 +8,7 @@
 ; Assumes 5 bit DAC output
 ; Running frequency needs to be a multiple of the colour burst frequency and
 ; with enough over-sampling to implement the phase shifts needed
-; PAL timing: clk_sys=133MHz colour burst=clk_sys/30=4.433333MHz
+; PAL timing:  clk_sys=133.0MHz colour burst=clk_sys/30=4.433333MHz
 ; Commands auto pulled from the fifo
 ;  26                              0 
 ; |post-delay|L1|Repeat|L0|Pre-delay|
@@ -47,3 +47,56 @@ bypass:
 postdelay:
     jmp y-- postdelay
 .wrap
+
+;Dot clock generation
+;Faking 38.5 period with 38+39 pair
+.program cvbs_dotclk
+.wrap_target
+    irq set 1 [29]
+    nop       [ 7]
+    irq set 1 [29]
+    nop       [ 8]
+.wrap
+
+.program cvbs_ntsc
+.origin 0
+public entry:
+    out pc 5
+
+public cvbs_cmd_dc_run:
+    out pins 5          ;DC level out
+    out y 15
+dc_loop:
+    wait 1 irq 1        ;Wait for dotclock
+    jmp y-- dc_loop
+    out pc 5
+
+public cvbs_cmd_pixel_run:
+    out y 20           ;Repeat count
+pixel:
+    wait 1 irq 1       ;Wait for dotclk
+    out pins 5         ;Out L0
+    out x 5
+delay0:
+    jmp x-- delay0
+    out pins 5         ;Out L1
+    out x 5
+delay1:
+    jmp x-- delay1
+    out x 5            ;Out L2
+    jmp y-- pixel
+    out pc 5
+
+public cvbs_cmd_burst:
+    out y 5            ;repeat count
+    out x 5            ;get predelay
+    out isr 5          ;keep L0 in isr
+    wait 1 irq 1       ;sync to dotclock only at the start
+predelay_burst:
+    jmp x-- predelay_burst
+burst_loop:
+    mov pins isr  [21] ;L0 out
+    mov pins osr  [20] ;L1 out
+    jmp y-- burst_loop
+    out null 5         ;Dump L1, trigger autopull
+    out pc 5
