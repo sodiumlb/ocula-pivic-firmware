@@ -33,6 +33,9 @@ bool main_prog(uint16_t *xregs);
 #define CVBS_PIN_BASE 3
 #define CVBS_PIN_COUNT 5
 
+#define CVBS_DOTCLK_PIO pio0
+#define CVBS_DOTCLK_SM 1
+
 #define VIC_PIO pio1
 #define VIC_SM 0
 #define VIC_PIN_OFFS PIO1_PIN_OFFS
