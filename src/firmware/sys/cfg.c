@@ -226,6 +226,7 @@ bool cfg_set_mode(uint8_t mode){
         return false;
     if(cfg_mode != mode){
         cfg_mode = mode;
+        cfg_save_with_boot_opt(NULL);
     }
     return true;
 }
