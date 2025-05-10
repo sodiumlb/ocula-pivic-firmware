@@ -5,6 +5,7 @@
 */
 
 #include "main.h"
+#include "str.h"
 //#include "sys/ria.h"
 #include "vic/cvbs.h"
 #include "vic/cvbs_ntsc.h"
@@ -324,6 +325,61 @@ void cvbs_test_img_pal(void){
       }
    }
 }
+
+void cvbs_ntsc_gen(uint32_t* col,uint8_t delay,uint8_t base_col){
+
+   uint8_t L0 = (ntsc_palette[0][base_col] >>  0) & 0x1F;
+   uint8_t L1 = (ntsc_palette[0][base_col] >> 10) & 0x1F;
+   uint8_t head[] = { 0, 6,11,17};
+   uint8_t pixlen[] = {38,39,39,39};
+   if(delay > 22){
+      uint8_t tmp = L0;
+      L0 = L1;
+      L1 = tmp;
+      delay = delay - 22;
+   }
+   printf("Delay:%2d\n", delay);
+   for(uint8_t i=0; i < 4; i++){
+      uint8_t delay0 = delay + head[i]; 
+      uint8_t delay1 = 22;
+      uint8_t L0o, L1o, L2o;
+      if(delay0 > 22){
+         delay0 = delay0 - 22;
+         L0o = L0;
+         L1o = L1;
+         L2o = L0;
+      }else if(delay0 == 0){
+         delay0 = 22;
+         L0o = L0;
+         L1o = L1;
+         L2o = L0;
+      }else{
+         L0o = L1;
+         L1o = L0;
+         L2o = L1;
+      }
+      if(delay0 < 3 && delay0 > 0){
+         delay1 = delay1 - (3 - delay0);
+         delay0 = 3;
+      }
+      if((delay0+delay1) >= pixlen[i] || delay1 == 0){
+         delay1 = 3;
+         L2o = L1o;
+      }
+      printf("%2d L0:%2d d0:%2d L1:%2d d1:%2d L2:%2d\n", i, L0o, delay0, L1o, delay1, L2o);
+      col[i] = CVBS_CMD_DATA(L0o, delay0, L1o, delay1, L2o);
+      if(L1o == L2o){
+         col[i+4] = CVBS_CMD_DATA(L1o, delay0, L0o, delay1, L0o);
+      }else{
+         col[i+4] = CVBS_CMD_DATA(L1o, delay0, L0o, delay1, L1o);
+      }
+   }
+
+}
+
+volatile uint8_t ntsc_test_col = 2;
+volatile uint32_t ntsc_col[8];
+
 void cvbs_test_img_ntsc(void){
    static uint32_t i = 0;
    static uint32_t j = 0;
@@ -331,7 +387,7 @@ void cvbs_test_img_ntsc(void){
    static uint32_t run_lines = 0;
    while(!pio_sm_is_tx_fifo_full(CVBS_PIO,CVBS_SM)){
       //pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_CMD(rev5bit[i],rev5bit[i],rev5bit[i],rev5bit[i],6,40));
-      if(lines < 234){  
+      if(lines < 120){  
          if(i < count_of(ntsc_test_scanline_odd)){  //Assuming same length both odd/even
             if(run_lines & 1u){
                pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_test_scanline_odd[i++]);
@@ -346,9 +402,31 @@ void cvbs_test_img_ntsc(void){
                run_lines++;
             }else{
                if(run_lines & 1u){
-                  pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_palette[(j+0)&0x7][(j>>3)&0xF]);
+                  pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_palette[(j+0+2)&0x7][(j>>3)&0xF]);
                }else{
-                  pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_palette[(j+4)&0x7][(j>>3)&0xF]);
+                  pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_palette[(j+4+2)&0x7][(j>>3)&0xF]);
+               }
+               j++;
+            }
+         }
+      }else if (lines < 240){
+         if(i < count_of(ntsc_test_scanline_odd)){  //Assuming same length both odd/even
+            if(run_lines & 1u){
+               pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_test_scanline_odd[i++]);
+            }else{
+               pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_test_scanline_even[i++]);
+            }
+         }else{
+            if(j >= 200){
+               i = 0;
+               j = 0;
+               lines++;
+               run_lines++;
+            }else{
+               if(run_lines & 1u){
+                  pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_col[(j+0+2)&0x7]);
+               }else{
+                  pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_col[(j+4+2)&0x7]);
                }
                j++;
             }
@@ -389,7 +467,44 @@ void cvbs_init(void){
    cvbs_pio_mode_init();   //Needs to be first
    cvbs_pio_dotclk_init();
 
+   cvbs_ntsc_gen((uint32_t*)&ntsc_col,0,ntsc_test_col);
+
    multicore_launch_core1(cvbs_test_loop);
 }
+
 void cvbs_task(void){
+}
+
+void cvbs_mon_tune(const char *args, size_t len){
+   uint32_t val;
+   if (len)
+   {
+       if (parse_uint32(&args, &len, &val) &&
+           parse_end(args, len))
+       {
+         cvbs_ntsc_gen((uint32_t*)&ntsc_col, val, ntsc_test_col);
+       }
+       else
+       {
+           printf("?invalid argument\n");
+           return;
+       }
+   }
+}
+
+void cvbs_mon_colour(const char *args, size_t len){
+   uint32_t val;
+   if (len)
+   {
+       if (parse_uint32(&args, &len, &val) &&
+           parse_end(args, len))
+       {
+         ntsc_test_col = val & 0xF;
+       }
+       else
+       {
+           printf("?invalid argument\n");
+           return;
+       }
+   }
 }
