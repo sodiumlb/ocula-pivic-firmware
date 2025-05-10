@@ -83,7 +83,7 @@ delay0:
     out x 5
 delay1:
     jmp x-- delay1
-    out x 5            ;Out L2
+    out pins 5         ;Out L2
     jmp y-- pixel
     out pc 5
 
