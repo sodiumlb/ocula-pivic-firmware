@@ -59,10 +59,10 @@ static void init(void)
     serno_init(); // before tusb
     tusb_init();
     cdc_init();
-    //dvi_init();
+    dvi_init();
 #ifdef PIVIC
-    //vic_init();
     cvbs_init();
+    vic_init();
     mem_init();
     aud_init();
 #endif
@@ -74,9 +74,9 @@ static void init(void)
 static void task(void)
 {
     cpu_task();
-    //dvi_task();
+    dvi_task();
 #ifdef PIVIC
-    //vic_task();
+    vic_task();
     cvbs_task();
     mem_task();
     aud_task();
