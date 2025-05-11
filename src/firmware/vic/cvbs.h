@@ -9,9 +9,6 @@
 
  #include <stddef.h>
 
- #define CVBS_MODE_PAL 0
- #define CVBS_MODE_NTSC 1
-
  void cvbs_init(void);
  void cvbs_task(void);
  

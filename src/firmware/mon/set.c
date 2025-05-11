@@ -148,7 +148,12 @@ static void set_dvi(const char *args, size_t len)
 
 static void set_print_mode()
 {
-    const char *const mode_labels[] = {"0 - VIC 6561 PAL/50", "1 - VIC 6560 NTSC/60"};
+    const char *const mode_labels[] = {
+        "0 - VIC 6560 NTSC/60",
+        "1 - VIC 6561 PAL/50", 
+        "2 - VIC 6560 NTSC/60 test screen",
+        "3 - VIC 6561 PAL/50 test screen", 
+    };
     printf("MODE  : %s\n", mode_labels[cfg_get_mode()]);
 }
 

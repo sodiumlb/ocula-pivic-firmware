@@ -7,6 +7,7 @@
 #include "main.h"
 #include "str.h"
 //#include "sys/ria.h"
+#include "vic/vic.h"
 #include "vic/cvbs.h"
 #include "vic/cvbs_ntsc.h"
 #include "sys/cfg.h"
@@ -260,7 +261,6 @@ void cvbs_pio_dotclk_init(void){
 }
 
 void cvbs_pio_mode_init(void){ 
-   cvbs_mode = cfg_get_mode();
    pio_set_gpio_base (CVBS_PIO, CVBS_PIN_OFFS);
    for(uint32_t i = 0; i < 5; i++){
       pio_gpio_init(CVBS_PIO, CVBS_PIN_BASE+i);
@@ -270,15 +270,21 @@ void cvbs_pio_mode_init(void){
    pio_sm_set_consecutive_pindirs(CVBS_PIO, CVBS_SM, CVBS_PIN_BASE, 5, true);
    uint offset;
    pio_sm_config config;
-   if(cvbs_mode == CVBS_MODE_NTSC){
-      offset = pio_add_program(CVBS_PIO, &cvbs_ntsc_program);
-      config = cvbs_ntsc_program_get_default_config(offset);
-      sm_config_set_out_shift(&config, true, true, 25); 
-   }else{
-      offset = pio_add_program(CVBS_PIO, &cvbs_program);
-      config = cvbs_program_get_default_config(offset);
-      sm_config_set_out_shift(&config, true, true, 27); 
-   }
+   switch(cvbs_mode){
+      case(VIC_MODE_NTSC):
+      case(VIC_MODE_TEST_NTSC):
+         offset = pio_add_program(CVBS_PIO, &cvbs_ntsc_program);
+         config = cvbs_ntsc_program_get_default_config(offset);
+         sm_config_set_out_shift(&config, true, true, 25); 
+         break;
+      case(VIC_MODE_PAL):
+      case(VIC_MODE_TEST_PAL):
+      default:
+         offset = pio_add_program(CVBS_PIO, &cvbs_program);
+         config = cvbs_program_get_default_config(offset);
+         sm_config_set_out_shift(&config, true, true, 27); 
+         break;
+      }
    sm_config_set_out_pins(&config, CVBS_PIN_BASE, 5);             
    sm_config_set_fifo_join(&config, PIO_FIFO_JOIN_TX);
    pio_sm_init(CVBS_PIO, CVBS_SM, offset, &config);
@@ -457,19 +463,33 @@ void cvbs_test_img_ntsc(void){
    }
 }
 
-void cvbs_test_loop(void){
+void cvbs_test_loop_ntsc(void){
    while(1){
          cvbs_test_img_ntsc();
    }
 }
 
+void cvbs_test_loop_pal(void){
+   while(1){
+         cvbs_test_img_pal();
+   }
+}
+
 void cvbs_init(void){
+   cvbs_mode = cfg_get_mode();
    cvbs_pio_mode_init();   //Needs to be first
    cvbs_pio_dotclk_init();
-
-   cvbs_ntsc_gen((uint32_t*)&ntsc_col,0,ntsc_test_col);
-
-   multicore_launch_core1(cvbs_test_loop);
+   switch(cvbs_mode){
+      case(VIC_MODE_TEST_PAL):
+         multicore_launch_core1(cvbs_test_loop_pal);
+         break;
+      case(VIC_MODE_TEST_NTSC):
+         cvbs_ntsc_gen((uint32_t*)&ntsc_col,0,ntsc_test_col);
+         multicore_launch_core1(cvbs_test_loop_ntsc);
+         break;
+      default:             //Don't run test screens in normal modes
+         break;
+   };
 }
 
 void cvbs_task(void){

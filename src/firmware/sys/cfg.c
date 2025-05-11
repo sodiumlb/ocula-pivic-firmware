@@ -10,6 +10,7 @@
 #include "sys/lfs.h"
 #include "sys/mem.h"
 #include "sys/dvi.h"
+#include "vic/vic.h"
 
 // Configuration is a plain ASCII file on the LFS. e.g.
 // +V1         | Version - Must be first
@@ -222,7 +223,7 @@ uint8_t cfg_get_dvi(void)
 }
 
 bool cfg_set_mode(uint8_t mode){
-    if(mode > 1)
+    if(mode >= VIC_MODE_COUNT)
         return false;
     if(cfg_mode != mode){
         cfg_mode = mode;
