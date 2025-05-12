@@ -302,6 +302,20 @@ void vic_memory_init() {
     xram[ADDR_COLOUR_RAM + 484 + 4] = 6;
 }
 
+uint64_t horizCycleWaitLoopCounts[71] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+uint64_t horizCycleCounts[71] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
 void vic_core1_loop(void) {
 
     // Initialisation.
@@ -328,8 +342,8 @@ void vic_core1_loop(void) {
     uint8_t  charData = 0;               // 8 bits of bitmap data fetched from character memory.
     uint8_t  colourData = 0;             // 4 bits fetched from colour memory (top bit multi/hires mode)
 
-    // Holds the CVBS colour commands for foreground, border, background and auxiliary.
-    uint32_t borderColour = 0;           // CVBS command for the current border colour.
+    // CVBS command for the current border colour.
+    uint32_t borderColour = 0;
 
     // Holds the colour commands for each of the current multi colour colours.
     uint32_t multiColourTable[4] = { 0, 0, 0, 0};
@@ -366,9 +380,14 @@ void vic_core1_loop(void) {
 
     while (1) {
         // Poll for PIO IRQ 1. This is the rising edge of F1.
+        uint16_t loopCount = 0;
         while (!pio_interrupt_get(VIC_PIO, 1)) {
-            tight_loop_contents();
+            //tight_loop_contents();
+            loopCount++;
         }
+        // DEBUG: Attempting to work out busiest cycles and adjust workload.
+        horizCycleCounts[horizontalCounter]++;
+        horizCycleWaitLoopCounts[horizontalCounter] += loopCount;
 
         // Clear the IRQ 1 flag immediately for now. 
         pio_interrupt_clear(VIC_PIO, 1);
@@ -877,6 +896,13 @@ void vic_task(void) {
     }
 }
 
+void vic_print_horiz_cycle_stats() {
+    printf("Horizontal Cycle Stats:\nAfter %d lines.", horizCycleCounts[0]);
+    for (uint8_t i=0; i<71; i++) {
+        printf(" HC=%d: %d\n", i, (horizCycleWaitLoopCounts[i] / horizCycleCounts[i]));
+    }
+}
+
 void vic_print_status(void){
     printf("VIC registers\n");
         printf(" CR0 %02x %d X-Orig %s\n", vic_cr0, vic_cr0 & 0x7F, (vic_cr0 & 0x80 ? "(intl)" : "" ));
@@ -895,4 +921,5 @@ void vic_print_status(void){
         printf(" CRD %02x %d No E:%d\n", vic_crd, vic_crd & 0x7F, (vic_crd >> 7));
         printf(" CRE %02x %d Vol CA:%d\n", vic_cre, vic_cre & 0x0F, (vic_cre >> 4));
         printf(" CRF %02x CB:%d R:%d CE:%d\n", vic_crf, (vic_crf >> 4), (vic_crf >> 3) & 1u, (vic_crf & 0x7));
+    vic_print_horiz_cycle_stats();
 }
