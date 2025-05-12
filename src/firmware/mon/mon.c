@@ -14,6 +14,7 @@
 #include "sys/mem.h"
 #include "sys/sys.h"
 #include "sys/vga.h"
+#include "vic/cvbs.h"
 #include "pico/stdlib.h"
 #include <stdio.h>
 
@@ -35,6 +36,11 @@ static struct
     {6, "reboot", sys_mon_reboot},
     {5, "reset", sys_mon_reset},
     {6, "binary", ram_mon_binary},
+#ifdef PIVIC
+    {4, "cvbs", cvbs_mon_tune},
+    {6, "colour", cvbs_mon_colour},
+    {5, "color", cvbs_mon_colour},
+#endif
 };
 static const size_t COMMANDS_COUNT = sizeof COMMANDS / sizeof *COMMANDS;
 

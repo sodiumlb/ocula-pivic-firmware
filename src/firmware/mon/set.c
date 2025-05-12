@@ -123,7 +123,7 @@ static void set_splash(const char *args, size_t len)
 
 static void set_print_dvi(void)
 {
-    const char *const dvi_labels[] = {"640x480 @ 60Hz", "720x480 @ 60Hz", "720x576 @ 50Hz"};
+    const char *const dvi_labels[] = {"0 - 640x480 @ 60Hz", "1 - 720x480 @ 60Hz", "2 - 720x576 @ 50Hz"};
     printf("DVI   : %s\n", dvi_labels[cfg_get_dvi()]);
 }
 
@@ -148,8 +148,13 @@ static void set_dvi(const char *args, size_t len)
 
 static void set_print_mode()
 {
-    const char *const mode_labels[] = {"VIC 6560 PAL/50", "VIC 6561 NTSC/60"};
-    printf("MODE: %s\n", mode_labels[cfg_get_mode()]);
+    const char *const mode_labels[] = {
+        "0 - VIC 6560 NTSC/60",
+        "1 - VIC 6561 PAL/50", 
+        "2 - VIC 6560 NTSC/60 test screen",
+        "3 - VIC 6561 PAL/50 test screen", 
+    };
+    printf("MODE  : %s\n", mode_labels[cfg_get_mode()]);
 }
 
 static void set_mode(const char *args, size_t len)

@@ -1,0 +1,180 @@
+/*
+ * Copyright (c) 2025 Sodiumlightbaby
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+#ifndef _CVBS_NTSC_H_
+#define _CVBS_NTSC_H_ 
+
+#include "cvbs.pio.h"
+// DAC driving logic is using square wave
+//L0, L1 and L2 levels to be asserted on the DAC
+//Set L0, L1 and L2 to same level to get DC, or use DC_RUN command
+//Delay is used to shift the phase a number of sys cycles between each output to the DAC
+//Commands for the PIO program (each word 25 bits):
+//    dc_run: Repeate L0 for count periods
+//            [24:10]=repeat, [9:5]=L0, [4:0]=dc_run_id
+//
+// pixel_run: Output count pixels (exact count pixeldata to follow)
+//            [24: 9]=repeat, [4:0]=pixel_run_id 
+//
+//      data: CVBS pixel data payload for pixel_run commands
+//            [24:20]=L2, [19:15]=delay1, [14:10]=L1, [9:5]=delay0, [4:0] L0
+//     burst: Colour burst special. Alternative to doing pixel_run of burst pixels
+//            [24:20]=L1, [19:15]=L0, [14:10]=pre_delay(phase), [9:5]=repeat(burst periods), [4:0]=burst_id
+
+#define CVBS_CMD_ID_DC_RUN cvbs_ntsc_offset_cvbs_cmd_dc_run
+#define CVBS_CMD_ID_PIXEL_RUN cvbs_ntsc_offset_cvbs_cmd_pixel_run
+#define CVBS_CMD_ID_BURST cvbs_ntsc_offset_cvbs_cmd_burst
+
+#define CVBS_CMD_DC_RUN(L0,count) \
+        (((count-1) << 10) | ((L0&0x1F) << 5)| CVBS_CMD_ID_DC_RUN)
+#define CVBS_CMD_PIXEL_RUN(count) \
+        (((count-1) << 5) | CVBS_CMD_ID_PIXEL_RUN)
+#define CVBS_CMD_DATA(L0,delay0,L1,delay1,L2) \
+        (((L2&0x1F) << 20) |  (((delay1-3)&0x1F) << 15) | ((L1&0x1F) << 10) | (((delay0-3)&0x1F) << 5) | (L0&0x1F))
+#define CVBS_CMD_BURST(L0,L1,delay,count) \
+        (((L1&0x1F) << 20) | ((L0&0x1F) << 15) | (((delay-1)&0x1F) << 10) | ((count&0x1F) << 5) | CVBS_CMD_ID_BURST)
+
+#define CVBS_CMD_BURST_DELAY(cmd,delay) \
+        ((cmd & ~(0x1F<<10)) | ((delay-1)&0x1F)<<10)
+
+#define NTSC_FRONTPORCH  CVBS_CMD_DC_RUN(18,16)
+#define NTSC_HSYNC       CVBS_CMD_DC_RUN( 0,20)
+#define NTSC_BREEZEWAY   CVBS_CMD_DC_RUN(18, 6)
+#define NTSC_BACKPORCH   CVBS_CMD_DC_RUN(18, 7)
+#define NTSC_LONG_SYNC_L  CVBS_CMD_DC_RUN( 0,110)
+#define NTSC_LONG_SYNC_H  CVBS_CMD_DC_RUN(18, 20)
+#define NTSC_SHORT_SYNC_L CVBS_CMD_DC_RUN( 0, 20)
+#define NTSC_SHORT_SYNC_H CVBS_CMD_DC_RUN(18,110)
+#define NTSC_BLANKING     CVBS_CMD_DC_RUN(18,200)
+//Two NTSC burst methodes available CMD_BURST or PIXEL_RUN
+//CMD_BURST is more experimental since it runs carrier cycles instead of dot clock cycles
+//9 carrier cycles => 10.3 dot clock cycles, syncs up as 11 dot clock cycles
+#define NTSC_BURST_E     CVBS_CMD_BURST(6,12,1,9)
+#define NTSC_BURST_O     CVBS_CMD_BURST(12,6,1,9)
+
+//VIC-20 NTSC dot clock/colour carrier ratio is 4/3.5
+//We solve this by using 8 precomputed carrier to pixel
+//mappings per color bearing pixel.
+//Run versions 0..7 0..7 etc
+
+#define NTSC_BLACK CVBS_CMD_DATA(26,22,26,3,26)
+#define NTSC_WHITE CVBS_CMD_DATA(23,22,23,3,23)
+
+#define NTSC_RED_0 CVBS_CMD_DATA(9,9,10,22,9)
+#define NTSC_RED_4 CVBS_CMD_DATA(10,9,9,22,10)
+#define NTSC_RED_1 CVBS_CMD_DATA(9,15,10,22,9)
+#define NTSC_RED_5 CVBS_CMD_DATA(10,15,9,22,10)
+#define NTSC_RED_2 CVBS_CMD_DATA(9,20,10,3,10)
+#define NTSC_RED_6 CVBS_CMD_DATA(10,20,9,3,9)
+#define NTSC_RED_3 CVBS_CMD_DATA(10,4,9,22,10)
+#define NTSC_RED_7 CVBS_CMD_DATA(9,4,10,22,9)
+#define NTSC_CYAN_0 CVBS_CMD_DATA(25,9,27,22,25)
+#define NTSC_CYAN_4 CVBS_CMD_DATA(27,9,25,22,27)
+#define NTSC_CYAN_1 CVBS_CMD_DATA(25,15,27,22,25)
+#define NTSC_CYAN_5 CVBS_CMD_DATA(27,15,25,22,27)
+#define NTSC_CYAN_2 CVBS_CMD_DATA(25,20,27,3,27)
+#define NTSC_CYAN_6 CVBS_CMD_DATA(27,20,25,3,25)
+#define NTSC_CYAN_3 CVBS_CMD_DATA(27,4,25,22,27)
+#define NTSC_CYAN_7 CVBS_CMD_DATA(25,4,27,22,25)
+#define NTSC_PURPLE_0 CVBS_CMD_DATA(5,13,6,22,5)
+#define NTSC_PURPLE_4 CVBS_CMD_DATA(6,13,5,22,6)
+#define NTSC_PURPLE_1 CVBS_CMD_DATA(5,19,6,3,6)
+#define NTSC_PURPLE_5 CVBS_CMD_DATA(6,19,5,3,5)
+#define NTSC_PURPLE_2 CVBS_CMD_DATA(6,3,5,21,6)
+#define NTSC_PURPLE_6 CVBS_CMD_DATA(5,3,6,21,5)
+#define NTSC_PURPLE_3 CVBS_CMD_DATA(6,8,5,22,6)
+#define NTSC_PURPLE_7 CVBS_CMD_DATA(5,8,6,22,5)
+#define NTSC_GREEN_0 CVBS_CMD_DATA(17,13,19,22,17)
+#define NTSC_GREEN_4 CVBS_CMD_DATA(19,13,17,22,19)
+#define NTSC_GREEN_1 CVBS_CMD_DATA(17,19,19,3,19)
+#define NTSC_GREEN_5 CVBS_CMD_DATA(19,19,17,3,17)
+#define NTSC_GREEN_2 CVBS_CMD_DATA(19,3,17,21,19)
+#define NTSC_GREEN_6 CVBS_CMD_DATA(17,3,19,21,17)
+#define NTSC_GREEN_3 CVBS_CMD_DATA(19,8,17,22,19)
+#define NTSC_GREEN_7 CVBS_CMD_DATA(17,8,19,22,17)
+#define NTSC_BLUE_0 CVBS_CMD_DATA(18,3,17,20,18)
+#define NTSC_BLUE_4 CVBS_CMD_DATA(17,3,18,20,17)
+#define NTSC_BLUE_1 CVBS_CMD_DATA(18,7,17,22,18)
+#define NTSC_BLUE_5 CVBS_CMD_DATA(17,7,18,22,17)
+#define NTSC_BLUE_2 CVBS_CMD_DATA(18,12,17,22,18)
+#define NTSC_BLUE_6 CVBS_CMD_DATA(17,12,18,22,17)
+#define NTSC_BLUE_3 CVBS_CMD_DATA(18,18,17,3,17)
+#define NTSC_BLUE_7 CVBS_CMD_DATA(17,18,18,3,18)
+#define NTSC_YELLOW_0 CVBS_CMD_DATA(7,3,5,20,7)
+#define NTSC_YELLOW_4 CVBS_CMD_DATA(5,3,7,20,5)
+#define NTSC_YELLOW_1 CVBS_CMD_DATA(7,7,5,22,7)
+#define NTSC_YELLOW_5 CVBS_CMD_DATA(5,7,7,22,5)
+#define NTSC_YELLOW_2 CVBS_CMD_DATA(7,12,5,22,7)
+#define NTSC_YELLOW_6 CVBS_CMD_DATA(5,12,7,22,5)
+#define NTSC_YELLOW_3 CVBS_CMD_DATA(7,18,5,3,5)
+#define NTSC_YELLOW_7 CVBS_CMD_DATA(5,18,7,3,7)
+#define NTSC_ORANGE_0 CVBS_CMD_DATA(21,4,22,22,21)
+#define NTSC_ORANGE_4 CVBS_CMD_DATA(22,4,21,22,22)
+#define NTSC_ORANGE_1 CVBS_CMD_DATA(21,10,22,22,21)
+#define NTSC_ORANGE_5 CVBS_CMD_DATA(22,10,21,22,22)
+#define NTSC_ORANGE_2 CVBS_CMD_DATA(21,15,22,22,21)
+#define NTSC_ORANGE_6 CVBS_CMD_DATA(22,15,21,22,22)
+#define NTSC_ORANGE_3 CVBS_CMD_DATA(21,21,22,3,22)
+#define NTSC_ORANGE_7 CVBS_CMD_DATA(22,21,21,3,21)
+#define NTSC_LORANGE_0 CVBS_CMD_DATA(27,4,25,22,27)
+#define NTSC_LORANGE_4 CVBS_CMD_DATA(25,4,27,22,25)
+#define NTSC_LORANGE_1 CVBS_CMD_DATA(27,10,25,22,27)
+#define NTSC_LORANGE_5 CVBS_CMD_DATA(25,10,27,22,25)
+#define NTSC_LORANGE_2 CVBS_CMD_DATA(27,15,25,22,27)
+#define NTSC_LORANGE_6 CVBS_CMD_DATA(25,15,27,22,25)
+#define NTSC_LORANGE_3 CVBS_CMD_DATA(27,21,25,3,25)
+#define NTSC_LORANGE_7 CVBS_CMD_DATA(25,21,27,3,27)
+#define NTSC_PINK_0 CVBS_CMD_DATA(19,9,17,22,19)
+#define NTSC_PINK_4 CVBS_CMD_DATA(17,9,19,22,17)
+#define NTSC_PINK_1 CVBS_CMD_DATA(19,15,17,22,19)
+#define NTSC_PINK_5 CVBS_CMD_DATA(17,15,19,22,17)
+#define NTSC_PINK_2 CVBS_CMD_DATA(19,20,17,3,17)
+#define NTSC_PINK_6 CVBS_CMD_DATA(17,20,19,3,19)
+#define NTSC_PINK_3 CVBS_CMD_DATA(17,4,19,22,17)
+#define NTSC_PINK_7 CVBS_CMD_DATA(19,4,17,22,19)
+#define NTSC_LCYAN_0 CVBS_CMD_DATA(13,9,15,22,13)
+#define NTSC_LCYAN_4 CVBS_CMD_DATA(15,9,13,22,15)
+#define NTSC_LCYAN_1 CVBS_CMD_DATA(13,15,15,22,13)
+#define NTSC_LCYAN_5 CVBS_CMD_DATA(15,15,13,22,15)
+#define NTSC_LCYAN_2 CVBS_CMD_DATA(13,20,15,3,15)
+#define NTSC_LCYAN_6 CVBS_CMD_DATA(15,20,13,3,13)
+#define NTSC_LCYAN_3 CVBS_CMD_DATA(15,4,13,22,15)
+#define NTSC_LCYAN_7 CVBS_CMD_DATA(13,4,15,22,13)
+#define NTSC_LPURPLE_0 CVBS_CMD_DATA(27,13,25,22,27)
+#define NTSC_LPURPLE_4 CVBS_CMD_DATA(25,13,27,22,25)
+#define NTSC_LPURPLE_1 CVBS_CMD_DATA(27,19,25,3,25)
+#define NTSC_LPURPLE_5 CVBS_CMD_DATA(25,19,27,3,27)
+#define NTSC_LPURPLE_2 CVBS_CMD_DATA(25,3,27,21,25)
+#define NTSC_LPURPLE_6 CVBS_CMD_DATA(27,3,25,21,27)
+#define NTSC_LPURPLE_3 CVBS_CMD_DATA(25,8,27,22,25)
+#define NTSC_LPURPLE_7 CVBS_CMD_DATA(27,8,25,22,27)
+#define NTSC_LGREEN_0 CVBS_CMD_DATA(21,13,23,22,21)
+#define NTSC_LGREEN_4 CVBS_CMD_DATA(23,13,21,22,23)
+#define NTSC_LGREEN_1 CVBS_CMD_DATA(21,19,23,3,23)
+#define NTSC_LGREEN_5 CVBS_CMD_DATA(23,19,21,3,21)
+#define NTSC_LGREEN_2 CVBS_CMD_DATA(23,3,21,21,23)
+#define NTSC_LGREEN_6 CVBS_CMD_DATA(21,3,23,21,21)
+#define NTSC_LGREEN_3 CVBS_CMD_DATA(23,8,21,22,23)
+#define NTSC_LGREEN_7 CVBS_CMD_DATA(21,8,23,22,21)
+#define NTSC_LBLUE_0 CVBS_CMD_DATA(1,3,3,20,1)
+#define NTSC_LBLUE_4 CVBS_CMD_DATA(3,3,1,20,3)
+#define NTSC_LBLUE_1 CVBS_CMD_DATA(1,7,3,22,1)
+#define NTSC_LBLUE_5 CVBS_CMD_DATA(3,7,1,22,3)
+#define NTSC_LBLUE_2 CVBS_CMD_DATA(1,12,3,22,1)
+#define NTSC_LBLUE_6 CVBS_CMD_DATA(3,12,1,22,3)
+#define NTSC_LBLUE_3 CVBS_CMD_DATA(1,18,3,3,3)
+#define NTSC_LBLUE_7 CVBS_CMD_DATA(3,18,1,3,1)
+#define NTSC_LYELLOW_0 CVBS_CMD_DATA(31,3,29,20,31)
+#define NTSC_LYELLOW_4 CVBS_CMD_DATA(29,3,31,20,29)
+#define NTSC_LYELLOW_1 CVBS_CMD_DATA(31,7,29,22,31)
+#define NTSC_LYELLOW_5 CVBS_CMD_DATA(29,7,31,22,29)
+#define NTSC_LYELLOW_2 CVBS_CMD_DATA(31,12,29,22,31)
+#define NTSC_LYELLOW_6 CVBS_CMD_DATA(29,12,31,22,29)
+#define NTSC_LYELLOW_3 CVBS_CMD_DATA(31,18,29,3,29)
+#define NTSC_LYELLOW_7 CVBS_CMD_DATA(29,18,31,3,31)
+
+#endif /* _CVBS_NTSC_H_ */
+ 

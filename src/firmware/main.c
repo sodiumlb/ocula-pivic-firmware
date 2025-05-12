@@ -13,6 +13,7 @@
 #include "mon/ram.h"
 #include "sys/com.h"
 #include "sys/cfg.h"
+#include "sys/clk.h"
 #include "sys/cpu.h"
 #include "sys/dvi.h"
 #include "sys/lfs.h"
@@ -51,6 +52,7 @@ static void init(void)
     // Load config before we continue
     lfs_init();
     cfg_init();
+    clk_init();
     //vga_init();
     //font_init();
     //term_init();
@@ -59,8 +61,8 @@ static void init(void)
     cdc_init();
     dvi_init();
 #ifdef PIVIC
+    cvbs_init();
     vic_init();
-    //cvbs_init();
     mem_init();
     aud_init();
 #endif
@@ -75,7 +77,7 @@ static void task(void)
     dvi_task();
 #ifdef PIVIC
     vic_task();
-    //cvbs_task();
+    cvbs_task();
     mem_task();
     aud_task();
 #endif

@@ -302,13 +302,8 @@ void vic_memory_init() {
     xram[ADDR_COLOUR_RAM + 484 + 4] = 6;
 }
 
-void vic_core1_loop(void) {
+void vic_core1_loop_pal(void) {
 
-    // Initialisation.
-    cvbs_init();
-    vic_pio_init();
-    if(cfg_get_splash())
-        vic_memory_init();
 
     //
     // START OF VIC CHIP STATE
@@ -867,7 +862,20 @@ void vic_core1_loop(void) {
 }
 
 void vic_init(void) {
-    multicore_launch_core1(vic_core1_loop);
+    // Initialisation.
+    vic_pio_init();
+    if(cfg_get_splash())
+        vic_memory_init();
+    switch(cfg_get_mode()){
+        case(VIC_MODE_PAL):
+            multicore_launch_core1(vic_core1_loop_pal);
+            break;
+        case(VIC_MODE_NTSC):
+            //multicore_launch_core1(vic_core1_loop_ntsc);
+            break;
+        default:    //Ignore test modes
+            break;
+    }
 }
 
 void vic_task(void) {

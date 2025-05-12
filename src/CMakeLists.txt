@@ -45,6 +45,7 @@ target_sources(ocula PRIVATE
     firmware/oric/rst.c
     firmware/oric/ula.c
     firmware/sys/cfg.c
+    firmware/sys/clk.c
     firmware/sys/com.c
     firmware/sys/cpu.c
     firmware/sys/dvi.c
@@ -124,6 +125,7 @@ target_sources(pivic PRIVATE
     firmware/vic/mem.c
     firmware/vic/vic.c
     firmware/sys/cfg.c
+    firmware/sys/clk.c
     firmware/sys/com.c
     firmware/sys/cpu.c
     firmware/sys/dvi.c
