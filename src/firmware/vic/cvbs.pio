@@ -8,7 +8,7 @@
 ; Assumes 5 bit DAC output
 ; Running frequency needs to be a multiple of the colour burst frequency and
 ; with enough over-sampling to implement the phase shifts needed
-; PAL timing:  clk_sys=133.0MHz colour burst=clk_sys/30=4.433333MHz
+; PAL timing:  clk_sys=159.6MHz colour burst=clk_sys/36=4.433333MHz
 ; Commands auto pulled from the fifo
 ;  26                              0 
 ; |post-delay|L1|Repeat|L0|Pre-delay|
@@ -16,7 +16,7 @@
 ; DC,L0,L1 are DAC levels to output
 ; Assuming square wave output - L0 and L1 are asserted for half periods each
 ; Set both to same level to represents a DC level
-; Currently repeat loop tuned for 30 cycle period
+; Currently repeat loop tuned for 36 cycle period
 ; Repeat is exact so 0 equals 1 periods, 1 equals 2 periods etc
 .program cvbs
 
@@ -27,7 +27,7 @@
     jmp x-- predelay
     ; first cycle has value extraction integrated
     mov pins osr        ;L0 out
-    out x 5        [ 8] ;Keep L0 in x
+    out x 5        [11] ;Keep L0 in x
     out y 9             ;Keep repeat in y
     out isr 5           ;Keep L1 in isr
     jmp !y bypass       ;Bypass repeat if zero
@@ -36,9 +36,9 @@
 repeat:
     nop            [ 1]
 first:
-    mov pins isr   [14] ;L1 out
+    mov pins isr   [17] ;L1 out
     mov pins x          ;L0 out
-    jmp y-- repeat [11]
+    jmp y-- repeat [14]
     ;last cycle has value extraction integrated
 bypass:
     out y 4             ;get post delay <- autopull after here

@@ -5,11 +5,11 @@
  */
 
 ; VIC chip clock generator and output.
-; Assuming 133MHz sys_clk (for PAL)
-; Dot clock(D1/D2) = sys_clk/30  = 4.433333333333333MHz (15 cycles per phase)
-; Mem clock(M1/M2) = sys_clk/60  = 2.216666666666667Mhz (30 cycles per phase)
-; Clock out(F1/F2) = sys_clk/120 = 1.108333333333333Mhz (60 cycles per phase)
-; Program run at full 133Mhz, i.e. no clock divider => 120 cycles total, 60 cycles per F1/F2 phase.
+; Assuming 159.6MHz sys_clk (for PAL)
+; Dot clock(D1/D2) = sys_clk/36  = 4.433333333333333MHz (18 cycles per phase)
+; Mem clock(M1/M2) = sys_clk/72  = 2.216666666666667Mhz (36 cycles per phase)
+; Clock out(F1/F2) = sys_clk/144 = 1.108333333333333Mhz (72 cycles per phase)
+; Program run at full 159.6 Mhz, i.e. no clock divider => 144 cycles total, 72 cycles per F1/F2 phase.
 .program clkgen
 .side_set 1
 
@@ -19,9 +19,11 @@ irq 1        side 1 [13] ; Signals start of phase 1 external to the PIO, i.e. to
 nop          side 1 [14]
 nop          side 1 [14]
 nop          side 1 [14]
+nop          side 1 [5]
 irq next 0   side 0 [0]   ; Signals start of phase 2 internal to the PIO+1.
 nop          side 0 [13]
 nop          side 0 [14]
 nop          side 0 [14]
 nop          side 0 [14]
+nop          side 0 [5]
 .wrap
