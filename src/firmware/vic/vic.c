@@ -877,13 +877,6 @@ void vic_task(void) {
     }
 }
 
-//void vic_print_horiz_cycle_stats() {
-//    printf("Horizontal Cycle Overruns:\nAfter %d lines.", horizCycleOverrunCounts[0]);
-//    for (uint8_t i=0; i<71; i++) {
-//        printf(" HC=%d: %d\n", i, horizCycleOverrunCounts[i]);
-//    }
-//}
-
 void vic_print_status(void){
     printf("VIC registers\n");
         printf(" CR0 %02x %d X-Orig %s\n", vic_cr0, vic_cr0 & 0x7F, (vic_cr0 & 0x80 ? "(intl)" : "" ));
