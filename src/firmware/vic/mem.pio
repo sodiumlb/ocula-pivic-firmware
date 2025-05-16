@@ -10,11 +10,12 @@
 ; DMA setup required to take the address, fetch data and return
 ; Autopull and autpush used
 .program xread
+.clock_div 2.0
 .in 14 left auto 14
 .out 8 right auto 8
 .wrap_target
     mov isr x           ; Base address to fetch from in the system
-    wait 1 irq 0   [20] ; sample address after phi1 falling edge 
+    wait 1 irq 0   [29] ; sample address after phi1 falling edge 
     in pins 14          ; Pull in rest of address from 6502
     out pins 8          ; Blocking till data returns. pindirs set elsewhere
 .wrap
@@ -25,17 +26,18 @@
 ; A14 = '0' for BLK4 writes - data in same CPU period
 ; A14 = '1' for non BLK4 writes - data in following VIC period
 .program xwrite
+.clock_div 2.0
 .in 32 left
 .out 32 right
 .wrap_target
 start:
     mov isr x           ; System top address bits
-    wait 0 pin 26  [24] ; Wait for RnW falling edge == write + 200ns
+    wait 0 pin 26  [29] ; Wait for RnW falling edge == write + 200ns
     mov osr pins        ; Capture D[7:0],D[11:8],A[13:0],RnW
     out y 12            ; Keep D[11:0] in y (in case BLK4)
     in osr 14           ; shift in bottom address
     wait 1 pin 26       ; Wait for RnW rising edge before capturing not BLK4 data
-    push noblock   [24] ; Send address to FIFO + 200ns data setup time
+    push noblock   [29] ; Send address to FIFO + 200ns data setup time
     mov isr pins        ; Assume not BLK4, capture new data in isr
     jmp pin not_blk4    ; If A13=='1', this write is not for BLK4
     mov isr y           ; BLK4 write, use data from y
@@ -48,13 +50,14 @@ not_blk4:
 ; matches incoming address and read is enabled
 
 .program xdir
+.clock_div 2.0
 .in 7 left
 .out 8 right
 .wrap_target
 start:
-    wait 1 irq 1   [24] ; Wait for phi1 rising edge + ca 200ns for data hold
+    wait 1 irq 1   [29] ; Wait for phi1 rising edge + ca 200ns for data hold
     mov pindirs null    ; Disable data pins output
-    wait 1 irq 0   [24] ; Wait for phi1 falling edge + ca 200ns for address hold
+    wait 1 irq 0   [29] ; Wait for phi1 falling edge + ca 200ns for address hold
     mov y pins          ; Get A[13:8],RnW
     jmp x!=y start      ; If not reading of registers, goto start 
     irq set 2           ; Signal trace
