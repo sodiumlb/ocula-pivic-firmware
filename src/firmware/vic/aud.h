@@ -26,11 +26,10 @@ extern aud_union_t aud_ticks;
  void aud_print_status(void);
  
  // Per CPU clock tick audio progress
- void aud_tick(void);
- // Assembly version, use either or
+ // Assembly version. Assumes running on other core than aud_task(), uses doorbell signaling
  void inline __attribute__((always_inline)) aud_tick_inline(void){
-    //Running 4 separate tick and channel counters in single words
-    uint32_t tmp, tmp2;
+    //Running 4 separate tick and channel counters in packed 32 bit words
+    uint32_t tmp;
     const uint32_t zero = 0;
     const uint32_t one = 0x01010101;
     const uint32_t mask = 0x1F03070F;
