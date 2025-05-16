@@ -10,6 +10,7 @@
 #include "sys/mem.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
+#include "pico/multicore.h"
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -18,8 +19,7 @@ uint8_t aud_sr[4];
 int8_t aud_val[4];
 uint16_t aud_lfsr;
 
-volatile aud_union_t aud_counters;
-volatile aud_union_t aud_update;
+aud_union_t aud_counters;
 aud_union_t aud_ticks;
 
 //TODO Unify with/import vic/vic.c/h definitions
@@ -57,41 +57,6 @@ void aud_update_pwm(uint8_t vol_reg){
     pwm_set_chan_level(AUDIO_PWM_SLICE, AUDIO_PWM_CH, (uint8_t)(pwm_value_signed + 64));
 }
 
-// Per CPU tick function to maintain audio counters
-// TODO Check trigger values is it really 0x7F and not 0x80?
-// TODO Check the counter reloading values - should it be reg+1 on load?
-// These two questions are probably linked
-void aud_tick(void){
-    static uint8_t tick=0;
-
-    if((tick % 4) == 0){
-        if(++aud_counters.ch[2] == 0x80){
-            aud_update.ch[2] = true;
-            aud_counters.ch[2] = VIC_CRC & 0x7F; 
-        }
-        if((tick % 8) == 0){
-            if(++aud_counters.ch[1] == 0x80){
-                aud_update.ch[1] = true;
-                aud_counters.ch[1] = VIC_CRB & 0x7F; 
-            }
-            if((tick % 16) == 0){
-                if(++aud_counters.ch[0] == 0x80){
-                    aud_update.ch[0] = true;
-                    aud_counters.ch[0] = VIC_CRA & 0x7F; 
-                }
-                if((tick % 32) == 0){
-                    if(++aud_counters.ch[3] == 0x80){
-                        aud_update.ch[3] = true;
-                        aud_counters.ch[3] = VIC_CRD & 0x7F; 
-                    }
-                }
-            }
-        }
-    }
-    tick++;
-}
-
-
 void aud_init(void){
     gpio_set_function(AUDIO_PWM_PIN, GPIO_FUNC_PWM);
 
@@ -113,30 +78,46 @@ void aud_init(void){
     aud_val[3] = 0x01;
     aud_lfsr = 0xFFFF;
 
-    // VIC_CRA = 0x80 | 0;
-    // VIC_CRB = 0x80 | 0;
-    // VIC_CRC = 0x80 | 0;
-    VIC_CRD = 0x80 | 0;
+    //Init tick system
+    aud_ticks.all = 0;
+    multicore_doorbell_claim(0, 0b11);
+    multicore_doorbell_claim(1, 0b11);
+    multicore_doorbell_claim(2, 0b11);
+    multicore_doorbell_claim(3, 0b11);
+
+    VIC_CRA = 0xED;     //Startup tone C
+    VIC_CRB = 0x00;
+    VIC_CRC = 0x00;
+    VIC_CRD = 0x00;
     VIC_CRE = 0xF;
 }
 
 //TODO Is calculating and updating audio in normal task good enough?
 void aud_task(void){
-    if(aud_update.ch[0]){
+    if(multicore_doorbell_is_set_current_core(0)){
         aud_step_voice(0, VIC_CRA);
-        aud_update.ch[0] = false;
+        multicore_doorbell_clear_current_core(0);
     }
-    if(aud_update.ch[1]){
+    if(multicore_doorbell_is_set_current_core(1)){
         aud_step_voice(1, VIC_CRB);
-        aud_update.ch[1] = false;
+        multicore_doorbell_clear_current_core(1);
     }
-    if(aud_update.ch[2]){
+    if(multicore_doorbell_is_set_current_core(2)){
         aud_step_voice(2, VIC_CRC);
-        aud_update.ch[2] = false;
+        multicore_doorbell_clear_current_core(2);
     }
-    if(aud_update.ch[3]){
+    if(multicore_doorbell_is_set_current_core(3)){
         aud_step_noise(VIC_CRD);
-        aud_update.ch[3] = false;
+        multicore_doorbell_clear_current_core(3);
     }
     aud_update_pwm(VIC_CRE);
+}
+
+void aud_print_status(void){
+    printf("Aud sr:%02x %02x %02x %02x  val:%02d %02d %02d %02d lfsr:%04x\n", 
+            aud_sr[0], aud_sr[1], aud_sr[2], aud_sr[3], 
+            aud_val[0], aud_val[1], aud_val[2], aud_val[3],
+            aud_lfsr
+        );
+    printf("    tck:%08x cnt:%08x upd:%01x\n", aud_ticks.all, aud_counters.all, sio_hw->doorbell_in_set);
 }
