@@ -124,6 +124,7 @@ target_sources(pivic PRIVATE
     firmware/vic/aud.c
     firmware/vic/mem.c
     firmware/vic/vic.c
+    firmware/vic/vic_ntsc.c
     firmware/sys/cfg.c
     firmware/sys/clk.c
     firmware/sys/com.c

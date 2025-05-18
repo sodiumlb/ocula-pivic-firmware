@@ -60,6 +60,7 @@
 #define background_colour_index  (vic_crf >> 4)
 #define auxiliary_colour_index   (vic_cre >> 4)
 #define non_reverse_mode         (vic_crf & 0x08)
+#define interlaced_mode          (vic_cr0 & 0x80)
 #define screen_origin_x          (vic_cr0 & 0x7F)
 #define screen_origin_y          (vic_cr1 << 1)
 #define num_of_columns           (vic_cr2 & 0x7F)

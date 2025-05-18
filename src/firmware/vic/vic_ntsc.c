@@ -5,28 +5,34 @@
 */
 
 #include "main.h"
+#include "cvbs_ntsc.h"
 #include "vic/vic.h"
 #include "vic/vic_ntsc.h"
+#include "sys/mem.h"
+#include "pico/stdlib.h"
+#include "pico/multicore.h"
+#include "hardware/dma.h"
+#include "hardware/pio.h"
+#include <string.h>
+#include <stdio.h>
 
-// Constants related to video timing for PAL and NTSC.
-#define PAL_HBLANK_END        11
-#define PAL_HBLANK_START      70
-#define PAL_VBLANK_START      1
-#define PAL_VSYNC_START       4
-#define PAL_VSYNC_END         6
-#define PAL_VBLANK_END        9
-#define PAL_LAST_LINE         311
-
-extern uint32_t pal_palette_e[];
-extern uint32_t pal_palette_o[];
+// Constants related to video timing for NTSC.
+#define NTSC_HBLANK_END       8
+#define NTSC_HBLANK_START     58
+#define NTSC_LINE_END         64
+#define NTSC_VBLANK_START     1
+#define NTSC_VSYNC_START      4
+#define NTSC_VSYNC_END        6
+#define NTSC_VBLANK_END       9
+#define NTSC_NORM_LAST_LINE   261
+#define NTSC_INTL_LAST_LINE   262
 
 extern volatile uint32_t overruns;
 
 /**
- * 
+ * Core 1 entry function for NTSC 6560 VIC emulation.
  */
-void vic_core1_loop_pal(void) {
-
+void vic_core1_loop_ntsc(void) {
 
     //
     // START OF VIC CHIP STATE
@@ -40,6 +46,7 @@ void vic_core1_loop_pal(void) {
     uint8_t  horizontalCellCounter = 0;  // 8-bit horizontal cell counter (down counter)
     uint8_t  verticalCellCounter = 0;    // 6-bit vertical cell counter (down counter)
     uint8_t  cellDepthCounter = 0;       // 4-bit cell depth counter (counts either from 0-7, or 0-15)
+    uint8_t  halfLineCounter = 0;        // 1-bit half-line counter
 
     // Values normally fetched externally, from screen mem, colour RAM and char mem.
     uint8_t  cellIndex = 0;              // 8 bits fetched from screen memory.
@@ -47,7 +54,7 @@ void vic_core1_loop_pal(void) {
     uint8_t  colourData = 0;             // 4 bits fetched from colour memory (top bit multi/hires mode)
 
     // CVBS command for the current border colour.
-    uint32_t borderColour = 0;
+    uint8_t borderColourIndex = 0;
 
     // Holds the colour commands for each of the current multi colour colours.
     uint32_t multiColourTable[4] = { 0, 0, 0, 0};
@@ -62,14 +69,29 @@ void vic_core1_loop_pal(void) {
     uint8_t pixel7 = 0;
     uint8_t pixel8 = 0;
 
-    // Pointer that alternates on each line between even and odd PAL palettes.
-    uint32_t *pal_palette = pal_palette_e;
+    // NTSC Palette data.
+    uint8_t pIndex = 0;
+    uint32_t palette[8][16] = {
+        NTSC_BLACK,NTSC_WHITE,NTSC_RED_0,NTSC_CYAN_0,NTSC_PURPLE_0,NTSC_GREEN_0,NTSC_BLUE_0,NTSC_YELLOW_0,NTSC_ORANGE_0,NTSC_LORANGE_0,NTSC_PINK_0,NTSC_LCYAN_0,NTSC_LPURPLE_0,NTSC_LGREEN_0,NTSC_LBLUE_0,NTSC_LYELLOW_0,
+        NTSC_BLACK,NTSC_WHITE,NTSC_RED_1,NTSC_CYAN_1,NTSC_PURPLE_1,NTSC_GREEN_1,NTSC_BLUE_1,NTSC_YELLOW_1,NTSC_ORANGE_1,NTSC_LORANGE_1,NTSC_PINK_1,NTSC_LCYAN_1,NTSC_LPURPLE_1,NTSC_LGREEN_1,NTSC_LBLUE_1,NTSC_LYELLOW_1,
+        NTSC_BLACK,NTSC_WHITE,NTSC_RED_2,NTSC_CYAN_2,NTSC_PURPLE_2,NTSC_GREEN_2,NTSC_BLUE_2,NTSC_YELLOW_2,NTSC_ORANGE_2,NTSC_LORANGE_2,NTSC_PINK_2,NTSC_LCYAN_2,NTSC_LPURPLE_2,NTSC_LGREEN_2,NTSC_LBLUE_2,NTSC_LYELLOW_2,
+        NTSC_BLACK,NTSC_WHITE,NTSC_RED_3,NTSC_CYAN_3,NTSC_PURPLE_3,NTSC_GREEN_3,NTSC_BLUE_3,NTSC_YELLOW_3,NTSC_ORANGE_3,NTSC_LORANGE_3,NTSC_PINK_3,NTSC_LCYAN_3,NTSC_LPURPLE_3,NTSC_LGREEN_3,NTSC_LBLUE_3,NTSC_LYELLOW_3,
+        NTSC_BLACK,NTSC_WHITE,NTSC_RED_4,NTSC_CYAN_4,NTSC_PURPLE_4,NTSC_GREEN_4,NTSC_BLUE_4,NTSC_YELLOW_4,NTSC_ORANGE_4,NTSC_LORANGE_4,NTSC_PINK_4,NTSC_LCYAN_4,NTSC_LPURPLE_4,NTSC_LGREEN_4,NTSC_LBLUE_4,NTSC_LYELLOW_4,
+        NTSC_BLACK,NTSC_WHITE,NTSC_RED_5,NTSC_CYAN_5,NTSC_PURPLE_5,NTSC_GREEN_5,NTSC_BLUE_5,NTSC_YELLOW_5,NTSC_ORANGE_5,NTSC_LORANGE_5,NTSC_PINK_5,NTSC_LCYAN_5,NTSC_LPURPLE_5,NTSC_LGREEN_5,NTSC_LBLUE_5,NTSC_LYELLOW_5,
+        NTSC_BLACK,NTSC_WHITE,NTSC_RED_6,NTSC_CYAN_6,NTSC_PURPLE_6,NTSC_GREEN_6,NTSC_BLUE_6,NTSC_YELLOW_6,NTSC_ORANGE_6,NTSC_LORANGE_6,NTSC_PINK_6,NTSC_LCYAN_6,NTSC_LPURPLE_6,NTSC_LGREEN_6,NTSC_LBLUE_6,NTSC_LYELLOW_6,
+        NTSC_BLACK,NTSC_WHITE,NTSC_RED_7,NTSC_CYAN_7,NTSC_PURPLE_7,NTSC_GREEN_7,NTSC_BLUE_7,NTSC_YELLOW_7,NTSC_ORANGE_7,NTSC_LORANGE_7,NTSC_PINK_7,NTSC_LCYAN_7,NTSC_LPURPLE_7,NTSC_LGREEN_7,NTSC_LBLUE_7,NTSC_LYELLOW_7,
+    };
 
     // Optimisation to represent "in matrix", "address output enabled", and "pixel output enabled" 
     // all with one simple state variable. It might not be 100% accurate but should work for most 
     // cases.
     uint8_t fetchState = FETCH_OUTSIDE_MATRIX;
     
+    // Due to the complexity of how the NTSC vertical blanking shifts depending on state, we keep 
+    // track of the vblanking state in a separate boolean, so that we know when we should be writing 
+    // out visible line content. It is complex to deduce it otherwise.
+    bool vblanking = false;
+
     //
     // END OF VIC CHIP STATE
     //
@@ -79,7 +101,6 @@ void vic_core1_loop_pal(void) {
     uint16_t charDataOffset = 0;
 
     // Slight hack so that VC increments to 0 on first iteration.
-    // TODO: After adding new loop code, check if this is still required.
     verticalCounter = 0xFFFF;
 
     while (1) {
@@ -92,38 +113,47 @@ void vic_core1_loop_pal(void) {
         pio_interrupt_clear(VIC_PIO, 1);
 
         // VERTICAL TIMINGS:
-        // Lines 1-9:    Vertical blanking
-        // Lines 4-6:    Vertical sync
-        // Lines 10-311: Normal visible lines.
-        // Line 0:       Last visible line of a frame (yes, this is actually true)
+        // The definition of a line is somewhat fuzzy in the NTSC 6560 chip.
+        // The vertical counter (VC) increments partway through the visible part of the raster line (at HC=28)
+        // and can reset at two different points along the raster line (HC=28 or HC=61) depending on the 
+        // interlaced mode and half-line counter (HLC) states.
+        // So, unlike the 6561 PAL chip, the VC and raster line are NOT equivalent in the 6560.
+        // Also note that things like the vblank and vsync can start/end at two different HC values half a line 
+        // apart (HC=28 or HC=61), once again depending on the interlaced mode and half-line counter states.
+        // Given that, then documenting what lines are vblank, vsync and visible is a little complex, as they
+        // shift depending on state, and can span multiple vertical counter values. 
+        // The code is the source of truth in that regard.
+
+        // HORIZONTAL TIMINGS:
+        // The horizontal timings for the NTSC 6560 are also quite strange compared to the PAL 6561.
+        // There are 65 cycles per "line" (see above for comments on the obscure nature of what a line is)
+        // The horizontal counter (HC) continously counts from 0 to 64, then resets back to 0.
+        // 15 cycles for horizontal blanking, between HC=58.5 and HC=8.5.
+        // - 4 cycles of front porch [58.5 -> 62.5]
+        // - 5 cycles of hsync [62.5 -> 2.5]
+        // - 0.5 cycles of breezeway [2.5 -> 3]
+        // - 5 cycles colour burst [3 -> 8]
+        // - 0.5 back porch [8 -> 8.5]
+        // 50 cycles for visible pixels, making 200 visible pixels total [8.5 -> 58.5]
+        //
+        // The following are some events of note that happen for certain HC (horizontal counter) values:
+        // 1: New line logic. Same as PAL.
+        // 2: Vertical Cell Counter (VCC) reloaded if VC=0. Same as PAL.
+        // 8: Start of visible pixels. Technically they start halfway into the cycle.
+        // 28: Increments VC and HLC (half-line counter). Resets VC every second field for interlaced.
+        // 58: Horiz blanking starts half way into this cycle, for visible lines.
+        // 59: We output the rest of horizontal blanking for visible lines, including hsync and colour burst.
+        // 61: Increments half-line counter. Resets VC if non-interlaced, or every second field for interlaced.
+        // 64: Resets HC.
 
         switch (horizontalCounter) {
       
-            // HC = 0 is handled in a single block for ALL lines. This is the cycle during
-            // which we queue the horiz blanking, horiz sync, colour burst, vertical blanking
-            // and vsync, all up front for efficiency reasons.
+            // HC = 0. The main reason for this having its own special case block is due to the special
+            // handling for screen origin X matching when HC=0.
             case 0: 
               
-                // Reset pixel output buffer to be all border colour at start of line.
+                // Reset pixel output buffer to be all border colour.
                 pixel1 = pixel2 = pixel3 = pixel4 = pixel5 = pixel6 = pixel7 = pixel8 = 1;
-              
-                if (verticalCounter == PAL_LAST_LINE) {
-                    // Previous cycle was end of last line, so reset VC.
-                    verticalCounter = 0;
-                    fetchState = FETCH_OUTSIDE_MATRIX;
-                    cellDepthCounter = 0;
-                } else {
-                    // Otherwise increment line counter.
-                    verticalCounter++;
-                }
-              
-                // Update the raster line value stored in the VIC registers.
-                vic_cr4 = (verticalCounter >> 1);
-                if ((verticalCounter & 0x01) == 0) {
-                    vic_cr3 &= 0x7F;
-                } else {
-                    vic_cr3 |= 0x80;
-                }
 
                 // Simplified state updates for HC=0. Counters and states still need to 
                 // change as appropriate, regardless of it being during blanking.
@@ -157,51 +187,6 @@ void vic_core1_loop_pal(void) {
                         break;
                 }
 
-                if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
-                    // In HC=0 for visible lines, we start with output the full sequence of CVBS
-                    // commands for horizontal blanking, including the hsync and colour burst.
-                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_FRONTPORCH_2);
-                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_HSYNC);
-                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BREEZEWAY);
-                    if (verticalCounter & 1) {
-                        // Odd line. Switch colour palettes.
-                        pal_palette = pal_palette_o;
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_COLBURST_O);
-                    } else {
-                        // Even line. Switch colour palettes.
-                        pal_palette = pal_palette_e;
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_COLBURST_E);
-                    }
-                    pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BACKPORCH);
-                }
-                else {
-                    // Vertical blanking and sync - Lines 1-9.
-                    if (verticalCounter < PAL_VSYNC_START) {
-                        // Lines 1, 2, 3.
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
-                    }
-                    else if (verticalCounter <= PAL_VSYNC_END) {
-                        // Vertical sync, lines 4, 5, 6.
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_H);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_LONG_SYNC_H);
-
-                        // Vertical sync is what resets the video matrix latch.
-                        videoMatrixLatch = videoMatrixCounter = 0;
-                    }
-                    else {
-                        // Lines 7, 8, 9.
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
-                    }
-                }
-
                 horizontalCounter++;
                 break;
         
@@ -212,7 +197,7 @@ void vic_core1_loop_pal(void) {
                 // Due to the "new line" signal being generated by the Horizontal Counter Reset
                 // logic, and the pass transistors used within it delaying the propagation of 
                 // that signal, this signal doesn't get seen by components such as the Cell Depth
-                // Counter Reset logic, the "In Matrix" status logic, and Video Matrix Latch 
+                // Counter Reset logic, the "In Matrix" status logic, and Video Matrix Latch, 
                 // until HC = 1.
               
                 // The "new line" signal closes the matrix, if it is still open.
@@ -276,10 +261,10 @@ void vic_core1_loop_pal(void) {
                 break;
             
             // HC = 2 is yet another special case, handled in a single block for ALL 
-            // lines. This is when the vertical cell counter is loaded.
+            // lines. This is when the vertical cell counter is loaded, when VC=0.
             case 2:
               
-                // Simplified state changes. We're in hblank, so its just the bare minimum.
+                // Simplified state changes. We're in blanking, so its just the bare minimum.
                 switch (fetchState) {
                     case FETCH_OUTSIDE_MATRIX:
                         break;
@@ -313,54 +298,290 @@ void vic_core1_loop_pal(void) {
                 horizontalCounter++;
                 break;
 
-            // Covers HC=3 and above, up to HC=HBLANKSTART (e.g. HC=70 for PAL)
-            default:
+            // HC = 61 is one of the two increment points for the 1/2 line counter. It is also when 
+            // the vertical counter resets when in non-interlaced mode, and for interlaced mode where 
+            // it resets every second field. It is also one of two points where vertical blanking
+            // and vertical sync can start and end.
+            case 61:
+                if (interlaced_mode) {
+                    if ((verticalCounter == NTSC_INTL_LAST_LINE) && !halfLineCounter) {
+                        // For interlaced mode, the vertical counter resets here every second field, as
+                        // controlled by the half-line counter.
+                        verticalCounter = 0;
+                        fetchState = FETCH_OUTSIDE_MATRIX;
+                        cellDepthCounter = 0;
+                        halfLineCounter = 0;
 
+                        // Update raster line CR value to be 0.
+                        vic_cr4 = 0;
+                        vic_cr3 &= 0x7F;
+                    } else {
+                        // Half line counter simply toggles between 0 and 1.
+                        halfLineCounter ^= 1;
+                    }
+                }
+                else {
+                    if (verticalCounter == NTSC_NORM_LAST_LINE) {
+                        // For non-interlaced mode, the vertical counter always resets at this point.
+                        verticalCounter = 0;
+                        fetchState = FETCH_OUTSIDE_MATRIX;
+                        cellDepthCounter = 0;
+                        halfLineCounter = 0;
+                        
+                        // Update raster line CR value to be 0.
+                        vic_cr4 = 0;
+                        vic_cr3 &= 0x7F;
+                    } else {
+                        // Half line counter simply toggles between 0 and 1.
+                        halfLineCounter ^= 1;
+                    }
+                }
+
+                // Output vertical blanking or vsync, if required. If the half-line counter is 1, then 
+                // vblank and vsync get delayed by half a line, i.e. to HC=28. 
+                if (!halfLineCounter) {
+                    if ((verticalCounter > 0) && (verticalCounter <= NTSC_VBLANK_END)) {
+                        // Vertical blanking and sync - Lines 1-9.
+                        vblanking = true;
+
+                        if (verticalCounter < NTSC_VSYNC_START) {
+                            // Lines 1, 2, 3.
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                        }
+                        else if (verticalCounter <= NTSC_VSYNC_END) {
+                            // Vertical sync, lines 4, 5, 6.
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_L);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_H);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_L);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_H);
+
+                            // Vertical sync is what resets the video matrix latch.
+                            videoMatrixLatch = videoMatrixCounter = 0;
+                        }
+                        else {
+                            // Lines 7, 8, 9.
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                        }
+                    }
+                    else {
+                        vblanking = false;
+                    }
+                }
+
+                // If we're not in vertical blanking, i.e. we didn't output the CVBS commands above, 
+                // then we continue horizontal blanking commands instead, including hsync and colour 
+                // burst. It will end at HC=8.5
+                if (!vblanking) {
+                    // TODO: How does colour burst work when vblanking finishes halfway through line?
+                    pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_FRONTPORCH_2);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_HSYNC);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BREEZEWAY);
+                    if (verticalCounter & 1) {
+                        // Odd line. Switch palette starting offset.
+                        pIndex = 2;
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BURST_O);
+                    } else {
+                        // Even line. Switch palette starting offset.
+                        pIndex = 6;
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BURST_E);
+                    }
+                    pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BACKPORCH);
+                }
+
+                //
+                // IMPORTANT: THE HC=61 CASE STATEMENT DELIBERATELY FALLS THROUGH TO NEXT BLOCK.
+                //
+
+            // These HC values are always in blanking and have no special behaviour other than
+            // the standard state changes common to all cycles.
+            case 59:
+            case 60:
+            case 62:
+            case 63:
+                // Simplified state changes. We're in hblank, so its just the bare minimum.
+                switch (fetchState) {
+                    case FETCH_OUTSIDE_MATRIX:
+                        break;
+                    case FETCH_IN_MATRIX_Y:
+                    case FETCH_MATRIX_LINE:
+                        if (horizontalCounter == screen_origin_x) {
+                            fetchState = FETCH_MATRIX_DLY_1;
+                        }
+                        break;
+                    case FETCH_MATRIX_DLY_1:
+                    case FETCH_MATRIX_DLY_2:
+                    case FETCH_MATRIX_DLY_3:
+                    case FETCH_MATRIX_DLY_4:
+                        fetchState++;
+                        break;
+                    case FETCH_SCREEN_CODE:
+                        fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                        break;
+                    case FETCH_CHAR_DATA:
+                        videoMatrixCounter++;
+                        fetchState = FETCH_SCREEN_CODE;
+                        break;
+                }
+                horizontalCounter++;
+                break;
+            
+            // HC = 64 is the last HC value, so triggers HC reset.
+            case 64:
+                // Simplified state changes. We're in hblank, so its just the bare minimum.
+                switch (fetchState) {
+                    case FETCH_OUTSIDE_MATRIX:
+                        break;
+                    case FETCH_IN_MATRIX_Y:
+                    case FETCH_MATRIX_LINE:
+                        if (horizontalCounter == screen_origin_x) {
+                            fetchState = FETCH_MATRIX_DLY_1;
+                        }
+                        break;
+                    case FETCH_MATRIX_DLY_1:
+                    case FETCH_MATRIX_DLY_2:
+                    case FETCH_MATRIX_DLY_3:
+                    case FETCH_MATRIX_DLY_4:
+                        fetchState++;
+                        break;
+                    case FETCH_SCREEN_CODE:
+                        fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                        break;
+                    case FETCH_CHAR_DATA:
+                        videoMatrixCounter++;
+                        fetchState = FETCH_SCREEN_CODE;
+                        break;
+                } 
+
+                // And then reset HC.
+                horizontalCounter = 0;
+                break;
+
+            // HC=28 is when the 6560 increments the vertical counter (VC). The 1/2 line counter also
+            // toggles at this time. This is therefore the end of the raster line as reported by
+            // the VIC registers, but is not the actual end of the raster, as that happens when the 
+            // hsync occurs at HC=62.
+            case 28:
+                // NOTE: The VC always resets at HC=61 when in non-interlaced mode, but for interlaced,
+                // it can reset in HC=28 as controlled by the half-line counter.
+                if (interlaced_mode && (verticalCounter == NTSC_INTL_LAST_LINE) && !halfLineCounter) {
+                    // For interlaced mode, the vertical counter resets every second field at HC=28.
+                    verticalCounter = 0;
+                    fetchState = FETCH_OUTSIDE_MATRIX;
+                    cellDepthCounter = 0;
+                    halfLineCounter = 0;
+                } else {
+                    // Otherwise increment vertical counter.
+                    verticalCounter++;
+
+                    // Half line counter simply toggles between 0 and 1.
+                    halfLineCounter ^= 1;
+                }
+              
+                // Update the raster line value stored in the VIC registers. Note that this is
+                // correct for NTSC, i.e. the VIC control registers for the raster value do 
+                // change at HC=28 (not at HC=0 like PAL does). It can also change at HC=61,
+                // if the VC is reset to 0 during that cycle.
+                vic_cr4 = (verticalCounter >> 1);
+                if ((verticalCounter & 0x01) == 0) {
+                    vic_cr3 &= 0x7F;
+                } else {
+                    vic_cr3 |= 0x80;
+                }
+
+                // Output vertical blanking or vsync, if required. If the half-line counter is 1, then 
+                // vblank and vsync get delayed by half a line, i.e. to HC=61. 
+                if (!halfLineCounter) {
+                    if ((verticalCounter > 0) && (verticalCounter <= NTSC_VBLANK_END)) {
+                        // Vertical blanking and sync - Lines 1-9.
+                        vblanking = true;
+
+                        if (verticalCounter < NTSC_VSYNC_START) {
+                            // Lines 1, 2, 3.
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                        }
+                        else if (verticalCounter <= NTSC_VSYNC_END) {
+                            // Vertical sync, lines 4, 5, 6.
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_L);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_H);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_L);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_H);
+
+                            // Vertical sync is what resets the video matrix latch.
+                            videoMatrixLatch = videoMatrixCounter = 0;
+                        }
+                        else {
+                            // Lines 7, 8, 9.
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
+                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                        }
+                    }
+                    else {
+                        vblanking = false;
+                    }
+                }
+
+                //
+                // IMPORTANT: THE HC=28 CASE STATEMENT DELIBERATELY FALLS THROUGH TO THE DEFAULT BLOCK.
+                //
+
+            // Covers from HC=3 to HC=58.
+            default:
                 // Line 0, and Lines after 9, are "visible", i.e. not within the vertical blanking.
-                if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
+                if (!vblanking) {
                     // Is the visible part of the line ending now and horizontal blanking starting?
-                    if (horizontalCounter == PAL_HBLANK_START) {
+                    if (horizontalCounter == NTSC_HBLANK_START) {
                         // Horizontal blanking doesn't start until 2 pixels in. What exactly those
                         // two pixels are depends on the fetch state.
                         switch (fetchState) {
                             case FETCH_OUTSIDE_MATRIX:
                             case FETCH_IN_MATRIX_Y:
                             case FETCH_MATRIX_LINE:
-                                borderColour = pal_palette[border_colour_index];
-                                pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                                borderColourIndex = border_colour_index;
+                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                 break;
                                 
                             case FETCH_MATRIX_DLY_1:
                             case FETCH_MATRIX_DLY_2:
                             case FETCH_MATRIX_DLY_3:
                             case FETCH_MATRIX_DLY_4:
-                                borderColour = pal_palette[border_colour_index];
-                                pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                                borderColourIndex = border_colour_index;
+                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                 fetchState++;
                                 break;
                                 
                             case FETCH_SCREEN_CODE:
                                 // Look up latest background, border and auxiliary colours.
-                                multiColourTable[0] = pal_palette[background_colour_index];
-                                multiColourTable[1] = pal_palette[border_colour_index];
-                                multiColourTable[3] = pal_palette[auxiliary_colour_index];
+                                multiColourTable[0] = background_colour_index;
+                                multiColourTable[1] = border_colour_index;
+                                multiColourTable[3] = auxiliary_colour_index;
                                 
-                                pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel2]);
-                                pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel3]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel2]]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
                                 
                                 fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
                                 break;
                           
                             case FETCH_CHAR_DATA:
                                 // Look up latest background, border and auxiliary colours.
-                                multiColourTable[0] = pal_palette[background_colour_index];
-                                multiColourTable[1] = pal_palette[border_colour_index];
-                                multiColourTable[3] = pal_palette[auxiliary_colour_index];
+                                multiColourTable[0] = background_colour_index;
+                                multiColourTable[1] = border_colour_index;
+                                multiColourTable[3] = auxiliary_colour_index;
                                 
-                                pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel6]);
-                                pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel7]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
                                 
                                 // If the matrix hasn't yet closed, then in the FETCH_CHAR_DATA 
                                 // state, we need to keep incrementing the video matrix counter
@@ -372,42 +593,50 @@ void vic_core1_loop_pal(void) {
                                 break;
                         }
                         
-                        // After the two visible pixels, we now output the start of horiz blanking.
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_FRONTPORCH_1);
+                        // After the two visible pixels, we now output the start of horiz blanking. The 
+                        // rest is output during HC=59.
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_FRONTPORCH_1);
                         
-                        // Reset HC to start a new line.
-                        horizontalCounter = 0;
+                        // Unlike PAL, for NTSC hblank starts 6 cycles before the HC reset, so we increment.
+                        horizontalCounter++;
                     }
                     else {
-                        // Covers visible line cycles from HC=3 to 1 cycle before HC=HBLANKSTART (e.g. HC=70 for PAL)
+                        // Covers visible line cycles from HC=3 to HC=57, i.e. 1 cycle before HBLANK start.
                         switch (fetchState) {
                             case FETCH_OUTSIDE_MATRIX:
-                                if (horizontalCounter > PAL_HBLANK_END) {
-                                    // Output four border pixels.
-                                    borderColour = pal_palette[border_colour_index];
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                                if (horizontalCounter >= NTSC_HBLANK_END) {
+                                    // Output only two visible border pixels for HC=8, as first two "pixels"
+                                    // are part of the horizontal blanking CVBS commands sent during HC=61.
+                                    borderColourIndex = border_colour_index;
+                                    if (horizontalCounter > NTSC_HBLANK_END) {
+                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    }
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                 }
                                 // Nothing to do otherwise. Still in blanking if below 12.
                                 break;
                                 
                             case FETCH_IN_MATRIX_Y:
                             case FETCH_MATRIX_LINE:
-                                if (horizontalCounter > PAL_HBLANK_END) {
+                                if (horizontalCounter >= NTSC_HBLANK_END) {
                                     // Look up very latest background, border and auxiliary colour values. This
                                     // should not include an update to the foreground colour, as that will not 
                                     // have changed.
-                                    multiColourTable[0] = pal_palette[background_colour_index];
-                                    multiColourTable[1] = pal_palette[border_colour_index];
-                                    multiColourTable[3] = pal_palette[auxiliary_colour_index];
+                                    multiColourTable[0] = background_colour_index;
+                                    multiColourTable[1] = border_colour_index;
+                                    multiColourTable[3] = auxiliary_colour_index;
                                     
                                     // Last three pixels of previous char data, or border pixels. 4th pixel always border.
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel6]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel7]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel8]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[1]);
+                                    if (horizontalCounter > NTSC_HBLANK_END) {
+                                        // Output only two visible pixels for HC=8, as first two "pixels"
+                                        // are part of the horizontal blanking CVBS commands sent during HC=61.
+                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
+                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
+                                    }
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[1]]);
                                     
                                     if (horizontalCounter == screen_origin_x) {
                                         // Last 4 pixels before first char renders are still border.
@@ -426,13 +655,17 @@ void vic_core1_loop_pal(void) {
                             case FETCH_MATRIX_DLY_2:
                             case FETCH_MATRIX_DLY_3:
                             case FETCH_MATRIX_DLY_4:
-                                if (horizontalCounter > PAL_HBLANK_END) {
-                                    // Output four border pixels.
-                                    borderColour = pal_palette[border_colour_index];
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                                if (horizontalCounter >= NTSC_HBLANK_END) {
+                                    // Output border pixels.
+                                    borderColourIndex = border_colour_index;
+                                    if (horizontalCounter > NTSC_HBLANK_END) {
+                                        // Output only two visible pixels for HC=8, as first two "pixels"
+                                        // are part of the horizontal blanking CVBS commands sent during HC=61.
+                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    }
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                 }
                                 else {
                                     pixel2 = pixel3 = pixel4 = pixel5 = pixel6 = pixel7 = pixel8 = 1;
@@ -451,16 +684,20 @@ void vic_core1_loop_pal(void) {
                                 colourData = xram[colour_mem_start + videoMatrixCounter];
                                 
                                 // Look up very latest background, border and auxiliary colour values.
-                                multiColourTable[0] = pal_palette[background_colour_index];
-                                multiColourTable[1] = pal_palette[border_colour_index];
-                                multiColourTable[3] = pal_palette[auxiliary_colour_index];
+                                multiColourTable[0] = background_colour_index;
+                                multiColourTable[1] = border_colour_index;
+                                multiColourTable[3] = auxiliary_colour_index;
                             
                                 // Output the 4 pixels for this cycle (usually second 4 pixels of a character).
-                                if (horizontalCounter > PAL_HBLANK_END) {
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel2]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel3]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel4]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel5]);
+                                if (horizontalCounter >= NTSC_HBLANK_END) {
+                                    if (horizontalCounter > NTSC_HBLANK_END) {
+                                        // Output only two visible pixels for HC=8, as first two "pixels"
+                                        // are part of the horizontal blanking CVBS commands sent during HC=61.
+                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel2]]);
+                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
+                                    }
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel4]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel5]]);
                                 }
                                 
                                 // Toggle fetch state. Close matrix if HCC hits zero.
@@ -469,15 +706,19 @@ void vic_core1_loop_pal(void) {
                                 
                             case FETCH_CHAR_DATA:
                                 // Look up very latest background, border and auxiliary colour values.
-                                multiColourTable[0] = pal_palette[background_colour_index];
-                                multiColourTable[1] = pal_palette[border_colour_index];
-                                multiColourTable[3] = pal_palette[auxiliary_colour_index];
+                                multiColourTable[0] = background_colour_index;
+                                multiColourTable[1] = border_colour_index;
+                                multiColourTable[3] = auxiliary_colour_index;
                                 
-                                if (horizontalCounter > PAL_HBLANK_END) {
+                                if (horizontalCounter >= NTSC_HBLANK_END) {
                                     // Last three pixels of previous char data, or border pixels.
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel6]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel7]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel8]);
+                                    if (horizontalCounter > NTSC_HBLANK_END) {
+                                        // Output only two visible pixels for HC=8, as first two "pixels"
+                                        // are part of the horizontal blanking CVBS commands sent during HC=61.
+                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
+                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
+                                    }
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
                                 }
                                 
                                 // Calculate offset of data.
@@ -519,12 +760,12 @@ void vic_core1_loop_pal(void) {
                                 }
                                 
                                 // Look up foreground colour before first pixel.
-                                multiColourTable[2] = pal_palette[colourData & 0x07];
+                                multiColourTable[2] = (colourData & 0x07);
                                 
                                 // Output the first 4 pixels of the character.
-                                if (horizontalCounter > PAL_HBLANK_END) {
+                                if (horizontalCounter >= NTSC_HBLANK_END) {
                                     // New character starts 3 dot clock cycles after char data load. 
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel1]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel1]]);
                                 }
                                 
                                 // Increment the video matrix counter to next cell.
@@ -539,9 +780,9 @@ void vic_core1_loop_pal(void) {
                     }
                 } else {
                     // Inside vertical blanking. The CVBS commands for each line were already sent during 
-                    // HC=0. In case the screen origin Y is set within the vertical blanking lines, we 
-                    // still need to update the fetch state, video matrix counter, and the horizontal cell
-                    // counter, even though we're not outputting character pixels. So for the rest of the 
+                    // either HC=28 or HC=61. In case the screen origin Y is set within the vertical blanking
+                    // lines, we still need to update the fetch state, video matrix counter, and the horizontal
+                    // cell counter, even though we're not outputting character pixels. So for the rest of the 
                     // line, it is a simplified version of the standard line, except that we don't output 
                     // any pixels.
                     switch (fetchState) {
@@ -568,7 +809,7 @@ void vic_core1_loop_pal(void) {
                             break;
                     }
     
-                    if (horizontalCounter == PAL_HBLANK_START) {
+                    if (horizontalCounter == NTSC_LINE_END) {
                         horizontalCounter = 0;
                     } else {
                         horizontalCounter++;

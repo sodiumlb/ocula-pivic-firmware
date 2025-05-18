@@ -6,6 +6,7 @@
 
 #include "main.h"
 #include "vic/vic.h"
+#include "vic/vic_ntsc.h"
 #include "vic/char_rom.h"
 #include "vic/cvbs.h"
 #include "sys/cfg.h"
@@ -802,7 +803,7 @@ void vic_init(void) {
             multicore_launch_core1(vic_core1_loop_pal);
             break;
         case(VIC_MODE_NTSC):
-            //multicore_launch_core1(vic_core1_loop_ntsc);
+            multicore_launch_core1(vic_core1_loop_ntsc);
             break;
         default:    //Ignore test modes
             break;
