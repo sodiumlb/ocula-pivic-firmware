@@ -53,11 +53,8 @@ void vic_core1_loop_ntsc(void) {
     uint8_t  charData = 0;               // 8 bits of bitmap data fetched from character memory.
     uint8_t  colourData = 0;             // 4 bits fetched from colour memory (top bit multi/hires mode)
 
-    // CVBS command for the current border colour.
-    uint8_t borderColourIndex = 0;
-
-    // Holds the colour commands for each of the current multi colour colours.
-    uint32_t multiColourTable[4] = { 0, 0, 0, 0};
+    // Holds the colour index for each of the current multi colour colours.
+    uint8_t multiColourTable[4] = { 0, 0, 0, 0};
 
     // Every cpu cycle, we output four pixels. The values are temporarily stored in these vars.
     uint8_t pixel1 = 0;
@@ -100,6 +97,10 @@ void vic_core1_loop_ntsc(void) {
     // Temporary variables, not a core part of the state.
     uint16_t charDataOffset = 0;
 
+    // Index of the current border colour (used temporarily when we don't want to use the define multiple times in a cycle)
+    uint8_t borderColourIndex = 0;
+
+    
     // Slight hack so that VC increments to 0 on first iteration.
     verticalCounter = 0xFFFF;
 
