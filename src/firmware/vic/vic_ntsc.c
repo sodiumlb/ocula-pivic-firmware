@@ -142,7 +142,6 @@ void vic_core1_loop_ntsc(void) {
         // 8: Start of visible pixels. Technically they start halfway into the cycle.
         // 28: Increments VC and HLC (half-line counter). Resets VC every second field for interlaced.
         // 58: Horiz blanking starts half way into this cycle, for visible lines.
-        // 59: We output the rest of horizontal blanking for visible lines, including hsync and colour burst.
         // 61: Increments half-line counter. Resets VC if non-interlaced, or every second field for interlaced.
         // 64: Resets HC.
 
