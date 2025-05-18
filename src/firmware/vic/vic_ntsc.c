@@ -100,7 +100,7 @@ void vic_core1_loop_ntsc(void) {
     // Index of the current border colour (used temporarily when we don't want to use the define multiple times in a cycle)
     uint8_t borderColourIndex = 0;
 
-    
+
     // Slight hack so that VC increments to 0 on first iteration.
     verticalCounter = 0xFFFF;
 
@@ -594,7 +594,7 @@ void vic_core1_loop_ntsc(void) {
                         }
                         
                         // After the two visible pixels, we now output the start of horiz blanking. The 
-                        // rest is output during HC=59.
+                        // rest is output during HC=61.
                         pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_FRONTPORCH_1);
                         
                         // Unlike PAL, for NTSC hblank starts 6 cycles before the HC reset, so we increment.
