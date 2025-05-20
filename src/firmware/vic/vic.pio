@@ -10,7 +10,7 @@
 ; Mem clock(M1/M2) = sys_clk/72  = 2.216666666666667Mhz (36 cycles per phase)
 ; Clock out(F1/F2) = sys_clk/144 = 1.108333333333333Mhz (72 cycles per phase)
 ; Program run at 159.6 Mhz, i.e. actual sys_clk/2.0 => 144 cycles total, 72 cycles per F1/F2 phase.
-.program clkgen
+.program clkgen_pal
 .clock_div 2.0
 .side_set 1
 
@@ -28,4 +28,29 @@ nop              side 0 [14]
 nop              side 0 [14]
 nop              side 0 [14]
 nop              side 0 [11]
+.wrap
+
+; Assuming 315MHz sys_clk (for NTSC)
+; Dot clock(D1/D2) = sys_clk/77 = 4.0909090909MHz (38.5 cycles per phase)
+; Mem clock(M1/M2) = sys_clk/154 = 2.045454545Mhz (77 cycles per phase)
+; Clock out(F1/F2) = sys_clk/308 = 1.022727272Mhz (154 cycles per phase)
+; Program run at 157.5 Mhz, i.e. actual sys_clk/2.0 => 154 cycles total, 77 cycles per F1/F2 phase.
+.program clkgen_ntsc
+.clock_div 2.0
+.side_set 1
+
+.wrap_target
+irq set 1        side 1 [0]  ; Signals start of phase 1 external to the PIO, i.e. to the main C program.
+irq next clear 1 side 1 [0]  ; Signals start of phase 1 internal to the PIO+1 (negative polarity irqy)
+irq next set   1 side 1 [14] ; Single pulse of clear. Multiple non-clearing waiters to synchronize
+nop              side 1 [14]
+nop              side 1 [14]
+nop              side 1 [14]
+nop              side 1 [14]
+irq next clear 0 side 0 [0]   ; Signals start of phase 2 internal to the PIO+1 (negative polarity irq)
+irq next set   0 side 0 [15]  ; Single pulse of clear. Multiple non-clearing waiters to synchronize
+nop              side 0 [14]
+nop              side 0 [14]
+nop              side 0 [14]
+nop              side 0 [14]
 .wrap

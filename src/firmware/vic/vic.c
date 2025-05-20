@@ -107,8 +107,20 @@ void vic_pio_init(void) {
     // TODO: Check if the drive strength is appropriate for the clock.
     gpio_set_drive_strength(VIC_PIN_BASE, GPIO_DRIVE_STRENGTH_2MA);
     pio_sm_set_consecutive_pindirs(VIC_PIO, VIC_SM, VIC_PIN_BASE, 1, true);
-    uint offset = pio_add_program(VIC_PIO, &clkgen_program);
-    pio_sm_config config = clkgen_program_get_default_config(offset);
+    uint offset;
+    pio_sm_config config;
+    switch(cfg_get_mode()){
+        case(VIC_MODE_NTSC):
+        case(VIC_MODE_TEST_NTSC):
+            offset = pio_add_program(VIC_PIO, &clkgen_ntsc_program);
+            config = clkgen_ntsc_program_get_default_config(offset);
+            break;
+        case(VIC_MODE_PAL):
+        case(VIC_MODE_TEST_PAL):
+            offset = pio_add_program(VIC_PIO, &clkgen_pal_program);
+            config = clkgen_pal_program_get_default_config(offset);
+            break;
+        }
     sm_config_set_sideset_pin_base(&config, VIC_PIN_BASE);
     pio_sm_init(VIC_PIO, VIC_SM, offset, &config);
     pio_sm_set_enabled(VIC_PIO, VIC_SM, true);   
