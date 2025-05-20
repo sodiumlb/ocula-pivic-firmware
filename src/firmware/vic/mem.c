@@ -89,7 +89,7 @@ void xread_pio_init(void){
         1,
         true);
     
-    pio_sm_set_enabled(XREAD_PIO, XREAD_SM, true);
+    //pio_sm_set_enabled(XREAD_PIO, XREAD_SM, true);
 }
 
 uint8_t xwrite_dma_addr_chan;
@@ -104,7 +104,7 @@ void xwrite_pio_init(void){
     pio_sm_put_blocking(XWRITE_PIO, XWRITE_SM, (uintptr_t)xram >> 14);
     pio_sm_exec_wait_blocking(XWRITE_PIO, XWRITE_SM, pio_encode_pull(false, true));
     pio_sm_exec_wait_blocking(XWRITE_PIO, XWRITE_SM, pio_encode_mov(pio_x, pio_osr));
-    pio_sm_set_enabled(XWRITE_PIO, XWRITE_SM, true);
+    //pio_sm_set_enabled(XWRITE_PIO, XWRITE_SM, true);
 
     // Set up two DMA channels for fetching address then data
     int addr_chan = dma_claim_unused_channel(true);
@@ -155,7 +155,7 @@ void trace_pio_init(void){
     //Pin counts and autopush/autopull set in program
     sm_config_set_in_pin_base(&config, DATA_PIN_BASE);  
     pio_sm_init(TRACE_PIO, TRACE_SM, offset, &config);
-    pio_sm_set_enabled(TRACE_PIO, TRACE_SM, true);
+    //pio_sm_set_enabled(TRACE_PIO, TRACE_SM, true);
 
     // Set up two DMA channels for fetching address then data
     int trace_chan = dma_claim_unused_channel(true);
@@ -188,7 +188,7 @@ void xdir_pio_init(void){
     pio_sm_put_blocking(XDIR_PIO, XDIR_SM, 0b1010000);  //Matching value RnW='1', A[13:8]=0b010000
     pio_sm_exec_wait_blocking(XDIR_PIO, XDIR_SM, pio_encode_pull(false, true));
     pio_sm_exec_wait_blocking(XDIR_PIO, XDIR_SM, pio_encode_mov(pio_x, pio_osr));
-    pio_sm_set_enabled(XDIR_PIO, XDIR_SM, true);   
+    //pio_sm_set_enabled(XDIR_PIO, XDIR_SM, true);   
 }
 
 void mem_init(void){
@@ -201,6 +201,8 @@ void mem_init(void){
     xdir_pio_init();
     xwrite_pio_init();
     //trace_pio_init();    
+    //Synchronized start of irq dependent PIO programs
+    pio_set_sm_mask_enabled(XREAD_PIO, (1u << XREAD_SM) | (1u << XDIR_SM) | (1u << XWRITE_SM) /*| (1u << TRACE_SM)*/, true);
 }
 
 void mem_task(void){

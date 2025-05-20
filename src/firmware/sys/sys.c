@@ -8,6 +8,7 @@
 #include "sys/sys.h"
 #include "sys/dvi.h"
 #ifdef PIVIC
+#include "vic/aud.h"
 #include "vic/vic.h"
 #endif
 #ifdef OCULA
@@ -49,6 +50,7 @@ void sys_mon_status(const char *args, size_t len)
     dvi_print_status();
 #ifdef PIVIC
     vic_print_status();
+    aud_print_status();
 #endif
 #ifdef OCULA
     ula_print_status();

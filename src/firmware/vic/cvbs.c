@@ -10,6 +10,7 @@
 #include "vic/vic.h"
 #include "vic/cvbs.h"
 #include "vic/cvbs_ntsc.h"
+#include "vic/cvbs_pal.h"
 #include "sys/cfg.h"
 #include "sys/mem.h"
 #include "cvbs.pio.h"
@@ -37,76 +38,7 @@ const uint8_t rev5bit[32] = {
 
 static uint8_t cvbs_mode;
 
-// DAC driving logic is using square wave
-//L0 and L1 levels are asserted for half periods
-//DC level is ignored (left over from oversampling attempt)
-//Set L0 and L1 to same level to get DC
-//Delay is used to shift the phase a number of cycles. 
-//CVBS_DELAY_CONST assures the period is constant. Delay must be less or equal to this value
-//Count is the number of iterations of the signal to generate. NB minimum count is 2
-#define CVBS_DELAY_CONST_POST (15-3)
-#define CVBS_CMD(L0,L1,DC,delay,count) \
-         ((((CVBS_DELAY_CONST_POST-delay)&0xF)<<23) |  ((L1&0x1F)<<18) | (((count-1)&0x1FF)<<9) |((L0&0x1F)<<4) | ((delay&0x0F)))
-#define CVBS_REP(cmd,count) ((cmd & ~(0x1FF<<9)) | ((count-1) & 0x1FF)<<9)
-//Experimental timings (eyeballing + experimenting)
-//Levels bit-reverse hard-coded
-#define PAL_HSYNC       CVBS_CMD( 0, 0, 0, 0,20)
-#define PAL_BLANK       CVBS_CMD(18,18,18, 0,50)
-#define PAL_FRONTPORCH  CVBS_CMD(18,18,18, 0, 8)
-#define PAL_BREEZEWAY   CVBS_CMD(18,18,18, 0,4)
-#define PAL_BACKPORCH   CVBS_CMD(18,18,18, 0,4)
-/* Depricated
-#define PAL_COLORBURST_E CVBS_CMD(12, 6,18, 0,11)
-#define PAL_COLORBURST_O CVBS_CMD( 6,12,18, 7,11)
-#define PAL_BAR_BLK     CVBS_CMD(18,18,18, 0,46)
-#define PAL_BAR_WHT     CVBS_CMD(23,23,23, 0,46)
-#define PAL_BAR_RED_O   CVBS_CMD(21,18,30, 5,46)
-#define PAL_BAR_RED_E   CVBS_CMD(18,21,30, 4,46)
-#define PAL_BAR_GREEN_E CVBS_CMD( 1, 7,13, 1,46)
-#define PAL_BAR_GREEN_O CVBS_CMD( 1, 7,13, 2,46)
-#define PAL_BAR_BLUE_E  CVBS_CMD(18,25,14,10,46)
-#define PAL_BAR_BLUE_O  CVBS_CMD(18,25,14, 9,46)
-*/
-#define PAL_LONG_SYNC_L  CVBS_CMD( 0, 0, 0, 0,133)
-#define PAL_LONG_SYNC_H  CVBS_CMD(18,18,18, 0,  9)
-#define PAL_SHORT_SYNC_L CVBS_CMD( 0, 0, 0, 0,  9)
-#define PAL_SHORT_SYNC_H CVBS_CMD(18,18,18, 0,133)
-#define PAL_BLANKING     CVBS_CMD(18,18,18, 0,234)
 
-//"Tobias" colours - approximated
-#define PAL_BURST_O	   CVBS_CMD(6,12,9,11,14)
-#define PAL_BURST_E	   CVBS_CMD(12,6,9,4,14)
-
-#define PAL_BLACK	      CVBS_CMD(18,18,9,0,0)
-#define PAL_WHITE	      CVBS_CMD(23,23,29,0,0)
-#define PAL_RED_O	      CVBS_CMD(5,10,15,9,0)
-#define PAL_RED_E	      CVBS_CMD(10,5,15,6,0)
-#define PAL_CYAN_O	   CVBS_CMD(9,15,24,9,0)
-#define PAL_CYAN_E	   CVBS_CMD(15,9,24,7,0)
-#define PAL_PURPLE_O	   CVBS_CMD(29,22,18,5,0)
-#define PAL_PURPLE_E	   CVBS_CMD(22,29,18,10,0)
-#define PAL_GREEN_O	   CVBS_CMD(1,7,22,5,0)
-#define PAL_GREEN_E	   CVBS_CMD(7,1,22,10,0)
-#define PAL_BLUE_O	   CVBS_CMD(9,10,14,0,0)
-#define PAL_BLUE_E	   CVBS_CMD(9,10,14,0,0)
-#define PAL_YELLOW_O	   CVBS_CMD(5,15,25,0,0)
-#define PAL_YELLOW_E	   CVBS_CMD(5,15,25,0,0)
-#define PAL_ORANGE_O	   CVBS_CMD(19,22,19,11,0)
-#define PAL_ORANGE_E	   CVBS_CMD(22,19,19,4,0)
-#define PAL_LORANGE_O	CVBS_CMD(27,21,24,11,0)
-#define PAL_LORANGE_E	CVBS_CMD(21,27,24,4,0)
-#define PAL_PINK_O	   CVBS_CMD(11,5,23,9,0)
-#define PAL_PINK_E	   CVBS_CMD(5,11,23,6,0)
-#define PAL_LCYAN_O	   CVBS_CMD(3,15,27,9,0)
-#define PAL_LCYAN_E	   CVBS_CMD(15,3,27,7,0)
-#define PAL_LPURPLE_O	CVBS_CMD(27,21,24,5,0)
-#define PAL_LPURPLE_E	CVBS_CMD(21,27,24,10,0)
-#define PAL_LGREEN_O	   CVBS_CMD(29,23,26,5,0)
-#define PAL_LGREEN_E	   CVBS_CMD(23,29,26,10,0)
-#define PAL_LBLUE_O	   CVBS_CMD(3,5,22,0,0)
-#define PAL_LBLUE_E	   CVBS_CMD(3,5,22,0,0)
-#define PAL_LYELLOW_O	CVBS_CMD(19,31,28,0,0)
-#define PAL_LYELLOW_E	CVBS_CMD(19,31,28,0,0)
 
 
 
@@ -145,7 +77,7 @@ uint32_t pal_test_scanline_odd[] = {
    PAL_FRONTPORCH,
    PAL_HSYNC,
    PAL_BREEZEWAY,
-   PAL_BURST_O,
+   PAL_COLBURST_O,
    PAL_BACKPORCH,
    CVBS_REP(PAL_BLACK, 12),
    CVBS_REP(PAL_WHITE, 12),
@@ -169,7 +101,7 @@ uint32_t ntsc_test_scanline_odd[] = {
    NTSC_FRONTPORCH,
    NTSC_HSYNC,
    NTSC_BREEZEWAY,
-   NTSC_BURST_O,
+   NTSC_COLBURST_O,
    NTSC_BACKPORCH,
    CVBS_CMD_PIXEL_RUN(200),
 };
@@ -178,7 +110,7 @@ uint32_t pal_test_scanline_even[] = {
    PAL_FRONTPORCH,
    PAL_HSYNC,
    PAL_BREEZEWAY,
-   PAL_BURST_E,
+   PAL_COLBURST_E,
    PAL_BACKPORCH,
    CVBS_REP(PAL_BLACK, 12),
    CVBS_REP(PAL_WHITE, 12),
@@ -202,7 +134,7 @@ uint32_t ntsc_test_scanline_even[] = {
    NTSC_FRONTPORCH,
    NTSC_HSYNC,
    NTSC_BREEZEWAY,
-   NTSC_BURST_E,
+   NTSC_COLBURST_E,
    NTSC_BACKPORCH,
    CVBS_CMD_PIXEL_RUN(200),
 };
@@ -210,7 +142,7 @@ uint32_t pal_test_blanking_line_odd[] = {
    PAL_FRONTPORCH,
    PAL_HSYNC,
    PAL_BREEZEWAY,
-   PAL_BURST_O,
+   PAL_COLBURST_O,
    PAL_BACKPORCH,
    PAL_BLANKING,
 };
@@ -219,7 +151,7 @@ uint32_t ntsc_test_blanking_line_odd[] = {
    NTSC_FRONTPORCH,
    NTSC_HSYNC,
    NTSC_BREEZEWAY,
-   NTSC_BURST_O,
+   NTSC_COLBURST_O,
    NTSC_BACKPORCH,
    NTSC_BLANKING,
 };
@@ -228,7 +160,7 @@ uint32_t pal_test_blanking_line_even[] = {
    PAL_FRONTPORCH,
    PAL_HSYNC,
    PAL_BREEZEWAY,
-   PAL_BURST_E,
+   PAL_COLBURST_E,
    PAL_BACKPORCH,
    PAL_BLANKING,
 };
@@ -237,7 +169,7 @@ uint32_t ntsc_test_blanking_line_even[] = {
    NTSC_FRONTPORCH,
    NTSC_HSYNC,
    NTSC_BREEZEWAY,
-   NTSC_BURST_E,
+   NTSC_COLBURST_E,
    NTSC_BACKPORCH,
    NTSC_BLANKING,
 };
