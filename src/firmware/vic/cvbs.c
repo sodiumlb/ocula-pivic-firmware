@@ -103,7 +103,6 @@ uint32_t ntsc_test_scanline_odd[] = {
    NTSC_BREEZEWAY,
    NTSC_COLBURST_O,
    NTSC_BACKPORCH,
-   CVBS_CMD_PIXEL_RUN(200),
 };
 
 uint32_t pal_test_scanline_even[] = {
@@ -136,7 +135,6 @@ uint32_t ntsc_test_scanline_even[] = {
    NTSC_BREEZEWAY,
    NTSC_COLBURST_E,
    NTSC_BACKPORCH,
-   CVBS_CMD_PIXEL_RUN(200),
 };
 uint32_t pal_test_blanking_line_odd[] = {
    PAL_FRONTPORCH,
@@ -207,7 +205,7 @@ void cvbs_pio_mode_init(void){
       case(VIC_MODE_TEST_NTSC):
          offset = pio_add_program(CVBS_PIO, &cvbs_ntsc_program);
          config = cvbs_ntsc_program_get_default_config(offset);
-         sm_config_set_out_shift(&config, true, true, 25); 
+         sm_config_set_out_shift(&config, true, true, 30); 
          break;
       case(VIC_MODE_PAL):
       case(VIC_MODE_TEST_PAL):
@@ -305,11 +303,11 @@ void cvbs_ntsc_gen(uint32_t* col,uint8_t delay,uint8_t base_col){
          L2o = L1o;
       }
       printf("%2d L0:%2d d0:%2d L1:%2d d1:%2d L2:%2d\n", i, L0o, delay0, L1o, delay1, L2o);
-      col[i] = CVBS_CMD_DATA(L0o, delay0, L1o, delay1, L2o);
+      col[i] = CVBS_CMD_PIXEL(L0o, delay0, L1o, delay1, L2o);
       if(L1o == L2o){
-         col[i+4] = CVBS_CMD_DATA(L1o, delay0, L0o, delay1, L0o);
+         col[i+4] = CVBS_CMD_PIXEL(L1o, delay0, L0o, delay1, L0o);
       }else{
-         col[i+4] = CVBS_CMD_DATA(L1o, delay0, L0o, delay1, L1o);
+         col[i+4] = CVBS_CMD_PIXEL(L1o, delay0, L0o, delay1, L1o);
       }
    }
 

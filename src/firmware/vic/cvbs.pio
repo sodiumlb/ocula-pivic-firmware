@@ -69,15 +69,13 @@ public entry:
 
 public cvbs_cmd_dc_run:
     out pins 5          ;DC level out
-    out y 15
+    out y 20
 dc_loop:
     wait 1 irq 1        ;Wait for dotclock
     jmp y-- dc_loop
     out pc 5
 
-public cvbs_cmd_pixel_run:
-    out y 20           ;Repeat count
-pixel:
+public cvbs_cmd_pixel:
     wait 1 irq 1       ;Wait for dotclk
     out pins 5         ;Out L0
     out x 5
@@ -88,11 +86,10 @@ delay0:
 delay1:
     jmp x-- delay1
     out pins 5         ;Out L2
-    jmp y-- pixel
     out pc 5
 
 public cvbs_cmd_burst:
-    out y 5            ;repeat count
+    out y 10           ;repeat count
     out x 5            ;get predelay
     out isr 5          ;keep L0 in isr
     wait 1 irq 1       ;sync to dotclock only at the start
