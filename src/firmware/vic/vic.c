@@ -120,8 +120,10 @@ void vic_memory_init() {
     memcpy((void*)(&xram[ADDR_UPPERCASE_GLYPHS_CHRSET]), (void*)vic_char_rom, sizeof(vic_char_rom));
 
     // Set up hard coded control registers for now (from default PAL VIC).
-    xram[0x1000] = 0x0C;    // Screen Origin X = 12
-    xram[0x1001] = 0x26;    // Screen Origin Y = 38
+    //xram[0x1000] = 0x0C;    // Screen Origin X = 12 (PAL)
+    xram[0x1000] = 0x05;    // Screen Origin X = 5 (NTSC)
+    //xram[0x1001] = 0x26;    // Screen Origin Y = 38 (PAL)
+    xram[0x1001] = 0x19;    // Screen Origin Y = 25 (NTSC)
     xram[0x1002] = 0x96;    // Number of Columns = 22 (bits 0-6) Video Mem Start (bit 7)
     xram[0x1003] = 0x2E;    // Number of Rows = 23 (bits 1-6)
     xram[0x1005] = 0xF0;    // Video Mem Start = 0x3E00 (bits 4-7), Char Mem Start = 0x0000 (bits 0-3)
@@ -753,7 +755,7 @@ void vic_init(void) {
 
 void vic_task(void) {
     if (overruns > 0) {
-        //printf("X.");
+        printf("X.");
         overruns = 0;
     }
 }

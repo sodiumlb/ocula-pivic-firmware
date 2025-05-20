@@ -385,11 +385,11 @@ void vic_core1_loop_ntsc(void) {
                     if (verticalCounter & 1) {
                         // Odd line. Switch palette starting offset.
                         pIndex = 2;
-                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BURST_O);
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_COLBURST_O);
                     } else {
                         // Even line. Switch palette starting offset.
                         pIndex = 6;
-                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BURST_E);
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_COLBURST_E);
                     }
                     pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BACKPORCH);
                 }
