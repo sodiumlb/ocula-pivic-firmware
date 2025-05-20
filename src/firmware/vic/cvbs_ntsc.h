@@ -56,8 +56,8 @@
 //Two NTSC burst methodes available CMD_BURST or PIXEL_RUN
 //CMD_BURST is more experimental since it runs carrier cycles instead of dot clock cycles
 //9 carrier cycles => 10.3 dot clock cycles, syncs up as 11 dot clock cycles
-#define NTSC_BURST_E     CVBS_CMD_BURST(6,12,1,9)
-#define NTSC_BURST_O     CVBS_CMD_BURST(12,6,1,9)
+#define NTSC_COLBURST_E     CVBS_CMD_BURST(6,12,1,9)
+#define NTSC_COLBURST_O     CVBS_CMD_BURST(12,6,1,9)
 
 //VIC-20 NTSC dot clock/colour carrier ratio is 4/3.5
 //We solve this by using 8 precomputed carrier to pixel
