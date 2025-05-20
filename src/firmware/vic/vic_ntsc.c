@@ -392,6 +392,7 @@ void vic_core1_loop_ntsc(void) {
                         pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_COLBURST_E);
                     }
                     pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BACKPORCH);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_CMD_PIXEL_RUN(200));
                 }
 
                 //
