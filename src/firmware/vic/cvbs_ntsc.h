@@ -26,11 +26,11 @@
 #define CVBS_CMD_ID_BURST cvbs_ntsc_offset_cvbs_cmd_burst
 
 #define CVBS_CMD_DC_RUN(L0,count) \
-        (((count-1) << 10) | ((L0&0x1F) << 5)| CVBS_CMD_ID_DC_RUN)
+        (((count-2) << 10) | ((L0&0x1F) << 5)| CVBS_CMD_ID_DC_RUN)
 #define CVBS_CMD_PIXEL(L0,delay0,L1,delay1,L2) \
         (((L2&0x1F) << 25) |  (((delay1-3)&0x1F) << 20) | ((L1&0x1F) << 15) | (((delay0-3)&0x1F) << 10) | ((L0&0x1F) << 5) | CVBS_CMD_ID_PIXEL)
-#define CVBS_CMD_BURST(L0,L1,delay,count) \
-        (((L1&0x1F) << 25) | ((L0&0x1F) << 20) | (((delay-1)&0x1F) << 15) | ((count&0x3FF) << 5) | CVBS_CMD_ID_BURST)
+#define CVBS_CMD_BURST(L0,L1,DC,delay,count) \
+        (((DC&0x1F) << 25) | ((L1&0x1F) << 20) | ((L0&0x1F) << 15) | (((delay-1)&0x1F) << 10) | (((count-1)&0x1F) << 5) | CVBS_CMD_ID_BURST)
 
 #define CVBS_CMD_BURST_DELAY(cmd,delay) \
         ((cmd & ~(0x1F<<10)) | ((delay-1)&0x1F)<<10)
@@ -51,8 +51,8 @@
 //Two NTSC burst methodes available CMD_BURST or PIXEL_RUN
 //CMD_BURST is more experimental since it runs carrier cycles instead of dot clock cycles
 //9 carrier cycles => 10.3 dot clock cycles, syncs up as 11 dot clock cycles
-#define NTSC_COLBURST_E     CVBS_CMD_BURST(6,12,1,9)
-#define NTSC_COLBURST_O     CVBS_CMD_BURST(12,6,1,9)
+#define NTSC_COLBURST_E     CVBS_CMD_BURST(6,12,18,1,9)
+#define NTSC_COLBURST_O     CVBS_CMD_BURST(12,6,18,1,9)
 
 //VIC-20 NTSC dot clock/colour carrier ratio is 4/3.5
 //We solve this by using 8 precomputed carrier to pixel
