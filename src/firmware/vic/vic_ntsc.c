@@ -100,9 +100,8 @@ void vic_core1_loop_ntsc(void) {
     // Index of the current border colour (used temporarily when we don't want to use the define multiple times in a cycle)
     uint8_t borderColourIndex = 0;
 
-
-    // Slight hack so that VC increments to 0 on first iteration.
-    verticalCounter = 0xFFFF;
+    //FIFO Back pressure. Experimentaly adjusted
+    pio_sm_put(CVBS_PIO,CVBS_SM,CVBS_CMD_DC_RUN(18,38)); 
 
     while (1) {
         // Poll for PIO IRQ 1. This is the rising edge of F1.
