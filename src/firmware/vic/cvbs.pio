@@ -50,15 +50,12 @@ postdelay:
 .wrap
 
 ;Dot clock generation
-;Faking 38.5 period with 38+39 pair
-;TODO Make non-divided single period
+;Creating 38.5 period with 77 cycles at sys_clk rate
 .program cvbs_dotclk
-.clock_div 2.0
 .wrap_target
     irq set 1 [29]
-    nop       [ 7]
-    irq set 1 [29]
-    nop       [ 8]
+    nop       [29]
+    nop       [16]
 .wrap
 
 .program cvbs_ntsc
