@@ -809,11 +809,9 @@ void vic_core1_loop_ntsc(void) {
                             break;
                     }
     
-                    if (horizontalCounter == NTSC_LINE_END) {
-                        horizontalCounter = 0;
-                    } else {
-                        horizontalCounter++;
-                    }
+                    // The horizontal counter reset always happens within the top level case 64 statement, so
+                    // we only need to cater for HC increments here.
+                    horizontalCounter++;
                 }
                 break;
         }
