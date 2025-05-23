@@ -540,48 +540,25 @@ void vic_core1_loop_ntsc(void) {
                 if (!vblanking) {
                     // Is the visible part of the line ending now and horizontal blanking starting?
                     if (horizontalCounter == NTSC_HBLANK_START) {
-                        // Horizontal blanking doesn't start until 2 pixels in. What exactly those
-                        // two pixels are depends on the fetch state.
+                        // Horizontal blanking starts here. Simplified state changes, so its just the bare minimum.
                         switch (fetchState) {
                             case FETCH_OUTSIDE_MATRIX:
                             case FETCH_IN_MATRIX_Y:
                             case FETCH_MATRIX_LINE:
-                                borderColourIndex = border_colour_index;
-                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
-                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                 break;
                                 
                             case FETCH_MATRIX_DLY_1:
                             case FETCH_MATRIX_DLY_2:
                             case FETCH_MATRIX_DLY_3:
                             case FETCH_MATRIX_DLY_4:
-                                borderColourIndex = border_colour_index;
-                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
-                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                 fetchState++;
                                 break;
                                 
                             case FETCH_SCREEN_CODE:
-                                // Look up latest background, border and auxiliary colours.
-                                multiColourTable[0] = background_colour_index;
-                                multiColourTable[1] = border_colour_index;
-                                multiColourTable[3] = auxiliary_colour_index;
-                                
-                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel2]]);
-                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
-                                
                                 fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
                                 break;
                           
                             case FETCH_CHAR_DATA:
-                                // Look up latest background, border and auxiliary colours.
-                                multiColourTable[0] = background_colour_index;
-                                multiColourTable[1] = border_colour_index;
-                                multiColourTable[3] = auxiliary_colour_index;
-                                
-                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
-                                pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
-                                
                                 // If the matrix hasn't yet closed, then in the FETCH_CHAR_DATA 
                                 // state, we need to keep incrementing the video matrix counter
                                 // until it is closed, which at the latest could be HC=1 on the
@@ -592,8 +569,10 @@ void vic_core1_loop_ntsc(void) {
                                 break;
                         }
                         
-                        // After the two visible pixels, we now output the start of horiz blanking. The 
-                        // rest is output during HC=61.
+                        // We output the start of horiz blanking here, enough of it to last to the start
+                        // of HC=61, where a decision is then made as to whether it will be horizontal
+                        // blanking or vertical blanking. This is why there is a part 1 and 2 of the front
+                        // porch.
                         pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_FRONTPORCH_1);
                         
                         // Unlike PAL, for NTSC hblank starts 6 cycles before the HC reset, so we increment.
@@ -604,13 +583,9 @@ void vic_core1_loop_ntsc(void) {
                         switch (fetchState) {
                             case FETCH_OUTSIDE_MATRIX:
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
-                                    // Output only two visible border pixels for HC=8, as first two "pixels"
-                                    // are part of the horizontal blanking CVBS commands sent during HC=61.
                                     borderColourIndex = border_colour_index;
-                                    if (horizontalCounter > NTSC_HBLANK_END) {
-                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
-                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
-                                    }
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                 }
@@ -628,12 +603,8 @@ void vic_core1_loop_ntsc(void) {
                                     multiColourTable[3] = auxiliary_colour_index;
                                     
                                     // Last three pixels of previous char data, or border pixels. 4th pixel always border.
-                                    if (horizontalCounter > NTSC_HBLANK_END) {
-                                        // Output only two visible pixels for HC=8, as first two "pixels"
-                                        // are part of the horizontal blanking CVBS commands sent during HC=61.
-                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
-                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
-                                    }
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[1]]);
                                     
@@ -644,7 +615,7 @@ void vic_core1_loop_ntsc(void) {
                                 }
                                 else if (horizontalCounter == screen_origin_x) {
                                     // Still in horizontal blanking, but we still need to prepare for the case
-                                    // where the next cycle isn't in horiz blanking, i.e. when HC=11 this cycle.
+                                    // where the next cycle isn't in horiz blanking, i.e. when HC=7 this cycle.
                                     fetchState = FETCH_MATRIX_DLY_1;
                                 }
                                 pixel1 = pixel2 = pixel3 = pixel4 = pixel5 = pixel6 = pixel7 = pixel8 = 1;
@@ -657,12 +628,8 @@ void vic_core1_loop_ntsc(void) {
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
                                     // Output border pixels.
                                     borderColourIndex = border_colour_index;
-                                    if (horizontalCounter > NTSC_HBLANK_END) {
-                                        // Output only two visible pixels for HC=8, as first two "pixels"
-                                        // are part of the horizontal blanking CVBS commands sent during HC=61.
-                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
-                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
-                                    }
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                 }
@@ -687,14 +654,10 @@ void vic_core1_loop_ntsc(void) {
                                 multiColourTable[1] = border_colour_index;
                                 multiColourTable[3] = auxiliary_colour_index;
                             
-                                // Output the 4 pixels for this cycle (usually second 4 pixels of a character).
+                                // Output the 4 pixels for this cycle.
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
-                                    if (horizontalCounter > NTSC_HBLANK_END) {
-                                        // Output only two visible pixels for HC=8, as first two "pixels"
-                                        // are part of the horizontal blanking CVBS commands sent during HC=61.
-                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel2]]);
-                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
-                                    }
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel2]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel4]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel5]]);
                                 }
@@ -710,13 +673,10 @@ void vic_core1_loop_ntsc(void) {
                                 multiColourTable[3] = auxiliary_colour_index;
                                 
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
-                                    // Last three pixels of previous char data, or border pixels.
-                                    if (horizontalCounter > NTSC_HBLANK_END) {
-                                        // Output only two visible pixels for HC=8, as first two "pixels"
-                                        // are part of the horizontal blanking CVBS commands sent during HC=61.
-                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
-                                        pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
-                                    }
+                                    // Last three pixels of previous char data, or border pixels, depending on if 
+                                    // this is the first character in a row or not.
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
                                 }
                                 
@@ -761,7 +721,7 @@ void vic_core1_loop_ntsc(void) {
                                 // Look up foreground colour before first pixel.
                                 multiColourTable[2] = (colourData & 0x07);
                                 
-                                // Output the first 4 pixels of the character.
+                                // Output the first pixel of the character.
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
                                     // New character starts 3 dot clock cycles after char data load. 
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel1]]);

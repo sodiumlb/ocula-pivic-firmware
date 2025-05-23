@@ -36,8 +36,8 @@
         ((cmd & ~(0x1F<<10)) | ((delay-1)&0x1F)<<10)
 
 //Front porch split into two, to allow for change to vertical blanking after first part, if required.
-#define NTSC_FRONTPORCH_1 CVBS_CMD_DC_RUN(18,10)
-#define NTSC_FRONTPORCH_2 CVBS_CMD_DC_RUN(18,6)
+#define NTSC_FRONTPORCH_1 CVBS_CMD_DC_RUN(18,12)
+#define NTSC_FRONTPORCH_2 CVBS_CMD_DC_RUN(18,4)
 
 #define NTSC_FRONTPORCH  CVBS_CMD_DC_RUN(18,16)
 #define NTSC_HSYNC       CVBS_CMD_DC_RUN( 0,20)
