@@ -6,6 +6,7 @@
 
 #include "main.h"
 #include "cvbs_ntsc.h"
+#include "vic/aud.h"
 #include "vic/vic.h"
 #include "vic/vic_ntsc.h"
 #include "sys/mem.h"
@@ -774,6 +775,7 @@ void vic_core1_loop_ntsc(void) {
                 }
                 break;
         }
+        aud_tick_inline();
 
         // DEBUG: Temporary check to see if we've overshot the 120 cycle allowance.
         if (pio_interrupt_get(VIC_PIO, 1)) {
