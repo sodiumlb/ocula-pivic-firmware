@@ -378,7 +378,7 @@ void vic_core1_loop_ntsc(void) {
                 // burst. It will end at HC=8.5
                 if (!vblanking) {
                     // TODO: How does colour burst work when vblanking finishes halfway through line?
-                    //pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_FRONTPORCH_2);
+                    pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_FRONTPORCH_2);
                     pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_HSYNC);
                     pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BREEZEWAY);
                     if (verticalCounter & 1) {
@@ -594,8 +594,7 @@ void vic_core1_loop_ntsc(void) {
                         
                         // After the two visible pixels, we now output the start of horiz blanking. The 
                         // rest is output during HC=61.
-                        // NOTE Running non-split version instead of split to avoid underruns
-                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_FRONTPORCH);
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_FRONTPORCH_1);
                         
                         // Unlike PAL, for NTSC hblank starts 6 cycles before the HC reset, so we increment.
                         horizontalCounter++;
