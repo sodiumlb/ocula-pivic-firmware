@@ -76,7 +76,9 @@ void vic_pio_init(void) {
 void vic_memory_init() {
     // Load the VIC 20 Character ROM into internal PIVIC RAM.
     memcpy((void*)(&xram[ADDR_UPPERCASE_GLYPHS_CHRSET]), (void*)vic_char_rom, sizeof(vic_char_rom));
+}
 
+void vic_splash_init() {
     // Set up hard coded control registers for now (from default PAL VIC).
     //xram[0x1000] = 0x0C;    // Screen Origin X = 12 (PAL)
     xram[0x1000] = 0x05;    // Screen Origin X = 5 (NTSC)
@@ -138,8 +140,9 @@ void vic_memory_init() {
 void vic_init(void) {
     // Initialisation.
     vic_pio_init();
+    vic_memory_init();
     if(cfg_get_splash())
-        vic_memory_init();
+        vic_splash_init();
     switch(cfg_get_mode()){
         case(VIC_MODE_PAL):
             multicore_launch_core1(vic_core1_loop_pal);
