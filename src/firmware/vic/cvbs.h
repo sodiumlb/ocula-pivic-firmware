@@ -14,6 +14,7 @@
  
  void cvbs_mon_tune(const char *args, size_t len);
  void cvbs_mon_colour(const char *args, size_t len);
+ void cvbs_print_status(void);
  
  #endif /* _CVBS_H_ */
  
