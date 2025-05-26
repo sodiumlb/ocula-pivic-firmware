@@ -8,6 +8,7 @@
 //#include "sys/ria.h"
 #include "oric/ula.h"
 #include "oric/oric_font.h"
+#include "sys/dvi.h"
 #include "sys/mem.h"
 #include "ula.pio.h"
 #include "pico/stdlib.h"
@@ -86,6 +87,41 @@ uint8_t flashCounter = 0;
 #define CMD_VSYNC RGBS_CMD1(VAL_SYNC,64)
 
 #define RGBS_TX  RGBS_PIO->txf[RGBS_SM] 
+
+const uint8_t ula_rgb332_palette[8] = {
+    0x00,       //Black
+    0xE0,       //Red
+    0x1C,       //Green
+    0xFC,       //Yellow
+    0x03,       //Blue
+    0xE3,       //Magenta
+    0x1F,       //Cyan
+    0xFF        //White
+};
+
+dvi_mode_t ula_dvi_mode = {
+    .pixel_format = dvi_4_rgb332,
+    .scale_x = 2,
+    .scale_y = 2,
+    .offset_x = -36,
+    .offset_y = 2
+};
+
+void inline __attribute__((always_inline)) ula_dvi_fb_update(uint8_t ink, uint8_t paper, uint8_t data, uint8_t fb_x, uint8_t fb_y){
+    if(data & ULA_INVERT){
+        ink ^= 0x7;
+        paper ^= 0x7;
+    }
+    uint8_t dvi_ink = ula_rgb332_palette[ink];
+    uint8_t dvi_paper = ula_rgb332_palette[paper];
+    fb_y += 10;
+    dvi_framebuf[fb_y][fb_x++] = data & 0x20 ? dvi_ink : dvi_paper; 
+    dvi_framebuf[fb_y][fb_x++] = data & 0x10 ? dvi_ink : dvi_paper; 
+    dvi_framebuf[fb_y][fb_x++] = data & 0x08 ? dvi_ink : dvi_paper; 
+    dvi_framebuf[fb_y][fb_x++] = data & 0x04 ? dvi_ink : dvi_paper; 
+    dvi_framebuf[fb_y][fb_x++] = data & 0x02 ? dvi_ink : dvi_paper; 
+    dvi_framebuf[fb_y][fb_x++] = data & 0x01 ? dvi_ink : dvi_paper; 
+}
 
 uint32_t inline __attribute__((always_inline)) rgbs_cmd_pixel(uint8_t ink, uint8_t paper, uint8_t data){
     uint32_t cmd = 0x00111111;                   //Default repeat=0, sync=1 for 6 values
@@ -179,6 +215,7 @@ void core1_loop(void){
         }else if(hscan && vscan){
             //output pixeldata with invertion
             RGBS_TX = rgbs_cmd_pixel(ula.ink,ula.paper, (char_data & 0x3F) | invert_flag);
+            ula_dvi_fb_update(ula.ink, ula.paper, (char_data & 0x3F) | invert_flag, horizontalCounter*6, verticalCounter);
         }else{
             RGBS_TX = RGBS_CMD1(VAL_BLANK,1);
         }
@@ -588,14 +625,17 @@ void ula_init(void){
     //     xram[ADDR_LORES_SCR + 40*7 + i] =  0x80 | (0x20 + i);    
     // }
     //Capture IRQ vector on unitialised system
-    xram[0x0244] = 0xB8;    //CLV
-    xram[0x0245] = 0xA9;    //STA #AA
-    xram[0x0246] = 0xAA;
-    xram[0x0247] = 0x8D;    //STA $0101
-    xram[0x0248] = 0x01;
-    xram[0x0249] = 0x01;   
-    xram[0x024A] = 0x50;    //BVC -5
-    xram[0x024B] = 0xFB;
+    // xram[0x0244] = 0xB8;    //CLV
+    // xram[0x0245] = 0xA9;    //STA #AA
+    // xram[0x0246] = 0xAA;
+    // xram[0x0247] = 0x8D;    //STA $0201
+    // xram[0x0248] = 0x01;
+    // xram[0x0249] = 0x02;   
+    // xram[0x024A] = 0x50;    //BVC -5
+    // xram[0x024B] = 0xFB;
+    xram[0x244] = 0x6C;
+    xram[0x245] = 0xFC;
+    xram[0x246] = 0xFF;
     rgbs_pio_init();
     phi_pio_init();
     xread_pio_init();
@@ -625,6 +665,7 @@ void ula_init(void){
     gpio_put(MUX_PIN, false);
     gpio_put(WREN_PIN, false);
     
+    dvi_set_mode(&ula_dvi_mode);
     
     multicore_launch_core1(core1_loop);
 }
@@ -660,6 +701,7 @@ void ula_task(void){
     // for(uint8_t i=0; i < 8; i++){
     //     sprintf((char*)(&xram[ADDR_LORES_SCR]+(i+10)*40), "%08x %08x %08x %08x", xramw[4*i + 0], xramw[4*i + 1], xramw[4*i + 2], xramw[4*i + 3]);
     // }
+    /*
     uint8_t w100, r100, cnt = 0;
     if(addr==0x200){
         if(rnw == 0)
@@ -679,6 +721,9 @@ void ula_task(void){
         dma_hw->ch[xread_dma_addr_chan].write_addr,
         XREAD_PIO->fdebug
     );
+    */
+    //sprintf((char*)(&xram[ADDR_LORES_SCR]+27*40), "A:%04x D:%02x 0x200: %02x %02x", addr, data, xram[0x200], xram[0x201]);
+    //sprintf((char*)(&xram[ADDR_LORES_SCR]+27*40), "A:%04x 0x200: %02x %02x %02x %02x %02x", addr, xram[0x200], xram[0x201], cnt, r200, w200);
     // static uint8_t cnt=0;
     // if(XREAD_PIO->fdebug & 0x01000000){
     //     XREAD_PIO->fdebug = 0x01000000;
