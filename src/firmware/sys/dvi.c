@@ -13,6 +13,7 @@
 #include "main.h"
 #include "sys/dvi.h"
 #include "sys/mem.h"
+#include "hardware/clocks.h"
 #include "hardware/dma.h"
 #include "hardware/gpio.h"
 #include "hardware/irq.h"
@@ -23,8 +24,22 @@
 #include "pico/multicore.h"
 #include "pico/sem.h"
 #include <stdio.h>
+#include <string.h>
 
-volatile uint8_t framebuf[640];// xram
+volatile uint8_t dvi_framebuf[DVI_FB_HEIGHT][DVI_FB_WIDTH];
+
+dvi_mode_t default_mode = {
+    .pixel_format = dvi_4_rgb332,
+    .scale_x = 3,
+    .scale_y = 2,
+    .offset_x = 0,
+    .offset_y = 0
+
+};
+dvi_mode_t *dvi_mode = &default_mode;
+int32_t fb_mode_offset;
+uint32_t fb_mode_transfers;
+uint8_t fb_mode_vshift;
 
 // ----------------------------------------------------------------------------
 // DVI constants
@@ -140,25 +155,34 @@ static void dma_irq_handler() {
     dma_pong = !dma_pong;
 
     if (v_scanline >= MODE_V_FRONT_PORCH && v_scanline < (MODE_V_FRONT_PORCH + MODE_V_SYNC_WIDTH)) {
+        hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
         ch->read_addr = (uintptr_t)vblank_line_vsync_on;
         ch->transfer_count = count_of(vblank_line_vsync_on);
     } else if (v_scanline < MODE_V_FRONT_PORCH + MODE_V_SYNC_WIDTH + MODE_V_BACK_PORCH) {
+        hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
         ch->read_addr = (uintptr_t)vblank_line_vsync_off;
         ch->transfer_count = count_of(vblank_line_vsync_off);
     } else if (!vactive_cmdlist_posted) {
+        hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
         ch->read_addr = (uintptr_t)vactive_line;
         ch->transfer_count = count_of(vactive_line);
         vactive_cmdlist_posted = true;
     } else {
-        //ch->read_addr = (uintptr_t)&framebuf[(v_scanline - (MODE_V_TOTAL_LINES - MODE_V_ACTIVE_LINES)) * MODE_H_ACTIVE_PIXELS];
-        ch->read_addr = (uintptr_t)&framebuf[0]; //Testing - repeat one line
-        ch->transfer_count = MODE_H_ACTIVE_PIXELS / sizeof(uint32_t);
+        hw_clear_bits(&ch->al1_ctrl, 0x3 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);   //DMA_SIZE_8
+        ch->read_addr = (uintptr_t)&(dvi_framebuf[(v_scanline + fb_mode_offset)>>fb_mode_vshift]) + dvi_mode->offset_x;
+        ch->transfer_count = fb_mode_transfers;//
         vactive_cmdlist_posted = false;
     }
 
     if (!vactive_cmdlist_posted) {
-        v_scanline = (v_scanline + 1) % MODE_V_TOTAL_LINES;
+        if(++v_scanline >= MODE_V_TOTAL_LINES){
+            v_scanline = 0;
+        }
     }
+}
+
+void dvi_fb_clear(void){
+    memset((void*)dvi_framebuf, 0xE0, sizeof(dvi_framebuf));
 }
 
 void dvi_init(void){
@@ -171,13 +195,7 @@ void dvi_init(void){
         1  << HSTX_CTRL_EXPAND_TMDS_L0_NBITS_LSB |
         26 << HSTX_CTRL_EXPAND_TMDS_L0_ROT_LSB;
 
-    // Pixels (TMDS) come in 4 8-bit chunks. Control symbols (RAW) are an
-    // entire 32-bit word.
-    hstx_ctrl_hw->expand_shift =
-        4 << HSTX_CTRL_EXPAND_SHIFT_ENC_N_SHIFTS_LSB |
-        8 << HSTX_CTRL_EXPAND_SHIFT_ENC_SHIFT_LSB |
-        1 << HSTX_CTRL_EXPAND_SHIFT_RAW_N_SHIFTS_LSB |
-        0 << HSTX_CTRL_EXPAND_SHIFT_RAW_SHIFT_LSB;
+    dvi_set_mode(&default_mode);
 
     // Serial output config: clock period of 5 cycles, pop from command
     // expander every 5 cycles, shift the output shiftreg by 2 every cycle.
@@ -273,19 +291,50 @@ void dvi_init(void){
 
     bus_ctrl_hw->priority = BUSCTRL_BUS_PRIORITY_DMA_W_BITS | BUSCTRL_BUS_PRIORITY_DMA_R_BITS;
 
+    dvi_fb_clear();
+
     dma_channel_start(DMACH_PING);
 }
 
 void dvi_task(void){
-    static uint16_t x = 0;
+}
 
-    framebuf[x] = x & 0xFF; 
-    if(++x > 640){
-        x = 0;
+void dvi_set_mode(dvi_mode_t *mode){
+    dvi_mode = mode;
+    hstx_ctrl_hw->expand_shift =
+        dvi_mode->scale_x << HSTX_CTRL_EXPAND_SHIFT_ENC_N_SHIFTS_LSB |
+        8 << HSTX_CTRL_EXPAND_SHIFT_ENC_SHIFT_LSB |
+        1 << HSTX_CTRL_EXPAND_SHIFT_RAW_N_SHIFTS_LSB |
+        0 << HSTX_CTRL_EXPAND_SHIFT_RAW_SHIFT_LSB;
+
+    switch(dvi_mode->scale_x){
+        case(2):
+            fb_mode_transfers = MODE_H_ACTIVE_PIXELS / 2;
+            break;
+        case(3):
+            fb_mode_transfers = (MODE_H_ACTIVE_PIXELS / 3) + 1;
+            break;
+        default:
+            printf("DVI mode scale X = %d not supported\n", dvi_mode->scale_x);
+            break;
     }
+    switch(dvi_mode->scale_y){
+        case(1):
+            fb_mode_vshift = 0;
+            break;
+        case(2):
+            fb_mode_vshift = 1;
+            break;
+        default:
+            printf("DVI mode scale Y = %d not supported\n", dvi_mode->scale_y);
+            break;
+    }
+    fb_mode_offset = (dvi_mode->offset_y - (MODE_V_TOTAL_LINES - MODE_V_ACTIVE_LINES));
 }
 
 void dvi_print_status(void){
-    const char *msg = "DVI status placeholder";
-    puts(msg);
+    printf("DVI status\n PING:%08x\n PONG:%08x\n", dma_hw->ch[DMACH_PING].al1_ctrl, dma_hw->ch[DMACH_PONG].al1_ctrl);
+    printf(" HSTX clock:%ld\r\n", clock_get_hz(clk_hstx));
+    printf(" HSTX stat:%08x\n", hstx_fifo_hw->stat);
+    printf(" IRQ count:%08x\n", irq_count);
 }
