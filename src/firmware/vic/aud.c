@@ -19,8 +19,8 @@ uint8_t aud_sr[4];
 int8_t aud_val[4];
 uint16_t aud_lfsr;
 
-aud_union_t aud_counters;
-aud_union_t aud_ticks;
+volatile aud_union_t aud_counters;
+volatile aud_union_t aud_ticks;
 
 //TODO Unify with/import vic/vic.c/h definitions
 #define VIC_CRA xram[0x100A]
