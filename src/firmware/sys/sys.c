@@ -5,6 +5,7 @@
  */
 
 #include "main.h"
+#include "sys/clk.h"
 #include "sys/sys.h"
 #include "sys/dvi.h"
 #ifdef PIVIC
@@ -48,6 +49,7 @@ void sys_mon_status(const char *args, size_t len)
     (void)(args);
     (void)(len);
     sys_print_status();
+    clk_print_status();
     dvi_print_status();
 #ifdef PIVIC
     vic_print_status();
