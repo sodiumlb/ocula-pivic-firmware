@@ -16,14 +16,14 @@
 
 .wrap_target
 irq set 1        side 1 [0]  ; Signals start of phase 1 external to the PIO, i.e. to the main C program.
-irq next clear 1 side 1 [0]  ; Signals start of phase 1 internal to the PIO+1 (negative polarity irqy)
-irq next set   1 side 1 [12] ; Single pulse of clear. Multiple non-clearing waiters to synchronize
+irq next clear 1 side 1 [1]  ; Signals start of phase 1 internal to the PIO+1 (negative polarity irqy)
+irq next set   1 side 1 [11] ; Short pulse of clear. Multiple non-clearing waiters to synchronize
 nop              side 1 [14]
 nop              side 1 [14]
 nop              side 1 [14]
 nop              side 1 [11]
-irq next clear 0 side 0 [0]   ; Signals start of phase 2 internal to the PIO+1 (negative polarity irq)
-irq next set   0 side 0 [13]  ; Single pulse of clear. Multiple non-clearing waiters to synchronize
+irq next clear 0 side 0 [1]   ; Signals start of phase 2 internal to the PIO+1 (negative polarity irq)
+irq next set   0 side 0 [12]  ; Short pulse of clear. Multiple non-clearing waiters to synchronize
 nop              side 0 [14]
 nop              side 0 [14]
 nop              side 0 [14]
@@ -41,14 +41,14 @@ nop              side 0 [11]
 
 .wrap_target
 irq set 1        side 1 [0]  ; Signals start of phase 1 external to the PIO, i.e. to the main C program.
-irq next clear 1 side 1 [0]  ; Signals start of phase 1 internal to the PIO+1 (negative polarity irqy)
-irq next set   1 side 1 [14] ; Single pulse of clear. Multiple non-clearing waiters to synchronize
+irq next clear 1 side 1 [1]  ; Signals start of phase 1 internal to the PIO+1 (negative polarity irqy)
+irq next set   1 side 1 [13] ; Short pulse of clear. Multiple non-clearing waiters to synchronize
 nop              side 1 [14]
 nop              side 1 [14]
 nop              side 1 [14]
 nop              side 1 [14]
-irq next clear 0 side 0 [0]   ; Signals start of phase 2 internal to the PIO+1 (negative polarity irq)
-irq next set   0 side 0 [15]  ; Single pulse of clear. Multiple non-clearing waiters to synchronize
+irq next clear 0 side 0 [1]   ; Signals start of phase 2 internal to the PIO+1 (negative polarity irq)
+irq next set   0 side 0 [14]  ; Short pulse of clear. Multiple non-clearing waiters to synchronize
 nop              side 0 [14]
 nop              side 0 [14]
 nop              side 0 [14]
