@@ -11,6 +11,7 @@
 #include "hardware/clocks.h"
 #include "hardware/vreg.h"
 #include <stdbool.h>
+#include <stdio.h>
 
 void clk_init(void){
 #ifdef PIVIC
@@ -33,6 +34,9 @@ void clk_init(void){
     set_sys_clock_khz(138000, true);
 #endif
     
+}
+void clk_print_status(void){
+    printf("CLK sys_clk %ld\n",clock_get_hz(clk_sys));
 }
 
  
