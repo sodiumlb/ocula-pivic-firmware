@@ -19,13 +19,13 @@ void clk_init(void){
         case(VIC_MODE_NTSC):
         case(VIC_MODE_TEST_NTSC):
             set_sys_clock_khz(315000, true);
-            clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 315000000, 135000000);
+            clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 315000000, 315000000/2);
             break;
         case(VIC_MODE_PAL):
         case(VIC_MODE_TEST_PAL):
         default:
             set_sys_clock_khz(319200, true);
-            clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 319200000, 135000000);
+            clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 319200000, 319200000/2);
             break;
     }
 #endif
