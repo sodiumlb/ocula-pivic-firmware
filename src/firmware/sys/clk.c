@@ -32,7 +32,7 @@ void clk_init(void){
 #endif
 #ifdef OCULA
     set_sys_clock_khz(276000, true);
-    clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 276000000, 125000000);
+    clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 276000000, 276000000/2);
 #endif
     
 }
