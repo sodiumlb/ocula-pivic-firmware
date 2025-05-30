@@ -60,7 +60,7 @@ static void com_tx_task(void)
 void com_init(void)
 {
     gpio_set_function(COM_UART_TX_PIN, GPIO_FUNC_UART);
-    gpio_set_function(COM_UART_RX_PIN, GPIO_FUNC_UART);
+    //gpio_set_function(COM_UART_RX_PIN, GPIO_FUNC_UART);
     stdio_set_driver_enabled(&com_stdio_app, true);
     uart_init(COM_UART, COM_UART_BAUD_RATE);
 }
