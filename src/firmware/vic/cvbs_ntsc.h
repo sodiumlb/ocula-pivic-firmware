@@ -28,7 +28,7 @@
 #define CVBS_CMD_DC_RUN(L0,count) \
         (((count-2) << 10) | ((L0&0x1F) << 5)| CVBS_CMD_ID_DC_RUN)
 #define CVBS_CMD_PIXEL(L0,delay0,L1,delay1,L2) \
-        (((L2&0x1F) << 25) |  (((delay1-3)&0x1F) << 20) | ((L1&0x1F) << 15) | (((delay0-3)&0x1F) << 10) | ((L0&0x1F) << 5) | CVBS_CMD_ID_PIXEL)
+        (((L2&0x1F) << 25) |  (((delay1-2)&0x1F) << 20) | ((L1&0x1F) << 15) | (((delay0-2)&0x1F) << 10) | ((L0&0x1F) << 5) | CVBS_CMD_ID_PIXEL)
 #define CVBS_CMD_BURST(L0,L1,DC,delay,count) \
         (((DC&0x1F) << 25) | ((L1&0x1F) << 20) | ((L0&0x1F) << 15) | (((delay-1)&0x1F) << 10) | (((count-1)&0x1F) << 5) | CVBS_CMD_ID_BURST)
 
