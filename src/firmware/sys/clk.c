@@ -15,7 +15,7 @@
 
 void clk_init(void){
 #ifdef PIVIC
-    vreg_set_voltage(VREG_VOLTAGE_1_15);
+    vreg_set_voltage(VREG_VOLTAGE_1_20);
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
         case(VIC_MODE_TEST_NTSC):
