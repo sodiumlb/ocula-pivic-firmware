@@ -9,6 +9,7 @@
 #include "vic/aud.h"
 #include "vic/vic.h"
 #include "vic/vic_ntsc.h"
+#include "sys/dvi.h"
 #include "sys/mem.h"
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
@@ -27,6 +28,25 @@
 #define NTSC_VBLANK_END       9
 #define NTSC_NORM_LAST_LINE   261
 #define NTSC_INTL_LAST_LINE   262
+
+static const uint8_t ntsc_palette_rgb332[16] = {
+    0x00,   //Black
+    0xff,   //White
+    0x84,   //Red
+    0x9f,   //Cyan
+    0x66,   //Purple
+    0x75,   //Green
+    0x22,   //Blue
+    0xfd,   //Yellow
+    0x88,   //Orange
+    0xfa,   //LOrange
+    0xd2,   //Pink
+    0xdf,   //LCyan
+    0xf7,   //LPurple
+    0xbe,   //LGreen
+    0xb7,   //LBlue
+    0xfe    //LYellow
+};
 
 extern volatile uint32_t overruns;
 
@@ -48,6 +68,8 @@ void vic_core1_loop_ntsc(void) {
     uint8_t  verticalCellCounter = 0;    // 6-bit vertical cell counter (down counter)
     uint8_t  cellDepthCounter = 0;       // 4-bit cell depth counter (counts either from 0-7, or 0-15)
     uint8_t  halfLineCounter = 0;        // 1-bit half-line counter
+    uint16_t pixelCounter = 0; // DVI pixel counter
+    uint16_t lineCounter = 0;
 
     // Values normally fetched externally, from screen mem, colour RAM and char mem.
     uint8_t  cellIndex = 0;              // 8 bits fetched from screen memory.
@@ -186,6 +208,8 @@ void vic_core1_loop_ntsc(void) {
                         fetchState = FETCH_SCREEN_CODE;
                         break;
                 }
+                lineCounter = verticalCounter;
+
 
                 horizontalCounter++;
                 break;
@@ -460,6 +484,7 @@ void vic_core1_loop_ntsc(void) {
 
                 // And then reset HC.
                 horizontalCounter = 0;
+                pixelCounter = 0;
                 break;
 
             // HC=28 is when the 6560 increments the vertical counter (VC). The 1/2 line counter also
@@ -589,6 +614,10 @@ void vic_core1_loop_ntsc(void) {
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
                                 }
                                 // Nothing to do otherwise. Still in blanking if below 12.
                                 break;
@@ -608,6 +637,10 @@ void vic_core1_loop_ntsc(void) {
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[1]]);
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel6]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel7]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel8]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[1]];
                                     
                                     if (horizontalCounter == screen_origin_x) {
                                         // Last 4 pixels before first char renders are still border.
@@ -633,6 +666,10 @@ void vic_core1_loop_ntsc(void) {
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
                                 }
                                 else {
                                     pixel2 = pixel3 = pixel4 = pixel5 = pixel6 = pixel7 = pixel8 = 1;
@@ -661,6 +698,10 @@ void vic_core1_loop_ntsc(void) {
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel4]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel5]]);
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel2]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel3]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel4]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel5]];
                                 }
                                 
                                 // Toggle fetch state. Close matrix if HCC hits zero.
@@ -679,6 +720,9 @@ void vic_core1_loop_ntsc(void) {
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel6]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel7]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel8]];
                                 }
                                 
                                 // Calculate offset of data.
@@ -726,6 +770,7 @@ void vic_core1_loop_ntsc(void) {
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
                                     // New character starts 3 dot clock cycles after char data load. 
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel1]]);
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel1]];
                                 }
                                 
                                 // Increment the video matrix counter to next cell.

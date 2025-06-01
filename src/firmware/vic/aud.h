@@ -10,6 +10,7 @@
 
  #include "sys/mem.h"
  #include "pico/multicore.h"
+ #include <stdio.h>
 
 typedef union {
     uint32_t all;
@@ -17,8 +18,8 @@ typedef union {
 } aud_union_t;
 
 
-extern aud_union_t aud_counters;
-extern aud_union_t aud_ticks;
+extern volatile aud_union_t aud_counters;
+extern volatile aud_union_t aud_ticks;
 
  void aud_init(void);
  void aud_task(void);
@@ -29,13 +30,12 @@ extern aud_union_t aud_ticks;
  // Assembly version. Assumes running on other core than aud_task(), uses doorbell signaling
  void inline __attribute__((always_inline)) aud_tick_inline(void){
     //Running 4 separate tick and channel counters in packed 32 bit words
-    uint32_t tmp;
-    const uint32_t zero = 0;
-    const uint32_t one = 0x01010101;
+    uint32_t tmp,zero,one,upd;
     const uint32_t mask = 0x1F03070F;
-    const uint32_t *regs = (uint32_t*)(&xram[0x100a]);
-    uint32_t upd;
+    uint32_t *regs = (uint32_t*)(&xram[0x100a]);
     asm volatile (
+        "mov %[zero], #0x00000000\n\t"              //Create 4x zero vector
+        "mov %[one],  #0x01010101\n\t"              //Create 4x one vector
         "uadd8 %[tick], %[tick], %[one]\n\t"        //Increment ticks
         "and %[tmp], %[tick], %[mask]\n\t"          //Mask ticks lower bits for testing
         "ssub8 %[tmp], %[zero], %[tmp]\n\t"         //Idenitify ticks of interrest, if zero result GE bits are set
@@ -50,11 +50,12 @@ extern aud_union_t aud_ticks;
         : [tick] "+r" (aud_ticks.all),
           [cntr] "+r" (aud_counters.all),
           [tmp]  "=r" (tmp),
-          [upd]  "=r" (upd)
-        : [zero] "r"  (zero),          
-          [one]  "r"  (one),
-          [mask] "r"  (mask),
+          [upd]  "=r" (upd),
+          [zero] "=r" (zero),
+          [one]  "=r" (one)
+        : [mask] "r"  (mask),
           [regs] "m" (*(uint32_t(*))regs)
+        : "cc"                                      //Conditional flags clobbered
     );
     sio_hw->doorbell_out_set = upd & 0xF;           //Using RP2350 doorbells 0-3 to signal updates needed
 }

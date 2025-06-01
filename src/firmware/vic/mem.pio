@@ -15,7 +15,7 @@
 .out 8 right auto 8
 .wrap_target
     mov isr x           ; Base address to fetch from in the system
-    wait 0 irq 0   [29] ; sample address after phi1 falling edge 
+    wait 0 irq 0   [24] ; sample address after phi1 falling edge 
     in pins 14          ; Pull in rest of address from 6502
     out pins 8          ; Blocking till data returns. pindirs set elsewhere
 .wrap
