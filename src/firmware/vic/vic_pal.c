@@ -396,7 +396,8 @@ void vic_core1_loop_pal(void) {
                             case FETCH_IN_MATRIX_Y:
                             case FETCH_MATRIX_LINE:
                                 borderColour = border_colour_index;
-                                pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_REP(pal_palette[borderColour],2));
+                                pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 break;
@@ -406,7 +407,8 @@ void vic_core1_loop_pal(void) {
                             case FETCH_MATRIX_DLY_3:
                             case FETCH_MATRIX_DLY_4:
                                 borderColour = border_colour_index;
-                                pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_REP(pal_palette[borderColour],2));
+                                pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 fetchState++;
@@ -460,7 +462,10 @@ void vic_core1_loop_pal(void) {
                                 if (horizontalCounter > PAL_HBLANK_END) {
                                     // Output four border pixels.
                                     borderColour = border_colour_index;
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_REP(pal_palette[borderColour],4));
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
                                     dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                     dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                     dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
@@ -509,7 +514,10 @@ void vic_core1_loop_pal(void) {
                                 if (horizontalCounter > PAL_HBLANK_END) {
                                     // Output four border pixels.
                                     borderColour = border_colour_index;
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_REP(pal_palette[borderColour],4));
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
                                     dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                     dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                     dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];

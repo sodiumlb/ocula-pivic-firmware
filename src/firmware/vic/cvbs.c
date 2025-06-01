@@ -79,22 +79,6 @@ uint32_t pal_test_scanline_odd[] = {
    PAL_BREEZEWAY,
    PAL_COLBURST_O,
    PAL_BACKPORCH,
-   CVBS_REP(PAL_BLACK, 12),
-   CVBS_REP(PAL_WHITE, 12),
-   CVBS_REP(PAL_RED_O, 15),
-   CVBS_REP(PAL_CYAN_O, 15),
-   CVBS_REP(PAL_PURPLE_O, 15),
-   CVBS_REP(PAL_GREEN_O, 15),
-   CVBS_REP(PAL_BLUE_O, 15),
-   CVBS_REP(PAL_YELLOW_O, 15),
-   CVBS_REP(PAL_ORANGE_O, 15),
-   CVBS_REP(PAL_LORANGE_O, 15),
-   CVBS_REP(PAL_PINK_O, 15),
-   CVBS_REP(PAL_LCYAN_O, 15),
-   CVBS_REP(PAL_LPURPLE_O, 15),
-   CVBS_REP(PAL_LGREEN_O, 15),
-   CVBS_REP(PAL_LBLUE_O, 15),
-   CVBS_REP(PAL_LYELLOW_O, 15),
 };
 
 uint32_t ntsc_test_scanline_odd[] = {
@@ -111,22 +95,6 @@ uint32_t pal_test_scanline_even[] = {
    PAL_BREEZEWAY,
    PAL_COLBURST_E,
    PAL_BACKPORCH,
-   CVBS_REP(PAL_BLACK, 12),
-   CVBS_REP(PAL_WHITE, 12),
-   CVBS_REP(PAL_RED_E, 15),
-   CVBS_REP(PAL_CYAN_E, 15),
-   CVBS_REP(PAL_PURPLE_E, 15),
-   CVBS_REP(PAL_GREEN_E, 15),
-   CVBS_REP(PAL_BLUE_E, 15),
-   CVBS_REP(PAL_YELLOW_E, 15),
-   CVBS_REP(PAL_ORANGE_E, 15),
-   CVBS_REP(PAL_LORANGE_E, 15),
-   CVBS_REP(PAL_PINK_E, 15),
-   CVBS_REP(PAL_LCYAN_E, 15),
-   CVBS_REP(PAL_LPURPLE_E, 15),
-   CVBS_REP(PAL_LGREEN_E, 15),
-   CVBS_REP(PAL_LBLUE_E, 15),
-   CVBS_REP(PAL_LYELLOW_E, 15),
 };
 
 uint32_t ntsc_test_scanline_even[] = {
@@ -183,9 +151,29 @@ static const uint32_t ntsc_palette[8][16] = {
    NTSC_BLACK,NTSC_WHITE,NTSC_RED_7,NTSC_CYAN_7,NTSC_PURPLE_7,NTSC_GREEN_7,NTSC_BLUE_7,NTSC_YELLOW_7,NTSC_ORANGE_7,NTSC_LORANGE_7,NTSC_PINK_7,NTSC_LCYAN_7,NTSC_LPURPLE_7,NTSC_LGREEN_7,NTSC_LBLUE_7,NTSC_LYELLOW_7,
 };
 
+static const uint32_t pal_palette_o[16] = {
+   PAL_BLACK,PAL_WHITE,PAL_RED_O,PAL_CYAN_O,PAL_PURPLE_O,PAL_GREEN_O,PAL_BLUE_O,PAL_YELLOW_O,PAL_ORANGE_O,PAL_LORANGE_O,PAL_PINK_O,PAL_LCYAN_O,PAL_LPURPLE_O,PAL_LGREEN_O,PAL_LBLUE_O,PAL_LYELLOW_O
+};
+static const uint32_t pal_palette_e[16] = {
+   PAL_BLACK,PAL_WHITE,PAL_RED_E,PAL_CYAN_E,PAL_PURPLE_E,PAL_GREEN_E,PAL_BLUE_E,PAL_YELLOW_E,PAL_ORANGE_E,PAL_LORANGE_E,PAL_PINK_E,PAL_LCYAN_E,PAL_LPURPLE_E,PAL_LGREEN_E,PAL_LBLUE_E,PAL_LYELLOW_E
+};
+
 void cvbs_pio_dotclk_init(void){
-   uint offset = pio_add_program(CVBS_DOTCLK_PIO, &cvbs_dotclk_program);
-   pio_sm_config config = cvbs_dotclk_program_get_default_config(offset);   
+   uint offset;
+   pio_sm_config config;
+   switch(cvbs_mode){
+      case(VIC_MODE_NTSC):
+      case(VIC_MODE_TEST_NTSC):
+         offset = pio_add_program(CVBS_DOTCLK_PIO, &cvbs_dotclk_ntsc_program);
+         config = cvbs_dotclk_ntsc_program_get_default_config(offset);   
+         break;
+      case(VIC_MODE_PAL):
+      case(VIC_MODE_TEST_PAL):
+      default:
+         offset = pio_add_program(CVBS_DOTCLK_PIO, &cvbs_dotclk_pal_program);
+         config = cvbs_dotclk_pal_program_get_default_config(offset);   
+         break;
+      }
    pio_sm_init(CVBS_DOTCLK_PIO, CVBS_DOTCLK_SM, offset, &config);
    pio_sm_set_enabled(CVBS_DOTCLK_PIO, CVBS_DOTCLK_SM, true);   
 }
@@ -194,7 +182,7 @@ void cvbs_pio_mode_init(void){
    pio_set_gpio_base (CVBS_PIO, CVBS_PIN_OFFS);
    for(uint32_t i = 0; i < 5; i++){
       pio_gpio_init(CVBS_PIO, CVBS_PIN_BASE+i);
-      gpio_set_drive_strength(CVBS_PIN_BASE+i, GPIO_DRIVE_STRENGTH_2MA);
+      gpio_set_drive_strength(CVBS_PIN_BASE+i, GPIO_DRIVE_STRENGTH_8MA);
       gpio_set_slew_rate(CVBS_PIN_BASE+i, GPIO_SLEW_RATE_SLOW);
    }
    pio_sm_set_consecutive_pindirs(CVBS_PIO, CVBS_SM, CVBS_PIN_BASE, 5, true);
@@ -205,16 +193,15 @@ void cvbs_pio_mode_init(void){
       case(VIC_MODE_TEST_NTSC):
          offset = pio_add_program(CVBS_PIO, &cvbs_ntsc_program);
          config = cvbs_ntsc_program_get_default_config(offset);
-         sm_config_set_out_shift(&config, true, true, 30); 
          break;
       case(VIC_MODE_PAL):
       case(VIC_MODE_TEST_PAL):
       default:
-         offset = pio_add_program(CVBS_PIO, &cvbs_program);
-         config = cvbs_program_get_default_config(offset);
-         sm_config_set_out_shift(&config, true, true, 27); 
+         offset = pio_add_program(CVBS_PIO, &cvbs_pal_program);
+         config = cvbs_pal_program_get_default_config(offset);
          break;
       }
+   sm_config_set_out_shift(&config, true, true, 30); 
    sm_config_set_out_pins(&config, CVBS_PIN_BASE, 5);             
    sm_config_set_fifo_join(&config, PIO_FIFO_JOIN_TX);
    pio_sm_init(CVBS_PIO, CVBS_SM, offset, &config);
@@ -225,18 +212,30 @@ void cvbs_pio_mode_init(void){
 
 void cvbs_test_img_pal(void){
    static uint32_t i = 0;
+   static uint32_t j = 0;
    static uint32_t lines = 0;
    while(!pio_sm_is_tx_fifo_full(CVBS_PIO,CVBS_SM)){
       //pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_CMD(rev5bit[i],rev5bit[i],rev5bit[i],rev5bit[i],6,40));
-      if(lines < 285){  
-         if(lines & 1u){
-            pio_sm_put(CVBS_PIO, CVBS_SM, pal_test_scanline_odd[i++]);
+      if(lines < 285){
+         if(i < count_of(pal_test_scanline_odd)){   //Assuming same length  
+            if(lines & 1u){
+               pio_sm_put(CVBS_PIO, CVBS_SM, pal_test_scanline_odd[i++]);
+            }else{
+               pio_sm_put(CVBS_PIO, CVBS_SM, pal_test_scanline_even[i++]);
+            }
          }else{
-            pio_sm_put(CVBS_PIO, CVBS_SM, pal_test_scanline_even[i++]);
-         }
-         if(i >= count_of(pal_test_scanline_odd)){  //Assuming same length
-            i = 0;
-            lines++;
+            if(j >= 234){
+               i = 0;
+               j = 0;
+               lines++;
+            }else{
+               if(lines & 1u){
+                  pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette_o[(j>>3)&0xF]);
+               }else{
+                  pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette_e[(j>>3)&0xF]);
+               }
+               j++;
+            }
          }
       }else if(lines < 293){ 
          //8 lines block
