@@ -46,7 +46,7 @@ volatile uint32_t overruns = 0;
 dvi_mode_t vic_pal_mode = {
     .pixel_format = dvi_4_rgb332,
     .scale_x = 3,
-    .scale_y = 1,
+    .scale_y = 2,
     .offset_x = 8,
     .offset_y = 80
 };
