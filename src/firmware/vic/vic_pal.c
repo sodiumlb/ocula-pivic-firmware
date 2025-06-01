@@ -9,6 +9,7 @@
 #include "vic/aud.h"
 #include "vic/vic.h"
 #include "vic/vic_pal.h"
+#include "sys/dvi.h"
 #include "sys/mem.h"
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
@@ -65,6 +66,27 @@ uint32_t pal_palette_e[16] = {
     PAL_LYELLOW_E
 };
 
+//For DVI output
+//TODO This is currently using NTSC based colours - needs to be adjusted
+static const uint8_t pal_palette_rgb332[16] = {
+    0x00,   //Black
+    0xff,   //White
+    0x84,   //Red
+    0x9f,   //Cyan
+    0x66,   //Purple
+    0x75,   //Green
+    0x22,   //Blue
+    0xfd,   //Yellow
+    0x88,   //Orange
+    0xfa,   //LOrange
+    0xd2,   //Pink
+    0xdf,   //LCyan
+    0xf7,   //LPurple
+    0xbe,   //LGreen
+    0xb7,   //LBlue
+    0xfe    //LYellow
+};
+
 extern volatile uint32_t overruns;
 
 /**
@@ -85,16 +107,19 @@ void vic_core1_loop_pal(void) {
     uint8_t  verticalCellCounter = 0;    // 6-bit vertical cell counter (down counter)
     uint8_t  cellDepthCounter = 0;       // 4-bit cell depth counter (counts either from 0-7, or 0-15)
 
+    uint16_t dvi_pixel = 0;              // DVI pixel output index
+    uint16_t dvi_line = 0;               // DVI line output index
+
     // Values normally fetched externally, from screen mem, colour RAM and char mem.
     uint8_t  cellIndex = 0;              // 8 bits fetched from screen memory.
     uint8_t  charData = 0;               // 8 bits of bitmap data fetched from character memory.
     uint8_t  colourData = 0;             // 4 bits fetched from colour memory (top bit multi/hires mode)
 
-    // CVBS command for the current border colour.
-    uint32_t borderColour = 0;
+    // Palette index for the current border colour.
+    uint8_t borderColour = 0;
 
-    // Holds the colour commands for each of the current multi colour colours.
-    uint32_t multiColourTable[4] = { 0, 0, 0, 0};
+    // Holds the palette index for each of the current multi colour colours.
+    uint8_t multiColourTable[4] = { 0, 0, 0, 0};
 
     // Every cpu cycle, we output four pixels. The values are temporarily stored in these vars.
     uint8_t pixel1 = 0;
@@ -244,7 +269,8 @@ void vic_core1_loop_pal(void) {
                         pio_sm_put(CVBS_PIO, CVBS_SM, PAL_SHORT_SYNC_H);
                     }
                 }
-
+                dvi_line = verticalCounter;
+                dvi_pixel = 0;
                 horizontalCounter++;
                 break;
         
@@ -369,41 +395,47 @@ void vic_core1_loop_pal(void) {
                             case FETCH_OUTSIDE_MATRIX:
                             case FETCH_IN_MATRIX_Y:
                             case FETCH_MATRIX_LINE:
-                                borderColour = pal_palette[border_colour_index];
-                                pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                                borderColour = border_colour_index;
+                                pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_REP(pal_palette[borderColour],2));
+                                dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
+                                dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 break;
                                 
                             case FETCH_MATRIX_DLY_1:
                             case FETCH_MATRIX_DLY_2:
                             case FETCH_MATRIX_DLY_3:
                             case FETCH_MATRIX_DLY_4:
-                                borderColour = pal_palette[border_colour_index];
-                                pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                                borderColour = border_colour_index;
+                                pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_REP(pal_palette[borderColour],2));
+                                dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
+                                dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 fetchState++;
                                 break;
                                 
                             case FETCH_SCREEN_CODE:
                                 // Look up latest background, border and auxiliary colours.
-                                multiColourTable[0] = pal_palette[background_colour_index];
-                                multiColourTable[1] = pal_palette[border_colour_index];
-                                multiColourTable[3] = pal_palette[auxiliary_colour_index];
+                                multiColourTable[0] = background_colour_index;
+                                multiColourTable[1] = border_colour_index;
+                                multiColourTable[3] = auxiliary_colour_index;
                                 
-                                pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel2]);
-                                pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel3]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel2]]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel3]]);
+                                dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel2]];
+                                dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel3]];
                                 
                                 fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
                                 break;
                           
                             case FETCH_CHAR_DATA:
                                 // Look up latest background, border and auxiliary colours.
-                                multiColourTable[0] = pal_palette[background_colour_index];
-                                multiColourTable[1] = pal_palette[border_colour_index];
-                                multiColourTable[3] = pal_palette[auxiliary_colour_index];
+                                multiColourTable[0] = background_colour_index;
+                                multiColourTable[1] = border_colour_index;
+                                multiColourTable[3] = auxiliary_colour_index;
                                 
-                                pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel6]);
-                                pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel7]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel6]]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel7]]);
+                                dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel6]];
+                                dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel7]];
                                 
                                 // If the matrix hasn't yet closed, then in the FETCH_CHAR_DATA 
                                 // state, we need to keep incrementing the video matrix counter
@@ -427,11 +459,12 @@ void vic_core1_loop_pal(void) {
                             case FETCH_OUTSIDE_MATRIX:
                                 if (horizontalCounter > PAL_HBLANK_END) {
                                     // Output four border pixels.
-                                    borderColour = pal_palette[border_colour_index];
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                                    borderColour = border_colour_index;
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_REP(pal_palette[borderColour],4));
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 }
                                 // Nothing to do otherwise. Still in blanking if below 12.
                                 break;
@@ -442,15 +475,19 @@ void vic_core1_loop_pal(void) {
                                     // Look up very latest background, border and auxiliary colour values. This
                                     // should not include an update to the foreground colour, as that will not 
                                     // have changed.
-                                    multiColourTable[0] = pal_palette[background_colour_index];
-                                    multiColourTable[1] = pal_palette[border_colour_index];
-                                    multiColourTable[3] = pal_palette[auxiliary_colour_index];
+                                    multiColourTable[0] = background_colour_index;
+                                    multiColourTable[1] = border_colour_index;
+                                    multiColourTable[3] = auxiliary_colour_index;
                                     
                                     // Last three pixels of previous char data, or border pixels. 4th pixel always border.
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel6]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel7]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel8]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[1]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel6]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel7]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel8]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[1]]);
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel6]];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel7]];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel8]];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[1]];
                                     
                                     if (horizontalCounter == screen_origin_x) {
                                         // Last 4 pixels before first char renders are still border.
@@ -471,11 +508,12 @@ void vic_core1_loop_pal(void) {
                             case FETCH_MATRIX_DLY_4:
                                 if (horizontalCounter > PAL_HBLANK_END) {
                                     // Output four border pixels.
-                                    borderColour = pal_palette[border_colour_index];
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, borderColour);
+                                    borderColour = border_colour_index;
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_REP(pal_palette[borderColour],4));
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 }
                                 else {
                                     pixel2 = pixel3 = pixel4 = pixel5 = pixel6 = pixel7 = pixel8 = 1;
@@ -494,16 +532,20 @@ void vic_core1_loop_pal(void) {
                                 colourData = xram[colour_mem_start + videoMatrixCounter];
                                 
                                 // Look up very latest background, border and auxiliary colour values.
-                                multiColourTable[0] = pal_palette[background_colour_index];
-                                multiColourTable[1] = pal_palette[border_colour_index];
-                                multiColourTable[3] = pal_palette[auxiliary_colour_index];
+                                multiColourTable[0] = background_colour_index;
+                                multiColourTable[1] = border_colour_index;
+                                multiColourTable[3] = auxiliary_colour_index;
                             
-                                // Output the 4 pixels for this cycle.
+                                // Output the 4 pixels for this cycle (usually second 4 pixels of a character).
                                 if (horizontalCounter > PAL_HBLANK_END) {
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel2]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel3]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel4]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel5]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel2]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel3]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel4]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel5]]);
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel2]];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel3]];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel4]];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel5]];
                                 }
                                 
                                 // Toggle fetch state. Close matrix if HCC hits zero.
@@ -512,15 +554,18 @@ void vic_core1_loop_pal(void) {
                                 
                             case FETCH_CHAR_DATA:
                                 // Look up very latest background, border and auxiliary colour values.
-                                multiColourTable[0] = pal_palette[background_colour_index];
-                                multiColourTable[1] = pal_palette[border_colour_index];
-                                multiColourTable[3] = pal_palette[auxiliary_colour_index];
+                                multiColourTable[0] = background_colour_index;
+                                multiColourTable[1] = border_colour_index;
+                                multiColourTable[3] = auxiliary_colour_index;
                                 
                                 if (horizontalCounter > PAL_HBLANK_END) {
                                     // Last three pixels of previous char data, or border pixels.
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel6]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel7]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel8]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel6]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel7]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel8]]);
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel6]];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel7]];
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel8]];
                                 }
                                 
                                 // Calculate offset of data.
@@ -562,12 +607,13 @@ void vic_core1_loop_pal(void) {
                                 }
                                 
                                 // Look up foreground colour before first pixel.
-                                multiColourTable[2] = pal_palette[colourData & 0x07];
+                                multiColourTable[2] = colourData & 0x07;
                                 
                                 // Output the first pixel of the character.
                                 if (horizontalCounter > PAL_HBLANK_END) {
                                     // New character starts 3 dot clock cycles after char data load. 
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, multiColourTable[pixel1]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel1]]);
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel1]];
                                 }
                                 
                                 // Increment the video matrix counter to next cell.
