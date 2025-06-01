@@ -29,7 +29,7 @@ void pot_init(void){
     config = pwm_get_default_config();
     pwm_config_set_clkdiv_mode(&config, PWM_DIV_B_HIGH);     //Count when high
 
-    //PWM counter is running at 4x the Phi clock rate as
+    //PWM counter is running at 4x the Phi clock rate as default
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
         case(VIC_MODE_TEST_NTSC):
@@ -68,10 +68,10 @@ void pot_task(void){
             pot_timer = delayed_by_us(get_absolute_time(), 256);
         }
     }
-    if(absolute_time_diff_us(get_absolute_time(), print_timer) < 0){
-        printf("POTX %d\n", pot_x_counter);
-        print_timer = delayed_by_ms(get_absolute_time(), 500);        
-    }
+    // if(absolute_time_diff_us(get_absolute_time(), print_timer) < 0){
+    //     printf("POTX %d\n", pot_x_counter);
+    //     print_timer = delayed_by_ms(get_absolute_time(), 500);        
+    // }
 }
  
 void pot_print_status(void){
