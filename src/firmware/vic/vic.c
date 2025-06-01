@@ -43,6 +43,22 @@
 
 volatile uint32_t overruns = 0;
 
+dvi_mode_t vic_pal_mode = {
+    .pixel_format = dvi_4_rgb332,
+    .scale_x = 3,
+    .scale_y = 1,
+    .offset_x = 8,
+    .offset_y = 80
+};
+
+dvi_mode_t vic_ntsc_mode = {
+    .pixel_format = dvi_4_rgb332,
+    .scale_x = 3,
+    .scale_y = 2,
+    .offset_x = -7,
+    .offset_y = 40
+};
+
 
 void vic_pio_init(void) {
     //Make PHI PIN possible to also sample as input
@@ -166,11 +182,9 @@ void vic_init(void) {
     switch(cfg_get_mode()){
         case(VIC_MODE_PAL):
             dvi_set_mode(&vic_pal_mode);
-            dvi_set_mode(&vic_pal_mode);
             multicore_launch_core1(vic_core1_loop_pal);
             break;
         case(VIC_MODE_NTSC):
-            dvi_set_mode(&vic_ntsc_mode);
             dvi_set_mode(&vic_ntsc_mode);
             multicore_launch_core1(vic_core1_loop_ntsc);
             break;
