@@ -81,8 +81,9 @@
 #define FETCH_MATRIX_DLY_2    5
 #define FETCH_MATRIX_DLY_3    6
 #define FETCH_MATRIX_DLY_4    7
-#define FETCH_SCREEN_CODE     8
-#define FETCH_CHAR_DATA       9
+#define FETCH_MATRIX_DLY_5    8
+#define FETCH_SCREEN_CODE     9
+#define FETCH_CHAR_DATA       10
 
 void vic_init(void);
 void vic_task(void);

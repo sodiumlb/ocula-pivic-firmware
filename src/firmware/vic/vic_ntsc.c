@@ -198,6 +198,7 @@ void vic_core1_loop_ntsc(void) {
                     case FETCH_MATRIX_DLY_2:
                     case FETCH_MATRIX_DLY_3:
                     case FETCH_MATRIX_DLY_4:
+                    case FETCH_MATRIX_DLY_5:
                         fetchState++;
                         break;
                     case FETCH_SCREEN_CODE:
@@ -302,6 +303,7 @@ void vic_core1_loop_ntsc(void) {
                     case FETCH_MATRIX_DLY_2:
                     case FETCH_MATRIX_DLY_3:
                     case FETCH_MATRIX_DLY_4:
+                    case FETCH_MATRIX_DLY_5:
                         fetchState++;
                         break;
                     // In theory, the following states should not be possible at this point.
@@ -442,6 +444,7 @@ void vic_core1_loop_ntsc(void) {
                     case FETCH_MATRIX_DLY_2:
                     case FETCH_MATRIX_DLY_3:
                     case FETCH_MATRIX_DLY_4:
+                    case FETCH_MATRIX_DLY_5:
                         fetchState++;
                         break;
                     case FETCH_SCREEN_CODE:
@@ -471,6 +474,7 @@ void vic_core1_loop_ntsc(void) {
                     case FETCH_MATRIX_DLY_2:
                     case FETCH_MATRIX_DLY_3:
                     case FETCH_MATRIX_DLY_4:
+                    case FETCH_MATRIX_DLY_5:
                         fetchState++;
                         break;
                     case FETCH_SCREEN_CODE:
@@ -577,6 +581,7 @@ void vic_core1_loop_ntsc(void) {
                             case FETCH_MATRIX_DLY_2:
                             case FETCH_MATRIX_DLY_3:
                             case FETCH_MATRIX_DLY_4:
+                            case FETCH_MATRIX_DLY_5:
                                 fetchState++;
                                 break;
                                 
@@ -659,6 +664,7 @@ void vic_core1_loop_ntsc(void) {
                             case FETCH_MATRIX_DLY_2:
                             case FETCH_MATRIX_DLY_3:
                             case FETCH_MATRIX_DLY_4:
+                            case FETCH_MATRIX_DLY_5:
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
                                     // Output border pixels.
                                     borderColourIndex = border_colour_index;
@@ -803,6 +809,7 @@ void vic_core1_loop_ntsc(void) {
                         case FETCH_MATRIX_DLY_2:
                         case FETCH_MATRIX_DLY_3:
                         case FETCH_MATRIX_DLY_4:
+                        case FETCH_MATRIX_DLY_5:
                             fetchState++;
                             break;
                         case FETCH_SCREEN_CODE:

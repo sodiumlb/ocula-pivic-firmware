@@ -214,6 +214,7 @@ void vic_core1_loop_pal(void) {
                     case FETCH_MATRIX_DLY_2:
                     case FETCH_MATRIX_DLY_3:
                     case FETCH_MATRIX_DLY_4:
+                    case FETCH_MATRIX_DLY_5:
                         fetchState++;
                         break;
                     case FETCH_SCREEN_CODE:
@@ -362,6 +363,7 @@ void vic_core1_loop_pal(void) {
                     case FETCH_MATRIX_DLY_2:
                     case FETCH_MATRIX_DLY_3:
                     case FETCH_MATRIX_DLY_4:
+                    case FETCH_MATRIX_DLY_5:
                         fetchState++;
                         break;
                     // In theory, the following states should not be possible at this point.
@@ -406,6 +408,7 @@ void vic_core1_loop_pal(void) {
                             case FETCH_MATRIX_DLY_2:
                             case FETCH_MATRIX_DLY_3:
                             case FETCH_MATRIX_DLY_4:
+                            case FETCH_MATRIX_DLY_5:
                                 borderColour = border_colour_index;
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
@@ -511,6 +514,7 @@ void vic_core1_loop_pal(void) {
                             case FETCH_MATRIX_DLY_2:
                             case FETCH_MATRIX_DLY_3:
                             case FETCH_MATRIX_DLY_4:
+                            case FETCH_MATRIX_DLY_5:
                                 if (horizontalCounter > PAL_HBLANK_END) {
                                     // Output four border pixels.
                                     borderColour = border_colour_index;
@@ -654,6 +658,7 @@ void vic_core1_loop_pal(void) {
                         case FETCH_MATRIX_DLY_2:
                         case FETCH_MATRIX_DLY_3:
                         case FETCH_MATRIX_DLY_4:
+                        case FETCH_MATRIX_DLY_5:
                             fetchState++;
                             break;
                         case FETCH_SCREEN_CODE:
