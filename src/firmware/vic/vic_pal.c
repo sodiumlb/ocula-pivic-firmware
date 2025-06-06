@@ -150,6 +150,9 @@ void vic_core1_loop_pal(void) {
     // Slight hack so that VC increments to 0 on first iteration.
     verticalCounter = 0xFFFF;
 
+    //FIFO Back pressure. Preemtively added - uncomment and adjust if chroma stretching issues show up
+    //pio_sm_put(CVBS_PIO,CVBS_SM,CVBS_CMD_PAL_DC_RUN(18,38)); 
+
     while (1) {
         // Poll for PIO IRQ 1. This is the rising edge of F1.
         while (!pio_interrupt_get(VIC_PIO, 1)) {
