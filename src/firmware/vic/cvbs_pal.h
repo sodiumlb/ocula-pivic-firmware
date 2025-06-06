@@ -36,7 +36,6 @@
         ((cmd & ~(0x1F<<10)) | ((delay-1)&0x1F)<<10)
 
 #define PAL_HSYNC        CVBS_CMD_PAL_DC_RUN( 0,20)
-#define PAL_BLANK        CVBS_CMD_PAL_DC_RUN(18,200)
 #define PAL_FRONTPORCH   CVBS_CMD_PAL_DC_RUN(18, 8)
 #define PAL_FRONTPORCH_1 CVBS_CMD_PAL_DC_RUN(18, 2)    // First two in second half of HC=70
 #define PAL_FRONTPORCH_2 CVBS_CMD_PAL_DC_RUN(18, 6)    // Other six in HC=0 up to HC=1.5
@@ -53,7 +52,7 @@
 #define PAL_SHORT_SYNC_L CVBS_CMD_PAL_DC_RUN( 0,  9)
 #define PAL_SHORT_SYNC_H CVBS_CMD_PAL_DC_RUN(18,133)
 
-#define PAL_BLANKING     CVBS_CMD_PAL_DC_RUN(18,234)
+#define PAL_BLANKING     CVBS_CMD_PAL_DC_RUN(18,232)
 
 //"Tobias" colours - approximated
 #define PAL_BLACK	 CVBS_CMD_PAL_PIXEL(18,18,18, 3,18)
