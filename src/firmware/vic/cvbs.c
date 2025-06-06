@@ -158,26 +158,6 @@ static const uint32_t pal_palette_e[16] = {
    PAL_BLACK,PAL_WHITE,PAL_RED_E,PAL_CYAN_E,PAL_PURPLE_E,PAL_GREEN_E,PAL_BLUE_E,PAL_YELLOW_E,PAL_ORANGE_E,PAL_LORANGE_E,PAL_PINK_E,PAL_LCYAN_E,PAL_LPURPLE_E,PAL_LGREEN_E,PAL_LBLUE_E,PAL_LYELLOW_E
 };
 
-void cvbs_pio_dotclk_init(void){
-   uint offset;
-   pio_sm_config config;
-   switch(cvbs_mode){
-      case(VIC_MODE_NTSC):
-      case(VIC_MODE_TEST_NTSC):
-         offset = pio_add_program(CVBS_DOTCLK_PIO, &cvbs_dotclk_ntsc_program);
-         config = cvbs_dotclk_ntsc_program_get_default_config(offset);   
-         break;
-      case(VIC_MODE_PAL):
-      case(VIC_MODE_TEST_PAL):
-      default:
-         offset = pio_add_program(CVBS_DOTCLK_PIO, &cvbs_dotclk_pal_program);
-         config = cvbs_dotclk_pal_program_get_default_config(offset);   
-         break;
-      }
-   pio_sm_init(CVBS_DOTCLK_PIO, CVBS_DOTCLK_SM, offset, &config);
-   pio_sm_set_enabled(CVBS_DOTCLK_PIO, CVBS_DOTCLK_SM, true);   
-}
-
 void cvbs_pio_mode_init(void){ 
    pio_set_gpio_base (CVBS_PIO, CVBS_PIN_OFFS);
    for(uint32_t i = 0; i < 5; i++){
@@ -407,7 +387,6 @@ void cvbs_test_loop_pal(void){
 void cvbs_init(void){
    cvbs_mode = cfg_get_mode();
    cvbs_pio_mode_init();   //Needs to be first
-   cvbs_pio_dotclk_init();
    switch(cvbs_mode){
       case(VIC_MODE_TEST_PAL):
          multicore_launch_core1(cvbs_test_loop_pal);

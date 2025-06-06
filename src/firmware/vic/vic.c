@@ -73,21 +73,28 @@ void vic_pio_init(void) {
     pio_sm_set_consecutive_pindirs(VIC_PIO, VIC_SM, VIC_PIN_BASE, 1, true);
     uint offset;
     pio_sm_config config;
+    uint16_t dot_div;
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
         case(VIC_MODE_TEST_NTSC):
             offset = pio_add_program(VIC_PIO, &clkgen_ntsc_program);
             config = clkgen_ntsc_program_get_default_config(offset);
+            dot_div = 77;
             break;
         case(VIC_MODE_PAL):
         case(VIC_MODE_TEST_PAL):
             offset = pio_add_program(VIC_PIO, &clkgen_pal_program);
             config = clkgen_pal_program_get_default_config(offset);
+            dot_div = 72;
             break;
         }
     sm_config_set_sideset_pin_base(&config, VIC_PIN_BASE);
     pio_sm_init(VIC_PIO, VIC_SM, offset, &config);
-    pio_sm_set_enabled(VIC_PIO, VIC_SM, true);   
+    offset = pio_add_program(VIC_DOTCLK_PIO, &clkgen_dot_program);
+    config = clkgen_dot_program_get_default_config(offset);
+    sm_config_set_clkdiv_int_frac(&config, dot_div, 0);
+    pio_sm_init(VIC_DOTCLK_PIO, VIC_DOTCLK_SM, offset, &config);
+    pio_set_sm_mask_enabled(VIC_PIO, (1u << VIC_SM) | (1u << VIC_DOTCLK_SM), true);
     printf("VIC init done\n");
 }
 

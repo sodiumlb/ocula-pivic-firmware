@@ -54,3 +54,11 @@ nop              side 0 [14]
 nop              side 0 [14]
 nop              side 0 [14]
 .wrap
+
+; Common dot clock generator. Kept with VIC clkgen to ensure deterministic phase relation
+; Works by applying clock_div in init function to the correct divider (e.g. 77 for NTSC, 72 for PAL)
+.program clkgen_dot
+
+.wrap_target
+irq prev set 1
+.wrap

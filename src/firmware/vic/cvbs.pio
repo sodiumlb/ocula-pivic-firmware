@@ -49,15 +49,6 @@ postdelay:
     jmp y-- postdelay
 .wrap
 
-;Dot clock generation
-;Creating 38.5 period with 77 cycles at sys_clk rate
-.program cvbs_dotclk_ntsc
-.wrap_target
-    irq set 1 [29]
-    nop       [29]
-    nop       [16]
-.wrap
-
 
 ; NTSC CVBS synthesizer
 ; A set of different commands selected with the lower 5 bits in each
@@ -122,16 +113,6 @@ burst_loop:
     irq clear 1        ;Make sure we are able to sync
     wait 1 irq 1       ;Wait for dotclock
     out pc 5           ;Next command (new word)
-
-
-;PAL Dot clock generation
-;Creating 36 cycles period
-.program cvbs_dotclk_pal
-.clock_div 2.0
-.wrap_target
-    irq set 1 [17]
-    nop       [17]
-.wrap
 
 
 ; PAL CVBS synthesizer
