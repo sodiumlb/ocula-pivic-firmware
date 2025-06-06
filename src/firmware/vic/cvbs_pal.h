@@ -43,8 +43,8 @@
 #define PAL_BREEZEWAY    CVBS_CMD_PAL_DC_RUN(18, 3)    // Actual breezeway this delay + burst command delay
 #define PAL_BACKPORCH    CVBS_CMD_PAL_DC_RUN(18, 4)
 
-#define PAL_COLBURST_O	 CVBS_CMD_PAL_BURST( 6,12,18,14,14)
-#define PAL_COLBURST_E	 CVBS_CMD_PAL_BURST(12, 6,18, 5,14)
+#define PAL_COLBURST_O	 CVBS_CMD_PAL_BURST( 6,12,18,14,16)
+#define PAL_COLBURST_E	 CVBS_CMD_PAL_BURST(12, 6,18, 5,16)
 
 // Vertical blanking and sync.
 // TODO: From original cvbs.c code. Doesn't match VIC chip timings.
