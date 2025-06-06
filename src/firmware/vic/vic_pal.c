@@ -645,7 +645,7 @@ void vic_core1_loop_pal(void) {
                                 multiColourTable[2] = colourData & 0x07;
                                 
                                 // Output the first pixel of the character.
-                                if (horizontalCounter > PAL_HBLANK_END) {
+                                if (horizontalCounter >= PAL_HBLANK_END) {
                                     // New character starts 3 dot clock cycles after char data load. 
                                     pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel1]]);
                                     dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel1]];
