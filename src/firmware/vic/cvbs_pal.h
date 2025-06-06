@@ -40,7 +40,7 @@
 #define PAL_FRONTPORCH   CVBS_CMD_PAL_DC_RUN(18, 8)
 #define PAL_FRONTPORCH_1 CVBS_CMD_PAL_DC_RUN(18, 2)    // First two in second half of HC=70
 #define PAL_FRONTPORCH_2 CVBS_CMD_PAL_DC_RUN(18, 6)    // Other six in HC=0 up to HC=1.5
-#define PAL_BREEZEWAY    CVBS_CMD_PAL_DC_RUN(18, 4)
+#define PAL_BREEZEWAY    CVBS_CMD_PAL_DC_RUN(18, 3)    // Actual breezeway this delay + burst command delay
 #define PAL_BACKPORCH    CVBS_CMD_PAL_DC_RUN(18, 4)
 
 #define PAL_COLBURST_O	 CVBS_CMD_PAL_BURST( 6,12,18,14,14)
