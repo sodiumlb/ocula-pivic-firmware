@@ -66,6 +66,43 @@ uint32_t pal_palette_e[16] = {
     PAL_LYELLOW_E
 };
 
+uint32_t pal_trunc_palette_o[16] = {
+    PAL_TRUNC_BLACK,
+    PAL_TRUNC_WHITE,
+    PAL_TRUNC_RED_O,
+    PAL_TRUNC_CYAN_O,
+    PAL_TRUNC_PURPLE_O,
+    PAL_TRUNC_GREEN_O,
+    PAL_TRUNC_BLUE_O,
+    PAL_TRUNC_YELLOW_O,
+    PAL_TRUNC_ORANGE_O,
+    PAL_TRUNC_LORANGE_O,
+    PAL_TRUNC_PINK_O,
+    PAL_TRUNC_LCYAN_O,
+    PAL_TRUNC_LPURPLE_O,
+    PAL_TRUNC_LGREEN_O,
+    PAL_TRUNC_LBLUE_O,
+    PAL_TRUNC_LYELLOW_O
+};
+
+uint32_t pal_trunc_palette_e[16] = {
+    PAL_TRUNC_BLACK,
+    PAL_TRUNC_WHITE,
+    PAL_TRUNC_RED_E,
+    PAL_TRUNC_CYAN_E,
+    PAL_TRUNC_PURPLE_E,
+    PAL_TRUNC_GREEN_E,
+    PAL_TRUNC_BLUE_E,
+    PAL_TRUNC_YELLOW_E,
+    PAL_TRUNC_ORANGE_E,
+    PAL_TRUNC_LORANGE_E,
+    PAL_TRUNC_PINK_E,
+    PAL_TRUNC_LCYAN_E,
+    PAL_TRUNC_LPURPLE_E,
+    PAL_TRUNC_LGREEN_E,
+    PAL_TRUNC_LBLUE_E,
+    PAL_TRUNC_LYELLOW_E
+};
 //For DVI output
 //TODO This is currently using NTSC based colours - needs to be adjusted
 static const uint8_t pal_palette_rgb332[16] = {
@@ -133,6 +170,7 @@ void vic_core1_loop_pal(void) {
 
     // Pointer that alternates on each line between even and odd PAL palettes.
     uint32_t *pal_palette = pal_palette_e;
+    uint32_t *pal_trunc_palette = pal_trunc_palette_e;
 
     // Optimisation to represent "in matrix", "address output enabled", and "pixel output enabled" 
     // all with one simple state variable. It might not be 100% accurate but should work for most 
@@ -238,10 +276,12 @@ void vic_core1_loop_pal(void) {
                     if (verticalCounter & 1) {
                         // Odd line. Switch colour palettes.
                         pal_palette = pal_palette_o;
+                        pal_trunc_palette = pal_trunc_palette_o;
                         pio_sm_put(CVBS_PIO, CVBS_SM, PAL_COLBURST_O);
                     } else {
                         // Even line. Switch colour palettes.
                         pal_palette = pal_palette_e;
+                        pal_trunc_palette = pal_trunc_palette_e;
                         pio_sm_put(CVBS_PIO, CVBS_SM, PAL_COLBURST_E);
                     }
                     pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BACKPORCH);
@@ -394,7 +434,7 @@ void vic_core1_loop_pal(void) {
                 if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
                     // Is the visible part of the line ending now and horizontal blanking starting?
                     if (horizontalCounter == PAL_HBLANK_START) {
-                        // Horizontal blanking doesn't start until 2 pixels in. What exactly those
+                        // Horizontal blanking doesn't start until 2.66 pixels in. What exactly those
                         // two pixels are depends on the fetch state.
                         switch (fetchState) {
                             case FETCH_OUTSIDE_MATRIX:
@@ -403,6 +443,8 @@ void vic_core1_loop_pal(void) {
                                 borderColour = border_colour_index;
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, pal_trunc_palette[borderColour]);
+                                dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 break;
@@ -415,6 +457,8 @@ void vic_core1_loop_pal(void) {
                                 borderColour = border_colour_index;
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, pal_trunc_palette[borderColour]);
+                                dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 fetchState++;
@@ -428,8 +472,10 @@ void vic_core1_loop_pal(void) {
                                 
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel2]]);
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel3]]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, pal_trunc_palette[multiColourTable[pixel4]]);
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel2]];
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel3]];
+                                dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel4]];
                                 
                                 fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
                                 break;
@@ -442,8 +488,10 @@ void vic_core1_loop_pal(void) {
                                 
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel6]]);
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel7]]);
+                                pio_sm_put(CVBS_PIO, CVBS_SM, pal_trunc_palette[multiColourTable[pixel8]]);
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel6]];
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel7]];
+                                dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel8]];
                                 
                                 // If the matrix hasn't yet closed, then in the FETCH_CHAR_DATA 
                                 // state, we need to keep incrementing the video matrix counter
@@ -455,7 +503,7 @@ void vic_core1_loop_pal(void) {
                                 break;
                         }
                         
-                        // After the two visible pixels, we now output the start of horiz blanking.
+                        // After the 2.66 visible pixels, we now output the start of horiz blanking.
                         pio_sm_put(CVBS_PIO, CVBS_SM, PAL_FRONTPORCH_1);
                         
                         // Reset HC to start a new line.
