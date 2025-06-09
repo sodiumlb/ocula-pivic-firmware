@@ -32,12 +32,12 @@
 .wrap_target
 start:
     mov isr x           ; System top address bits
-    wait 0 pin 26  [29] ; Wait for RnW falling edge == write + 200ns
+    wait 0 pin 26  [20] ; Wait for RnW falling edge == write + 200ns
     mov osr pins        ; Capture D[7:0],D[11:8],A[13:0],RnW
     out y 12            ; Keep D[11:0] in y (in case BLK4)
     in osr 14           ; shift in bottom address
     wait 1 pin 26       ; Wait for RnW rising edge before capturing not BLK4 data
-    push noblock   [29] ; Send address to FIFO + 200ns data setup time
+    push noblock   [20] ; Send address to FIFO + 200ns data setup time
     mov isr pins        ; Assume not BLK4, capture new data in isr
     jmp pin not_blk4    ; If A13=='1', this write is not for BLK4
     mov isr y           ; BLK4 write, use data from y
