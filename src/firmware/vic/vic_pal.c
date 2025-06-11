@@ -453,13 +453,15 @@ void vic_core1_loop_pal(void) {
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[1]];
                                 break;
                                 
-                            case FETCH_OUTSIDE_MATRIX:
-                            case FETCH_IN_MATRIX_Y:
                             case FETCH_MATRIX_DLY_1:
                             case FETCH_MATRIX_DLY_2:
                             case FETCH_MATRIX_DLY_3:
                             case FETCH_MATRIX_DLY_4:
                             case FETCH_MATRIX_DLY_5:
+                                fetchState++;
+                                __attribute__((fallthrough));
+                            case FETCH_OUTSIDE_MATRIX:
+                            case FETCH_IN_MATRIX_Y:
                                 borderColour = border_colour_index;
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
@@ -469,7 +471,6 @@ void vic_core1_loop_pal(void) {
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[borderColour];
-                                fetchState++;
                                 break;
                                 
                             case FETCH_SCREEN_CODE:
