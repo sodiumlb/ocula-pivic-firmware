@@ -644,7 +644,14 @@ void vic_core1_loop_pal(void) {
                                 break;
                                 
                             case FETCH_SCREEN_CODE:                                
-                                // Look up very latest background, border and auxiliary colour values.
+                                 
+                                // Due to the way the colour memory is wired up, the above fetch of the cell index
+                                // also happens to automatically fetch the foreground colour from the Colour Matrix
+                                // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from 
+                                // colour RAM in to the VIC chip.
+                                colourData = xram[colour_mem_start + videoMatrixCounter];
+
+                               // Look up very latest background, border and auxiliary colour values.
                                 multiColourTable[0] = background_colour_index;
                                 multiColourTable[1] = border_colour_index;
                                 multiColourTable[3] = auxiliary_colour_index;
@@ -668,12 +675,6 @@ void vic_core1_loop_pal(void) {
 
                                 // Calculate address within video memory and fetch cell index.
                                 cellIndex = xram[screen_mem_start + videoMatrixCounter];
-                                
-                                // Due to the way the colour memory is wired up, the above fetch of the cell index
-                                // also happens to automatically fetch the foreground colour from the Colour Matrix
-                                // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from 
-                                // colour RAM in to the VIC chip.
-                                colourData = xram[colour_mem_start + videoMatrixCounter];
 
                                 // Toggle fetch state. Close matrix if HCC hits zero.
                                 fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
