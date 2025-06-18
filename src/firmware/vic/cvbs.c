@@ -438,6 +438,6 @@ void cvbs_mon_colour(const char *args, size_t len){
 }
 
 void cvbs_print_status(void){
-   printf("CVBS FIFO %08x\n", CVBS_PIO->fdebug);
+   printf("CVBS FIFO dbg:%08x lvl:%08x\n", CVBS_PIO->fdebug, CVBS_PIO->flevel);
    CVBS_PIO->fdebug = CVBS_PIO->fdebug;            //Clear FIFO status
 }
