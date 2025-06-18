@@ -185,6 +185,12 @@ void vic_core1_loop_pal(void) {
     // Temporary variables, not a core part of the state.
     uint16_t charDataOffset = 0;
 
+    uint8_t vic_cr[16];
+    uint8_t colourData_cache;
+    uint8_t charData_cache;
+    uint8_t cellIndex_cache;
+    memcpy((void*)vic_cr, (void*)&xram[0x1000], 16);
+
     // Slight hack so that VC increments to 0 on first iteration.
     verticalCounter = 0xFFFF;
 
@@ -199,6 +205,21 @@ void vic_core1_loop_pal(void) {
         
         // Clear the IRQ 1 flag immediately for now. 
         pio_interrupt_clear(VIC_PIO, 1);
+
+        uint16_t cpu_addr = sio_hw->gpio_hi_in & 0x3FFF;
+        if((cpu_addr & 0x3FF0) == 0x1000){
+            vic_cr[cpu_addr & 0xF] = xram[cpu_addr];
+        }
+        switch(fetchState){
+            case FETCH_SCREEN_CODE:
+                cellIndex_cache = xram[screen_mem_start + videoMatrixCounter];
+                colourData_cache = xram[colour_mem_start + videoMatrixCounter];
+            case FETCH_CHAR_DATA:
+                // Fetch cell data. It can wrap around, which is why we & with 0x3FFF.
+                charData_cache = xram[(char_mem_start + (cellIndex << char_size_shift) + cellDepthCounter) & 0x3FFF];
+            default:
+                break;
+        }
 
         // VERTICAL TIMINGS:
         // Lines 1-9:    Vertical blanking
@@ -270,9 +291,9 @@ void vic_core1_loop_pal(void) {
                 // Update the raster line value stored in the VIC registers.
                 vic_cr4 = (verticalCounter >> 1);
                 if ((verticalCounter & 0x01) == 0) {
-                    vic_cr3 &= 0x7F;
+                    vic_cr3 = vic_cr[3] & 0x7F;
                 } else {
-                    vic_cr3 |= 0x80;
+                    vic_cr3 = vic_cr[3] | 0x80;
                 }
 
                 if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
@@ -510,11 +531,8 @@ void vic_core1_loop_pal(void) {
                                 // The 4th pixel is a partial pixel before horizontal blanking kicks in. We 
                                 // therefore need to lookup the character data so that we know what to render.
 
-                                // Calculate offset of data.
-                                charDataOffset = char_mem_start + (cellIndex << char_size_shift) + cellDepthCounter;
-                                
                                 // Fetch cell data. It can wrap around, which is why we & with 0x3FFF.
-                                charData = xram[(charDataOffset & 0x3FFF)];
+                                charData = charData_cache;
                                 
                                 // Determine character pixel. Only ONE pixel needed due to hblank starting.
                                 if ((colourData & 0x08) == 0) {
@@ -649,7 +667,7 @@ void vic_core1_loop_pal(void) {
                                 // also happens to automatically fetch the foreground colour from the Colour Matrix
                                 // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from 
                                 // colour RAM in to the VIC chip.
-                                colourData = xram[colour_mem_start + videoMatrixCounter];
+                                colourData = colourData_cache;
 
                                // Look up very latest background, border and auxiliary colour values.
                                 multiColourTable[0] = background_colour_index;
@@ -674,7 +692,7 @@ void vic_core1_loop_pal(void) {
                                 }
 
                                 // Calculate address within video memory and fetch cell index.
-                                cellIndex = xram[screen_mem_start + videoMatrixCounter];
+                                cellIndex = cellIndex_cache;//[screen_mem_start + videoMatrixCounter];
 
                                 // Toggle fetch state. Close matrix if HCC hits zero.
                                 fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
@@ -701,12 +719,8 @@ void vic_core1_loop_pal(void) {
                                         dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel8]];
                                     }
                                 }
-                                
-                                // Calculate offset of data.
-                                charDataOffset = char_mem_start + (cellIndex << char_size_shift) + cellDepthCounter;
-                                
-                                // Fetch cell data. It can wrap around, which is why we & with 0x3FFF.
-                                charData = xram[(charDataOffset & 0x3FFF)];
+                                                                
+                                charData = charData_cache;
                                 
                                 // Determine character pixels.
                                 if ((colourData & 0x08) == 0) {

@@ -56,21 +56,21 @@
 #define vic_crf xram[0x100f]    // XXXXYZZZ X=Background colour Y=Reverse Z=Border colour
 
 // Expressions to access different parts of control registers.
-#define border_colour_index      (vic_crf & 0x07)
-#define background_colour_index  (vic_crf >> 4)
-#define auxiliary_colour_index   (vic_cre >> 4)
-#define non_reverse_mode         (vic_crf & 0x08)
-#define interlaced_mode          (vic_cr0 & 0x80)
-#define screen_origin_x          (vic_cr0 & 0x7F)
-#define screen_origin_y          (vic_cr1 << 1)
-#define num_of_columns           (vic_cr2 & 0x7F)
-#define num_of_rows              ((vic_cr3 & 0x7E) >> 1)
-#define double_height_mode       (vic_cr3 & 0x01)
+#define border_colour_index      (vic_cr[0xf] & 0x07)
+#define background_colour_index  (vic_cr[0xf] >> 4)
+#define auxiliary_colour_index   (vic_cr[0xe] >> 4)
+#define non_reverse_mode         (vic_cr[0xf] & 0x08)
+#define interlaced_mode          (vic_cr[0x0] & 0x80)
+#define screen_origin_x          (vic_cr[0x0] & 0x7F)
+#define screen_origin_y          (vic_cr[0x1] << 1)
+#define num_of_columns           (vic_cr[0x2] & 0x7F)
+#define num_of_rows              ((vic_cr[0x3] & 0x7E) >> 1)
+#define double_height_mode       (vic_cr[0x3] & 0x01)
 #define last_line_of_cell        (7 | (double_height_mode << 3))
 #define char_size_shift          (3 + double_height_mode)
-#define screen_mem_start         (((vic_cr5 & 0xF0) << 6) | ((vic_cr2 & 0x80) << 2))
-#define char_mem_start           ((vic_cr5 & 0x0F) << 10)
-#define colour_mem_start         (0x1400 | ((vic_cr2 & 0x80) << 2))
+#define screen_mem_start         (((vic_cr[0x5] & 0xF0) << 6) | ((vic_cr[0x2] & 0x80) << 2))
+#define char_mem_start           ((vic_cr[0x5] & 0x0F) << 10)
+#define colour_mem_start         (0x1400 | ((vic_cr[0x2] & 0x80) << 2))
 
 // Constants for the fetch state of the vic_core1_loop.
 #define FETCH_OUTSIDE_MATRIX  0
