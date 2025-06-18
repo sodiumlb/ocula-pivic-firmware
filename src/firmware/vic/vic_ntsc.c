@@ -123,6 +123,10 @@ void vic_core1_loop_ntsc(void) {
     // Index of the current border colour (used temporarily when we don't want to use the define multiple times in a cycle)
     uint8_t borderColourIndex = 0;
 
+    uint8_t vic_cr[16];
+
+    memcpy((void*)vic_cr, (void*)&xram[0x1000], 16);
+
     //FIFO Back pressure. Experimentaly adjusted
     pio_sm_put(CVBS_PIO,CVBS_SM,CVBS_CMD_DC_RUN(18,38)); 
 
@@ -135,6 +139,10 @@ void vic_core1_loop_ntsc(void) {
         // Clear the IRQ 1 flag immediately for now. 
         pio_interrupt_clear(VIC_PIO, 1);
 
+        uint16_t cpu_addr = sio_hw->gpio_hi_in & 0x3FFF;
+        if((cpu_addr & 0x3FF0) == 0x1000){
+            vic_cr[cpu_addr & 0xF] = xram[cpu_addr];
+        }
         // VERTICAL TIMINGS:
         // The definition of a line is somewhat fuzzy in the NTSC 6560 chip.
         // The vertical counter (VC) increments partway through the visible part of the raster line (at HC=28)

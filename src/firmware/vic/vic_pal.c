@@ -188,6 +188,15 @@ void vic_core1_loop_pal(void) {
     // Temporary variables, not a core part of the state.
     uint16_t charDataOffset = 0;
 
+    uint8_t vic_cr[16];
+    uint8_t colourData_cache;
+    uint8_t charData_cache;
+    uint8_t cellIndex_cache;
+    memcpy((void*)vic_cr, (void*)&xram[0x1000], 16);
+
+    // Slight hack so that VC increments to 0 on first iteration.
+    verticalCounter = 0xFFFF;
+
     //FIFO Back pressure. Preemtively added - uncomment and adjust if chroma stretching issues show up
     pio_sm_put(CVBS_PIO,CVBS_SM,CVBS_CMD_PAL_DC_RUN(18,38)); 
 
@@ -199,6 +208,21 @@ void vic_core1_loop_pal(void) {
         
         // Clear the IRQ 1 flag immediately for now. 
         pio_interrupt_clear(VIC_PIO, 1);
+
+        uint16_t cpu_addr = sio_hw->gpio_hi_in & 0x3FFF;
+        if((cpu_addr & 0x3FF0) == 0x1000){
+            vic_cr[cpu_addr & 0xF] = xram[cpu_addr];
+        }
+        switch(fetchState){
+            case FETCH_SCREEN_CODE:
+                cellIndex_cache = xram[screen_mem_start + videoMatrixCounter];
+                colourData_cache = xram[colour_mem_start + videoMatrixCounter];
+            case FETCH_CHAR_DATA:
+                // Fetch cell data. It can wrap around, which is why we & with 0x3FFF.
+                charData_cache = xram[(char_mem_start + (cellIndex << char_size_shift) + cellDepthCounter) & 0x3FFF];
+            default:
+                break;
+        }
 
         // VERTICAL TIMINGS:
         // Lines 1-9:    Vertical blanking
@@ -284,9 +308,9 @@ void vic_core1_loop_pal(void) {
                 // Update the raster line value stored in the VIC registers.
                 vic_cr4 = (verticalCounter >> 1);
                 if ((verticalCounter & 0x01) == 0) {
-                    vic_cr3 &= 0x7F;
+                    vic_cr3 = vic_cr[3] & 0x7F;
                 } else {
-                    vic_cr3 |= 0x80;
+                    vic_cr3 = vic_cr[3] | 0x80;
                 }
 
                 if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
