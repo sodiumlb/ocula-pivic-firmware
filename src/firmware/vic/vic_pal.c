@@ -188,9 +188,6 @@ void vic_core1_loop_pal(void) {
     // Temporary variables, not a core part of the state.
     uint16_t charDataOffset = 0;
 
-    // Slight hack so that VC increments to 0 on first iteration.
-    verticalCounter = 0xFFFF;
-
     //FIFO Back pressure. Preemtively added - uncomment and adjust if chroma stretching issues show up
     pio_sm_put(CVBS_PIO,CVBS_SM,CVBS_CMD_PAL_DC_RUN(18,38)); 
 
