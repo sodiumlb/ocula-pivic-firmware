@@ -719,12 +719,12 @@ void vic_core1_loop_pal(void) {
                                     pixel4 = pixel8;
                                     pixel5 = pixel6 = pixel7 = pixel8 = pixel1 = 1;
 
-                                    if (horizontalCounter == screen_origin_x) {
+                                    if (prevHorizontalCounter == screen_origin_x) {
                                         // Last 4 pixels before first char renders are still border.
                                         fetchState = FETCH_MATRIX_DLY_1;
                                     }
                                 }
-                                else if (horizontalCounter == screen_origin_x) {
+                                else if (prevHorizontalCounter == screen_origin_x) {
                                     // Still in horizontal blanking, but we still need to prepare for the case
                                     // where the next cycle isn't in horiz blanking, i.e. when HC=11 this cycle.
                                     fetchState = FETCH_MATRIX_DLY_1;
