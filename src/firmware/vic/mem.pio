@@ -41,7 +41,7 @@ start:
     mov isr y           ; BLK4 write, use data from y
     jmp push_data
 not_blk4:
-    wait 1 pin 26  [20] ; Wait for RnW rising edge before capturing not BLK4 data
+    wait 1 pin 26  [30] ; Wait for RnW rising edge before capturing not BLK4 data
     mov isr pins        ; Assume not BLK4, capture new data in isr
 push_data:
     push noblock        ; Send data to FIFO
