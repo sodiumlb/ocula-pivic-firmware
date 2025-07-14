@@ -585,7 +585,7 @@ void vic_core1_loop_pal(void) {
 
                                 // Update operating hires state and char data immediately prior to
                                 // shifting out new character pixel.
-                                hiresMode = (colourData & 0x08);
+                                hiresMode = ((colourData & 0x08) == 0);
                                 charData = charDataLatch;
                               
                                 // We only next 1st pixel in this case. Hblanking about to start.
@@ -794,7 +794,7 @@ void vic_core1_loop_pal(void) {
                                 // these variables are primed to initially output border pixels while 
                                 // the process of fetching the first real character is taking place, 
                                 // which happens over the first two cycles.
-                                hiresMode = (colourData & 0x08);
+                                hiresMode = ((colourData & 0x08) == 0);
                                 charData = charDataLatch;
                               
                                 if (hiresMode) {
