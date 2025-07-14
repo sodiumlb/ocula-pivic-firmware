@@ -20,6 +20,7 @@ typedef union {
 
 extern volatile aud_union_t aud_counters;
 extern volatile aud_union_t aud_ticks;
+extern volatile aud_union_t aud_regs;
 
  void aud_init(void);
  void aud_task(void);
@@ -28,11 +29,11 @@ extern volatile aud_union_t aud_ticks;
  
  // Per CPU clock tick audio progress
  // Assembly version. Assumes running on other core than aud_task(), uses doorbell signaling
- void inline __attribute__((always_inline)) aud_tick_inline(void){
+ void inline __attribute__((always_inline)) aud_tick_inline(uint32_t *regs){
     //Running 4 separate tick and channel counters in packed 32 bit words
-    uint32_t tmp,zero,one,upd;
-    const uint32_t mask = 0x1F03070F;
-    uint32_t *regs = (uint32_t*)(&xram[0x100a]);
+    uint32_t tmp,tmp2,zero,one,upd;
+    const uint32_t mask = 0x0103070F;
+    //uint32_t *regs = (uint32_t*)(&xram[0x100a]);
     asm volatile (
         "mov %[zero], #0x00000000\n\t"              //Create 4x zero vector
         "mov %[one],  #0x01010101\n\t"              //Create 4x one vector
@@ -41,15 +42,19 @@ extern volatile aud_union_t aud_ticks;
         "ssub8 %[tmp], %[zero], %[tmp]\n\t"         //Idenitify ticks of interrest, if zero result GE bits are set
         "sel %[tmp], %[one], %[zero]\n\t"           //Pick bytes from "one" if GE bit=1 else from "zero"
         "sadd8 %[cntr], %[cntr], %[tmp]\n\t"        //Increment only counters for ticks of interest (zero in lower bits) 
-        "sadd8 %[cntr], %[cntr], %[zero]\n\t"       //First sadd8 doesn't sign-extend our 0x80 MSB. This does and GE bits updates, GE=0 if overlow
+        "ldr %[tmp2], %[regs]\n\t"                  //Load counter reload values
+        "sadd8 %[tmp], %[tmp2], %[one]\n\t"         //Counter values increment on reload. Do it here to not change GE bits needed later.
+        "sadd8 %[cntr], %[cntr], %[zero]\n\t"       //First counter sadd8 doesn't sign-extend our 0x80 MSB. This does and GE bits updates, GE=0 if overlow
+        "sel %[aregs], %[aregs], %[tmp2]\n\t"       //Update aud_regs snap-shot for channels where counter has overflown
         "mrs %[upd], apsr\n\t"                      //Get status bits (incl GE) in upd
         "mvn %[upd], %[upd], lsr 16\n\t"            //Get inverted GE bits in [3:0]
-        "ldr %[tmp], %[regs]\n\t"                   //Load counter reload values
         "and %[tmp], %[tmp], #0x7F7F7F7F\n\t"       //Mask out 8th bit in each counter (enable bit from registers)
         "sel %[cntr], %[cntr], %[tmp]\n\t"          //Pick bytes from reload values if GE bit=0 else from old (unchange)
         : [tick] "+r" (aud_ticks.all),
           [cntr] "+r" (aud_counters.all),
+          [aregs]"+r" (aud_regs.all),
           [tmp]  "=r" (tmp),
+          [tmp2] "=r" (tmp2),
           [upd]  "=r" (upd),
           [zero] "=r" (zero),
           [one]  "=r" (one)
