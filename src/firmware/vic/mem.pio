@@ -75,3 +75,16 @@ start:
     wait 1 irq 2 [0]
     in pins 27
 .wrap
+
+; Capturing data bus during VIC phase
+; Used to emulate behaviour of unconnected memory access
+
+.program xuncon
+.clock_div 2.0
+.in 8 left
+.fifo txput
+.wrap_target
+    wait 0 irq 1      [29] ; Wait for phi1 rising edge (VIC phase start)
+    mov isr pins           ; Get data
+    mov rxfifo[0] isr      ; Move data to RX FIFO register 0
+.wrap
