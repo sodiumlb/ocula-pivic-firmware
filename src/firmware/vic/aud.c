@@ -21,6 +21,7 @@ uint16_t aud_lfsr;
 
 volatile aud_union_t aud_counters;
 volatile aud_union_t aud_ticks;
+volatile aud_union_t aud_regs;
 
 //TODO Unify with/import vic/vic.c/h definitions
 #define VIC_CRA xram[0x100A]
@@ -95,20 +96,20 @@ void aud_init(void){
 //TODO Is calculating and updating audio in normal task good enough?
 void aud_task(void){
     if(multicore_doorbell_is_set_current_core(0)){
-        aud_step_voice(0, VIC_CRA);
         multicore_doorbell_clear_current_core(0);
+        aud_step_voice(0, aud_regs.ch[0]);
     }
     if(multicore_doorbell_is_set_current_core(1)){
-        aud_step_voice(1, VIC_CRB);
         multicore_doorbell_clear_current_core(1);
+        aud_step_voice(1, aud_regs.ch[1]);
     }
     if(multicore_doorbell_is_set_current_core(2)){
-        aud_step_voice(2, VIC_CRC);
         multicore_doorbell_clear_current_core(2);
+        aud_step_voice(2, aud_regs.ch[2]);
     }
     if(multicore_doorbell_is_set_current_core(3)){
-        aud_step_noise(VIC_CRD);
         multicore_doorbell_clear_current_core(3);
+        aud_step_noise(aud_regs.ch[3]);
     }
     aud_update_pwm(VIC_CRE);
 }
