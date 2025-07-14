@@ -80,10 +80,11 @@
 #define FETCH_MATRIX_DLY_1    4
 #define FETCH_MATRIX_DLY_2    5
 #define FETCH_MATRIX_DLY_3    6
-#define FETCH_MATRIX_DLY_4    7
-#define FETCH_MATRIX_DLY_5    8
-#define FETCH_SCREEN_CODE     9
-#define FETCH_CHAR_DATA       10
+// TODO: Remove DLY_4 and DLY_5 after fixing NTSC.
+#define FETCH_MATRIX_DLY_4    101
+#define FETCH_MATRIX_DLY_5    102
+#define FETCH_SCREEN_CODE     7
+#define FETCH_CHAR_DATA       8
 
 void vic_init(void);
 void vic_task(void);
