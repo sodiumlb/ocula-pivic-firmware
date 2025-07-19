@@ -62,7 +62,7 @@
 #define non_reverse_mode         (vic_crf & 0x08)
 #define interlaced_mode          (vic_cr0 & 0x80)
 #define screen_origin_x          (vic_cr0 & 0x7F)
-#define screen_origin_y          (vic_cr1 << 1)
+#define screen_origin_y          (vic_cr1)
 #define num_of_columns           (vic_cr2 & 0x7F)
 #define num_of_rows              ((vic_cr3 & 0x7E) >> 1)
 #define double_height_mode       (vic_cr3 & 0x01)

@@ -384,7 +384,7 @@ void vic_core1_loop_pal(void) {
                     // If the line that just ended was a video matrix line, then increment CDC.
                     cellDepthCounter++;
                 }
-                else if (verticalCounter == screen_origin_y) {
+                else if ((verticalCounter >> 1) == screen_origin_y) {
                     // This is the line the video matrix starts on. As in the real chip, we use
                     // a different state for the first part of the first video matrix line.
                     if (fetchState == FETCH_IN_MATRIX_X) {
