@@ -827,7 +827,7 @@ void vic_core1_loop_ntsc(void) {
                 }
                 break;
         }
-        aud_tick_inline((uint32_t*)&vic_cr[0xA]);
+        aud_tick_inline((uint32_t*)&vic_cra);
 
         // DEBUG: Temporary check to see if we've overshot the 120 cycle allowance.
         if (pio_interrupt_get(VIC_PIO, 1)) {
