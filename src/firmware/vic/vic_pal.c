@@ -192,7 +192,7 @@ void vic_core1_loop_pal(void) {
     uint8_t colourData_cache;
     uint8_t charData_cache;
     uint8_t cellIndex_cache;
-    memcpy((void*)vic_cr, (void*)&xram[0x1000], 16);
+    //memcpy((void*)vic_cr, (void*)&xram[0x1000], 16);
 
     // Slight hack so that VC increments to 0 on first iteration.
     verticalCounter = 0xFFFF;
@@ -210,8 +210,9 @@ void vic_core1_loop_pal(void) {
         pio_interrupt_clear(VIC_PIO, 1);
 
         uint16_t cpu_addr = sio_hw->gpio_hi_in & 0x3FFF;
-        if((cpu_addr & 0x3FF0) == 0x1000){
-            vic_cr[cpu_addr & 0xF] = xram[cpu_addr];
+        uint8_t  cpu_data = sio_hw->gpio_in >> 20;
+        if((cpu_addr & 0x7FF0) == 0x1000){
+            vic_cr[cpu_addr & 0xF] = cpu_data;
         }
         switch(fetchState){
             case FETCH_SCREEN_CODE:
@@ -408,7 +409,7 @@ void vic_core1_loop_pal(void) {
                     // If the line that just ended was a video matrix line, then increment CDC.
                     cellDepthCounter++;
                 }
-                else if (verticalCounter == screen_origin_y) {
+                else if ((verticalCounter >> 1) == screen_origin_y) {
                     // This is the line the video matrix starts on. As in the real chip, we use
                     // a different state for the first part of the first video matrix line.
                     if (fetchState == FETCH_IN_MATRIX_X) {
@@ -846,13 +847,13 @@ void vic_core1_loop_pal(void) {
                                 multiColourTable[2] = (colourData & 0x07);
 
                                 // Calculate address within video memory and fetch cell index.
-                                cellIndex = xram[screen_mem_start + videoMatrixCounter];
+                                cellIndex = cellIndex_cache; //[screen_mem_start + videoMatrixCounter];
 
                                 // Due to the way the colour memory is wired up, the above fetch of the cell index
                                 // also happens to automatically fetch the foreground colour from the Colour Matrix
                                 // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from 
                                 // colour RAM in to the VIC chip.
-                                colourData = xram[colour_mem_start + videoMatrixCounter];
+                                colourData = colourData_cache; //[colour_mem_start + videoMatrixCounter];
 
                                 // Output the 1st pixel of next character. Note that this is not the character
                                 // that relates to the cell index and colour data fetched above.
@@ -890,11 +891,11 @@ void vic_core1_loop_pal(void) {
                                 }
                                 
                                 // Calculate offset of data.
-                                charDataOffset = char_mem_start + (cellIndex << char_size_shift) + cellDepthCounter;
+                                //charDataOffset = char_mem_start + (cellIndex << char_size_shift) + cellDepthCounter;
                                 
                                 // Fetch cell data.  It can wrap around, which is why we & with 0x3FFF.
                                 // Initially latched to the side until it is needed.
-                                charDataLatch = xram[(charDataOffset & 0x3FFF)];
+                                charDataLatch = charData_cache; //[(charDataOffset & 0x3FFF)];
 
                                 // Determine next character pixels.
                                 if (hiresMode) {
