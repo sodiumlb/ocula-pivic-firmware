@@ -809,8 +809,12 @@ void vic_core1_loop_pal(void) {
                                 multiColourTable[2] = (colourData & 0x07);
 
                                 // Calculate address within video memory and fetch cell index.
-                                cellIndex = xram[screen_mem_start + videoMatrixCounter];
-
+                                //Assuming 0x0---, 0x3---- and 0x20-- as connected address space
+                                if(((vic_cr5 >> 6) == 0x00) || ((vic_cr5 >> 6) == 0x03) || ((vic_cr5 >> 4) == 0x08)){
+                                    cellIndex = xram[screen_mem_start + videoMatrixCounter];
+                                }else{
+                                    cellIndex = XUNCON_REG;
+                                }
                                 // Due to the way the colour memory is wired up, the above fetch of the cell index
                                 // also happens to automatically fetch the foreground colour from the Colour Matrix
                                 // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from 
@@ -857,8 +861,12 @@ void vic_core1_loop_pal(void) {
                                 
                                 // Fetch cell data.  It can wrap around, which is why we & with 0x3FFF.
                                 // Initially latched to the side until it is needed.
-                                charDataLatch = xram[(charDataOffset & 0x3FFF)];
-
+                                //Assuming 0x0---, 0x3---- and 0x20-- as connected address space
+                                 if((((vic_cr5 >> 2) & 0x03) == 0x00) || (((vic_cr5 >> 2) & 0x03) == 0x03) || ((vic_cr5 & 0x0F) == 0x08)){
+                                     charDataLatch = xram[(charDataOffset & 0x3FFF)];
+                                 }else{
+                                     charDataLatch = XUNCON_REG;
+                                }
                                 // Determine next character pixels.
                                 if (hiresMode) {
                                     if (non_reverse_mode != 0) {
