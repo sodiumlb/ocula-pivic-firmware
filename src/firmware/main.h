@@ -60,7 +60,7 @@ bool main_prog(uint16_t *xregs);
 #define XUNCON_PIN_OFFS PIO2_PIN_OFFS
 #define XUNCON_PIO pio2
 #define XUNCON_SM 3
-#define XUNCON_REG (XUNCON_PIO)->RXF3_PUTGET0
+#define XUNCON_REG (XUNCON_PIO)->rxf_putget[XUNCON_SM][0]
 
 #define AUDIO_PWM_PIN 2
 #define AUDIO_PWM_SLICE 1
