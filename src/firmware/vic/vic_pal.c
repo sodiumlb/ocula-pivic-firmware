@@ -810,10 +810,15 @@ void vic_core1_loop_pal(void) {
 
                                 // Calculate address within video memory and fetch cell index.
                                 //Assuming 0x0---, 0x3---- and 0x20-- as connected address space
-                                if(((vic_cr5 >> 6) == 0x00) || ((vic_cr5 >> 6) == 0x03) || ((vic_cr5 >> 4) == 0x08)){
-                                    cellIndex = xram[screen_mem_start + videoMatrixCounter];
-                                }else{
-                                    cellIndex = XUNCON_REG;
+                                uint16_t screen_addr = screen_mem_start + videoMatrixCounter;
+                                switch((screen_addr >> 10) & 0xF){
+                                    case  4 ... 7:
+                                    case  9 ... 11:
+                                        cellIndex = XUNCON_REG;
+                                        break;
+                                    default:
+                                        cellIndex = xram[screen_addr];
+                                        break;
                                 }
                                 // Due to the way the colour memory is wired up, the above fetch of the cell index
                                 // also happens to automatically fetch the foreground colour from the Colour Matrix
@@ -862,10 +867,14 @@ void vic_core1_loop_pal(void) {
                                 // Fetch cell data.  It can wrap around, which is why we & with 0x3FFF.
                                 // Initially latched to the side until it is needed.
                                 //Assuming 0x0---, 0x3---- and 0x20-- as connected address space
-                                 if((((vic_cr5 >> 2) & 0x03) == 0x00) || (((vic_cr5 >> 2) & 0x03) == 0x03) || ((vic_cr5 & 0x0F) == 0x08)){
-                                     charDataLatch = xram[(charDataOffset & 0x3FFF)];
-                                 }else{
-                                     charDataLatch = XUNCON_REG;
+                                switch((charDataOffset >> 10) & 0xF ){
+                                    case  4 ... 7:
+                                    case  9 ... 11:
+                                         charDataLatch = XUNCON_REG;
+                                         break;
+                                    default:
+                                         charDataLatch = xram[(charDataOffset & 0x3FFF)];
+                                         break;
                                 }
                                 // Determine next character pixels.
                                 if (hiresMode) {
