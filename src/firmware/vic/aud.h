@@ -21,6 +21,7 @@ typedef union {
 extern volatile aud_union_t aud_counters;
 extern volatile aud_union_t aud_ticks;
 extern volatile aud_union_t aud_regs;
+extern volatile aud_union_t aud_sr;
 
  void aud_init(void);
  void aud_task(void);
@@ -48,11 +49,17 @@ extern volatile aud_union_t aud_regs;
         "sel %[aregs], %[aregs], %[tmp2]\n\t"       //Update aud_regs snap-shot for channels where counter has overflown
         "mrs %[upd], apsr\n\t"                      //Get status bits (incl GE) in upd
         "mvn %[upd], %[upd], lsr 16\n\t"            //Get inverted GE bits in [3:0]
-        "and %[tmp], %[tmp], #0x7F7F7F7F\n\t"       //Mask out 8th bit in each counter (enable bit from registers)
-        "sel %[cntr], %[cntr], %[tmp]\n\t"          //Pick bytes from reload values if GE bit=0 else from old (unchange)
+        "and %[tmp2], %[tmp], #0x7F7F7F7F\n\t"      //Mask out 8th bit in each counter (enable bit from registers)
+        "sel %[cntr], %[cntr], %[tmp2]\n\t"         //Pick bytes from reload values if GE bit=0 else from old (unchange)
+        "bic %[tmp2], %[tmp], %[sr]\n\t"            //Invert SR then AND with enable bits in MSB per byte
+        "and %[tmp2], %[one], %[tmp2], lsr 7\n\t"   //Shift from MSB to LSB and mask with ones to get new SR LSBs
+        "bic %[tmp], %[sr], %[one], lsl 7\n\t"      //Clear SR MSBs in preparatin for shifting
+        "orr %[tmp], %[tmp2], %[tmp], lsl 1\n\t"    //Shift SR up 1 bit then OR in new SR LSBs
+        "sel %[sr], %[sr], %[tmp]\n\t"              //Update SR for channels where counter has overflown
         : [tick] "+r" (aud_ticks.all),
           [cntr] "+r" (aud_counters.all),
           [aregs]"+r" (aud_regs.all),
+          [sr]   "+r" (aud_sr.all),
           [tmp]  "=r" (tmp),
           [tmp2] "=r" (tmp2),
           [upd]  "=r" (upd),
@@ -62,6 +69,7 @@ extern volatile aud_union_t aud_regs;
           [regs] "m" (*(uint32_t(*))regs)
         : "cc"                                      //Conditional flags clobbered
     );
-    sio_hw->doorbell_out_set = upd & 0xF;           //Using RP2350 doorbells 0-3 to signal updates needed
+    //sio_hw->doorbell_out_set = upd & 0xF;           //Using RP2350 doorbells 0-3 to signal updates needed
+    sio_hw->fifo_wr = (aud_regs.all & 0xFFFFFFF0) | (upd & 0xF);
 }
  #endif /* _AUD_H_ */
