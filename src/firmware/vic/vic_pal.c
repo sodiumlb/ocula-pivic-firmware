@@ -809,8 +809,17 @@ void vic_core1_loop_pal(void) {
                                 multiColourTable[2] = (colourData & 0x07);
 
                                 // Calculate address within video memory and fetch cell index.
-                                cellIndex = xram[screen_mem_start + videoMatrixCounter];
-
+                                //Assuming 0x0---, 0x3---- and 0x20-- as connected address space
+                                uint16_t screen_addr = screen_mem_start + videoMatrixCounter;
+                                switch((screen_addr >> 10) & 0xF){
+                                    case  4 ... 7:
+                                    case  9 ... 11:
+                                        cellIndex = XUNCON_REG;
+                                        break;
+                                    default:
+                                        cellIndex = xram[screen_addr];
+                                        break;
+                                }
                                 // Due to the way the colour memory is wired up, the above fetch of the cell index
                                 // also happens to automatically fetch the foreground colour from the Colour Matrix
                                 // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from 
@@ -857,8 +866,16 @@ void vic_core1_loop_pal(void) {
                                 
                                 // Fetch cell data.  It can wrap around, which is why we & with 0x3FFF.
                                 // Initially latched to the side until it is needed.
-                                charDataLatch = xram[(charDataOffset & 0x3FFF)];
-
+                                //Assuming 0x0---, 0x3---- and 0x20-- as connected address space
+                                switch((charDataOffset >> 10) & 0xF ){
+                                    case  4 ... 7:
+                                    case  9 ... 11:
+                                         charDataLatch = XUNCON_REG;
+                                         break;
+                                    default:
+                                         charDataLatch = xram[(charDataOffset & 0x3FFF)];
+                                         break;
+                                }
                                 // Determine next character pixels.
                                 if (hiresMode) {
                                     if (non_reverse_mode != 0) {

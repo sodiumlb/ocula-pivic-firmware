@@ -191,6 +191,14 @@ void xdir_pio_init(void){
     //pio_sm_set_enabled(XDIR_PIO, XDIR_SM, true);   
 }
 
+void xuncon_pio_init(void){
+    pio_set_gpio_base (XUNCON_PIO, XUNCON_PIN_OFFS);
+    uint offset = pio_add_program(XUNCON_PIO, &xuncon_program);
+    pio_sm_config config = xuncon_program_get_default_config(offset);
+    sm_config_set_in_pin_base(&config, DATA_PIN_BASE);
+    pio_sm_init(XUNCON_PIO, XUNCON_SM, offset, &config);
+}
+
 void mem_init(void){
     //Only using input address bus. Put DIR to input
     gpio_set_function(DIR_PIN, GPIO_FUNC_SIO);
@@ -200,9 +208,10 @@ void mem_init(void){
     xread_pio_init();
     xdir_pio_init();
     xwrite_pio_init();
+    xuncon_pio_init();
     //trace_pio_init();    
     //Synchronized start of irq dependent PIO programs
-    pio_set_sm_mask_enabled(XREAD_PIO, (1u << XREAD_SM) | (1u << XDIR_SM) | (1u << XWRITE_SM) /*| (1u << TRACE_SM)*/, true);
+    pio_set_sm_mask_enabled(XREAD_PIO, (1u << XREAD_SM) | (1u << XDIR_SM) | (1u << XWRITE_SM) | (1u << XUNCON_SM) /*| (1u << TRACE_SM)*/, true);
 }
 
 void mem_task(void){
