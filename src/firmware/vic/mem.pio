@@ -36,13 +36,16 @@ start:
     mov osr pins        ; Capture D[7:0],D[11:8],A[13:0],RnW
     out y 12            ; Keep D[11:0] in y (in case BLK4)
     in osr 14           ; shift in bottom address
-    wait 1 pin 26       ; Wait for RnW rising edge before capturing not BLK4 data
-    push noblock   [20] ; Send address to FIFO + 200ns data setup time
-    mov isr pins        ; Assume not BLK4, capture new data in isr
+    push noblock        ; Send address to FIFO
     jmp pin not_blk4    ; If A13=='1', this write is not for BLK4
     mov isr y           ; BLK4 write, use data from y
+    jmp push_data
 not_blk4:
+    wait 1 pin 26  [25] ; Wait for RnW rising edge before capturing not BLK4 data
+    mov isr pins        ; Assume not BLK4, capture new data in isr
+push_data:
     push noblock        ; Send data to FIFO
+    wait 1 pin 26       ; Safe guard
 .wrap
 
 ; Direction control of data bus
@@ -71,4 +74,17 @@ start:
 .wrap_target
     wait 1 irq 2 [0]
     in pins 27
+.wrap
+
+; Capturing data bus during VIC phase
+; Used to emulate behaviour of unconnected memory access
+
+.program xuncon
+.clock_div 2.0
+.in 8 left
+.fifo txput
+.wrap_target
+    wait 0 irq 1      [29] ; Wait for phi1 rising edge (VIC phase start)
+    mov isr pins           ; Get data
+    mov rxfifo[0] isr      ; Move data to RX FIFO register 0
 .wrap
