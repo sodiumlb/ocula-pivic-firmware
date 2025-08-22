@@ -24,17 +24,6 @@
 //TODO Currently delay is static and need to be balanced across commands to keep total timing. Should be fixed
 //Static delay is 8 cycles. For PAL 7 cycles delay is thus nominal half period delay (15)
 //We'll use 4 periodes as ca 1uS time unit reference
-//BUG Rev 1.0 boards' DAC have bits reversed
-const uint8_t rev5bit[32] = { 
-   //0-7
-    0,16, 8,24, 4,20,12,28,
-   //8-15
-    2,18,10,26, 6,22,14,30,
-   //16-23
-    1,17, 9,25, 5,21,13,29,
-   //24-31
-    3,19,11,27, 7,23,15,31 
-};
 
 static uint8_t cvbs_mode;
 
@@ -162,7 +151,7 @@ void cvbs_pio_mode_init(void){
    pio_set_gpio_base (CVBS_PIO, CVBS_PIN_OFFS);
    for(uint32_t i = 0; i < 5; i++){
       pio_gpio_init(CVBS_PIO, CVBS_PIN_BASE+i);
-      gpio_set_drive_strength(CVBS_PIN_BASE+i, GPIO_DRIVE_STRENGTH_8MA);
+      gpio_set_drive_strength(CVBS_PIN_BASE+i, GPIO_DRIVE_STRENGTH_2MA);
       gpio_set_slew_rate(CVBS_PIN_BASE+i, GPIO_SLEW_RATE_SLOW);
    }
    pio_sm_set_consecutive_pindirs(CVBS_PIO, CVBS_SM, CVBS_PIN_BASE, 5, true);
@@ -195,7 +184,7 @@ void cvbs_test_img_pal(void){
    static uint32_t j = 0;
    static uint32_t lines = 0;
    while(!pio_sm_is_tx_fifo_full(CVBS_PIO,CVBS_SM)){
-      //pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_CMD(rev5bit[i],rev5bit[i],rev5bit[i],rev5bit[i],6,40));
+      //pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_CMD(i,i,i,i,6,40));
       if(lines < 285){
          if(i < count_of(pal_test_scanline_odd)){   //Assuming same length  
             if(lines & 1u){
@@ -301,7 +290,7 @@ void cvbs_test_img_ntsc(void){
    static uint32_t lines = 0;
    static uint32_t run_lines = 0;
    while(!pio_sm_is_tx_fifo_full(CVBS_PIO,CVBS_SM)){
-      //pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_CMD(rev5bit[i],rev5bit[i],rev5bit[i],rev5bit[i],6,40));
+      //pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_CMD(i,i,i,i,6,40));
       if(lines < 120){  
          if(i < count_of(ntsc_test_scanline_odd)){  //Assuming same length both odd/even
             if(run_lines & 1u){

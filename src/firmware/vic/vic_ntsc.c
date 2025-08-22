@@ -124,7 +124,7 @@ void vic_core1_loop_ntsc(void) {
     uint8_t borderColourIndex = 0;
 
     //FIFO Back pressure. Experimentaly adjusted
-    pio_sm_put(CVBS_PIO,CVBS_SM,CVBS_CMD_DC_RUN(18,38)); 
+    pio_sm_put(CVBS_PIO,CVBS_SM,CVBS_CMD_DC_RUN( 9,38)); 
 
     while (1) {
         // Poll for PIO IRQ 1. This is the rising edge of F1.
