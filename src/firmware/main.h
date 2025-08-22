@@ -77,9 +77,12 @@ bool main_prog(uint16_t *xregs);
 #define RNW_PIN 46
 #define DIR_PIN 47
 
-#define POTX_PIN 1
-#define POTX_PWM_SLICE 0
+#define POTX_PIN 11
+#define POTX_PWM_SLICE 5
 #define POTX_PWM_CH PWM_CHAN_B
+#define POTY_PIN 9
+#define POTY_PWM_SLICE 4
+#define POTY_PWM_CH PWM_CHAN_B
 
 #endif
 
