@@ -9,6 +9,7 @@
   
  void clk_init(void);
  void clk_print_status(void);
+ void clk_set_qmi_clkdiv(uint8_t div);
  
  #endif /* _CLK_H_ */
  

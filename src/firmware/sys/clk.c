@@ -8,10 +8,24 @@
 #include "sys/clk.h"
 #include "sys/cfg.h"
 #include "vic/vic.h"
+#include "pico/stdlib.h"
 #include "hardware/clocks.h"
+#include "hardware/structs/qmi.h"
+#include "hardware/structs/xip.h"
+#include "hardware/sync.h"
 #include "hardware/vreg.h"
 #include <stdbool.h>
 #include <stdio.h>
+
+void clk_set_qmi_clkdiv(uint8_t div){
+    uint32_t interrupt_state = save_and_disable_interrupts();
+    hw_write_masked(&qmi_hw->m[0].timing, div, 0x000000FF);
+
+    // dummy read
+	*(volatile char *)(XIP_NOCACHE_NOALLOC_BASE);
+
+    restore_interrupts(interrupt_state);
+}
 
 void clk_init(void){
 #ifdef PIVIC
@@ -19,18 +33,21 @@ void clk_init(void){
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
         case(VIC_MODE_TEST_NTSC):
+            clk_set_qmi_clkdiv(5);
             set_sys_clock_khz(315000, true);
             clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 315000000, 315000000/2);
             break;
         case(VIC_MODE_PAL):
         case(VIC_MODE_TEST_PAL):
         default:
+            clk_set_qmi_clkdiv(5);
             set_sys_clock_khz(319200, true);
             clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 319200000, 319200000/2);
             break;
     }
 #endif
 #ifdef OCULA
+    clk_set_qmi_clkdiv(4);
     set_sys_clock_khz(276000, true);
     clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 276000000, 276000000/2);
 #endif

@@ -5,11 +5,16 @@
  */
 
 #include "sys/lfs.h"
+#include "sys/clk.h"
 #include "pico/printf.h"
+#include "hardware/flash.h"
+#include "hardware/structs/qmi.h"
 
-// 2MB for LFS filesystem storage,
-#define LFS_DISK_BLOCKS 512
+// 0.5MB for LFS filesystem storage,
+#define LFS_DISK_BLOCKS 128
 static_assert(!(LFS_DISK_BLOCKS % 8));
+
+uint32_t lfs_initial_qmi_timing;
 
 static int lfs_read(const struct lfs_config *c, lfs_block_t block,
                     lfs_off_t off, void *buffer, lfs_size_t size);
@@ -48,6 +53,7 @@ static int lfs_prog(const struct lfs_config *c, lfs_block_t block,
                           (block * FLASH_SECTOR_SIZE) +
                           off;
     flash_range_program(flash_offs, buffer, size);
+    clk_set_qmi_clkdiv(6);
     return LFS_ERR_OK;
 }
 
@@ -57,6 +63,7 @@ static int lfs_erase(const struct lfs_config *c, lfs_block_t block)
     uint32_t flash_offs = (PICO_FLASH_SIZE_BYTES - LFS_DISK_SIZE) +
                           (block * FLASH_SECTOR_SIZE);
     flash_range_erase(flash_offs, FLASH_SECTOR_SIZE);
+    clk_set_qmi_clkdiv(6);
     return LFS_ERR_OK;
 }
 
@@ -68,6 +75,7 @@ static int lfs_sync(const struct lfs_config *c)
 
 void lfs_init(void)
 {
+    lfs_initial_qmi_timing = qmi_hw->m[0].timing;
     memset((void *)&cfg, 0, sizeof(cfg));
     cfg = (struct lfs_config) {
         .read = lfs_read,
@@ -156,4 +164,12 @@ char *lfs_gets(char *str, int n, lfs_t *lfs, lfs_file_t *file)
     if (!len && lfs_eof(file))
         return NULL;
     return str;
+}
+
+void lfs_print_status(void)
+{
+    printf("LFS status\n");
+    printf(" %d of %d blocks used\n", lfs_fs_size(&lfs_volume), LFS_DISK_BLOCKS);
+    printf(" QMI timing %08x vs %08x\n", qmi_hw->m[0].timing, lfs_initial_qmi_timing);
+    printf(" QMI wfmt %08x wcmd %08x\n", qmi_hw->m[0].wfmt, qmi_hw->m[0].wcmd);
 }

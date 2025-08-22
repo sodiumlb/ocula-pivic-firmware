@@ -35,4 +35,6 @@ int lfs_printf(lfs_t *lfs, lfs_file_t *file, const char *format, ...);
 // Safe gets.
 char *lfs_gets(char *str, int n, lfs_t *lfs, lfs_file_t *file);
 
+void lfs_print_status(void);
+
 #endif /* _LFS_H_ */

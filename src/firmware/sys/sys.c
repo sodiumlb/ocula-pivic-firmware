@@ -8,6 +8,7 @@
 #include "sys/clk.h"
 #include "sys/sys.h"
 #include "sys/dvi.h"
+#include "sys/lfs.h"
 #ifdef PIVIC
 #include "vic/aud.h"
 #include "vic/pot.h"
@@ -52,6 +53,7 @@ void sys_mon_status(const char *args, size_t len)
     sys_print_status();
     clk_print_status();
     dvi_print_status();
+    lfs_print_status();
 #ifdef PIVIC
     vic_print_status();
     cvbs_print_status();
