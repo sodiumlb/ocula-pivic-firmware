@@ -396,6 +396,10 @@ void vic_core1_loop_pal(void) {
                     }
                 }
                 else if (fetchState == FETCH_IN_MATRIX_Y) {
+                    // BUG: This logic is wrong, due to early screen origin y check in this cycle.
+                    // IDEA: Might need to introduce a prevFetchState.
+                    // NOTE: Bug doesn't affect NTSC version.
+
                     // If fetchState is FETCH_IN_MATRIX_Y at this point, it means that the
                     // last line matched the screen origin Y but not X. This results in the
                     // matrix being rendered one line lower if X now matches, as per real chip.
@@ -920,7 +924,7 @@ void vic_core1_loop_pal(void) {
                             break;
                         case FETCH_IN_MATRIX_Y:
                         case FETCH_MATRIX_LINE:
-                            if (horizontalCounter == screen_origin_x) {
+                            if (prevHorizontalCounter == screen_origin_x) {
                                 fetchState = FETCH_MATRIX_DLY_1;
                             }
                             break;
