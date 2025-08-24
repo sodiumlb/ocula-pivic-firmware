@@ -723,16 +723,38 @@ void vic_core1_loop_ntsc(void) {
                                     multiColourTable[1] = border_colour_index;
                                     multiColourTable[3] = auxiliary_colour_index;
                                     
-                                    // Last three pixels of previous char data, or border pixels. 4th pixel always border.
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[1]]);
-                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel6]];
-                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel7]];
-                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel8]];
-                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[1]];
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel2]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel4]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel5]]);
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel2]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel3]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel4]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel5]];
                                     
+                                    if (hiresMode) {
+                                        if (non_reverse_mode != 0) {
+                                            pixel6 = ((charData & 0x04) > 0? 2 : 0);
+                                            pixel7 = ((charData & 0x02) > 0? 2 : 0);
+                                            pixel8 = ((charData & 0x01) > 0? 2 : 0);
+                                        } else {
+                                            pixel6 = ((charData & 0x04) > 0? 0 : 2);
+                                            pixel7 = ((charData & 0x02) > 0? 0 : 2);
+                                            pixel8 = ((charData & 0x01) > 0? 0 : 2);
+                                        }
+                                    } else {
+                                        // Multicolour graphics.
+                                        pixel6 = ((charData >> 2) & 0x03);
+                                        pixel7 = pixel8 = (charData & 0x03);
+                                    }
+                                  
+                                    // Rotate pixels so that the other 3 remaining char pixels are output
+                                    // and then border colours takes over after that.
+                                    pixel2 = pixel6;
+                                    pixel3 = pixel7;
+                                    pixel4 = pixel8;
+                                    pixel5 = pixel6 = pixel7 = pixel8 = pixel1 = 1;
+
                                     if (prevHorizontalCounter == screen_origin_x) {
                                         // Last 4 pixels before first char renders are still border.
                                         fetchState = FETCH_MATRIX_DLY_1;
@@ -779,32 +801,81 @@ void vic_core1_loop_ntsc(void) {
                                 break;
                                 
                             case FETCH_SCREEN_CODE:
-                                // Calculate address within video memory and fetch cell index.
-                                cellIndex = xram[screen_mem_start + videoMatrixCounter];
-                                
-                                // Due to the way the colour memory is wired up, the above fetch of the cell index
-                                // also happens to automatically fetch the foreground colour from the Colour Matrix
-                                // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from 
-                                // colour RAM in to the VIC chip.
-                                colourData = xram[colour_mem_start + videoMatrixCounter];
-                                
+
                                 // Look up very latest background, border and auxiliary colour values.
                                 multiColourTable[0] = background_colour_index;
                                 multiColourTable[1] = border_colour_index;
                                 multiColourTable[3] = auxiliary_colour_index;
                             
-                                // Output the 4 pixels for this cycle.
+                                // Output last 3 pixels of the last character. These had already left 
+                                // the shift register but in the delay path to the colour lookup.
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel2]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel4]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel5]]);
-                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel2]];
-                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel3]];
-                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel4]];
-                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel5]];
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel6]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel7]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel8]];
                                 }
                                 
+                                // Update operating hires state and char data immediately prior to
+                                // shifting out new character. Note that when we first enter this state,
+                                // these variables are primed to initially output border pixels while 
+                                // the process of fetching the first real character is taking place, 
+                                // which happens over the first two cycles.
+                                hiresMode = ((colourData & 0x08) == 0);
+                                charData = charDataLatch;
+                              
+                                if (hiresMode) {
+                                    if (non_reverse_mode != 0) {
+                                        pixel1 = ((charData & 0x80) > 0? 2 : 0);
+                                        pixel2 = ((charData & 0x40) > 0? 2 : 0);
+                                        pixel3 = ((charData & 0x20) > 0? 2 : 0);
+                                        pixel4 = ((charData & 0x10) > 0? 2 : 0);
+                                        pixel5 = ((charData & 0x08) > 0? 2 : 0);
+                                    } else {
+                                        pixel1 = ((charData & 0x80) > 0? 0 : 2);
+                                        pixel2 = ((charData & 0x40) > 0? 0 : 2);
+                                        pixel3 = ((charData & 0x20) > 0? 0 : 2);
+                                        pixel4 = ((charData & 0x10) > 0? 0 : 2);
+                                        pixel5 = ((charData & 0x10) > 0? 0 : 2);
+                                    }
+                                } else {
+                                    // Multicolour graphics.
+                                    pixel1 = pixel2 = ((charData >> 6) & 0x03);
+                                    pixel3 = pixel4 = ((charData >> 4) & 0x03);
+                                    pixel5 = ((charData >> 2) & 0x03);
+                                }
+                              
+                                // Look up foreground colour before outputting first pixel.
+                                multiColourTable[2] = (colourData & 0x07);
+
+                                // Calculate address within video memory and fetch cell index.
+                                //Assuming 0x0---, 0x3---- and 0x20-- as connected address space
+                                uint16_t screen_addr = screen_mem_start + videoMatrixCounter;
+                                switch((screen_addr >> 10) & 0xF){
+                                    case  4 ... 7:
+                                    case  9 ... 11:
+                                        cellIndex = XUNCON_REG;
+                                        break;
+                                    default:
+                                        cellIndex = xram[screen_addr];
+                                        break;
+                                }
+
+                                // Due to the way the colour memory is wired up, the above fetch of the cell index
+                                // also happens to automatically fetch the foreground colour from the Colour Matrix
+                                // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from 
+                                // colour RAM in to the VIC chip.
+                                colourData = xram[colour_mem_start + videoMatrixCounter];
+
+                                // Output the 1st pixel of next character. Note that this is not the character
+                                // that relates to the cell index and colour data fetched above.
+                                if (horizontalCounter >= NTSC_HBLANK_END) {
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel1]]);
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel1]];
+                                }
+
                                 // Toggle fetch state. Close matrix if HCC hits zero.
                                 fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
                                 break;
@@ -816,62 +887,47 @@ void vic_core1_loop_ntsc(void) {
                                 multiColourTable[3] = auxiliary_colour_index;
                                 
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
-                                    // Last three pixels of previous char data, or border pixels, depending on if 
-                                    // this is the first character in a row or not.
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
-                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel6]];
-                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel7]];
-                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel8]];
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel2]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel4]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel5]]);
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel2]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel3]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel4]];
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel5]];
                                 }
                                 
                                 // Calculate offset of data.
                                 charDataOffset = char_mem_start + (cellIndex << char_size_shift) + cellDepthCounter;
                                 
-                                // Fetch cell data. It can wrap around, which is why we & with 0x3FFF.
-                                charData = xram[(charDataOffset & 0x3FFF)];
+                                // Fetch cell data.  It can wrap around, which is why we & with 0x3FFF.
+                                // Initially latched to the side until it is needed.
+                                //Assuming 0x0---, 0x3---- and 0x20-- as connected address space
+                                switch((charDataOffset >> 10) & 0xF ){
+                                    case  4 ... 7:
+                                    case  9 ... 11:
+                                         charDataLatch = XUNCON_REG;
+                                         break;
+                                    default:
+                                         charDataLatch = xram[(charDataOffset & 0x3FFF)];
+                                         break;
+                                }
                                 
-                                // Determine character pixels.
-                                if ((colourData & 0x08) == 0) {
-                                    // Hires mode.
+                                // Determine next character pixels.
+                                if (hiresMode) {
                                     if (non_reverse_mode != 0) {
-                                        // Normal unreversed graphics.
-                                        pixel1 = ((charData & 0x80) > 0? 2 : 0);
-                                        pixel2 = ((charData & 0x40) > 0? 2 : 0);
-                                        pixel3 = ((charData & 0x20) > 0? 2 : 0);
-                                        pixel4 = ((charData & 0x10) > 0? 2 : 0);
-                                        pixel5 = ((charData & 0x08) > 0? 2 : 0);
                                         pixel6 = ((charData & 0x04) > 0? 2 : 0);
                                         pixel7 = ((charData & 0x02) > 0? 2 : 0);
                                         pixel8 = ((charData & 0x01) > 0? 2 : 0);
                                     } else {
-                                        // Reversed graphics.
-                                        pixel1 = ((charData & 0x80) > 0? 0 : 2);
-                                        pixel2 = ((charData & 0x40) > 0? 0 : 2);
-                                        pixel3 = ((charData & 0x20) > 0? 0 : 2);
-                                        pixel4 = ((charData & 0x10) > 0? 0 : 2);
-                                        pixel5 = ((charData & 0x08) > 0? 0 : 2);
                                         pixel6 = ((charData & 0x04) > 0? 0 : 2);
                                         pixel7 = ((charData & 0x02) > 0? 0 : 2);
                                         pixel8 = ((charData & 0x01) > 0? 0 : 2);
                                     }
                                 } else {
                                     // Multicolour graphics.
-                                    pixel1 = pixel2 = ((charData >> 6) & 0x03);
-                                    pixel3 = pixel4 = ((charData >> 4) & 0x03);
-                                    pixel5 = pixel6 = ((charData >> 2) & 0x03);
+                                    pixel6 = ((charData >> 2) & 0x03);
                                     pixel7 = pixel8 = (charData & 0x03);
-                                }
-                                
-                                // Look up foreground colour before first pixel.
-                                multiColourTable[2] = (colourData & 0x07);
-                                
-                                // Output the first pixel of the character.
-                                if (horizontalCounter >= NTSC_HBLANK_END) {
-                                    // New character starts 3 dot clock cycles after char data load. 
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel1]]);
-                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel1]];
                                 }
                                 
                                 // Increment the video matrix counter to next cell.
@@ -925,7 +981,7 @@ void vic_core1_loop_ntsc(void) {
                 }
                 break;
         }
-        
+
         aud_tick_inline((uint32_t*)&vic_cra);
 
         // DEBUG: Temporary check to see if we've overshot the 120 cycle allowance.

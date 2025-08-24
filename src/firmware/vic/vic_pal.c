@@ -675,7 +675,6 @@ void vic_core1_loop_pal(void) {
                                     multiColourTable[1] = border_colour_index;
                                     multiColourTable[3] = auxiliary_colour_index;
                                     
-                                    // Last three pixels of previous char data, or border pixels. 4th pixel always border.
                                     if (horizontalCounter > PAL_HBLANK_END) {
                                         pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel2]]);
                                         pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel3]]);
@@ -824,6 +823,7 @@ void vic_core1_loop_pal(void) {
                                         cellIndex = xram[screen_addr];
                                         break;
                                 }
+
                                 // Due to the way the colour memory is wired up, the above fetch of the cell index
                                 // also happens to automatically fetch the foreground colour from the Colour Matrix
                                 // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from 
@@ -880,6 +880,7 @@ void vic_core1_loop_pal(void) {
                                          charDataLatch = xram[(charDataOffset & 0x3FFF)];
                                          break;
                                 }
+                                
                                 // Determine next character pixels.
                                 if (hiresMode) {
                                     if (non_reverse_mode != 0) {
