@@ -799,7 +799,7 @@ void vic_core1_loop_pal(void) {
                                         pixel2 = ((charData & 0x40) > 0? 0 : 2);
                                         pixel3 = ((charData & 0x20) > 0? 0 : 2);
                                         pixel4 = ((charData & 0x10) > 0? 0 : 2);
-                                        pixel5 = ((charData & 0x10) > 0? 0 : 2);
+                                        pixel5 = ((charData & 0x08) > 0? 0 : 2);
                                     }
                                 } else {
                                     // Multicolour graphics.
