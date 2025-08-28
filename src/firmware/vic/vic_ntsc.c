@@ -561,7 +561,8 @@ void vic_core1_loop_ntsc(void) {
                 } 
 
                 // And then reset HC.
-                prevHorizontalCounter = horizontalCounter = 0;
+                prevHorizontalCounter = horizontalCounter;
+                horizontalCounter = 0;
                 pixelCounter = 0;
                 break;
 
