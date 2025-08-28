@@ -766,8 +766,7 @@ void vic_core1_loop_ntsc(void) {
                                     // where the next cycle isn't in horiz blanking, i.e. when HC=7 this cycle.
                                     fetchState = FETCH_MATRIX_DLY_1;
                                 }
-                                // TODO: Can we remove setting of pixel vars to 1? As in PAL?
-                                pixel1 = pixel2 = pixel3 = pixel4 = pixel5 = pixel6 = pixel7 = pixel8 = 1;
+                                
                                 hiresMode = false;
                                 colourData = 0x08;
                                 charData = charDataLatch = 0x55;
