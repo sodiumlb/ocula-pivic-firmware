@@ -832,19 +832,16 @@ void vic_core1_loop_ntsc(void) {
                                         pixel2 = ((charData & 0x40) > 0? 2 : 0);
                                         pixel3 = ((charData & 0x20) > 0? 2 : 0);
                                         pixel4 = ((charData & 0x10) > 0? 2 : 0);
-                                        pixel5 = ((charData & 0x08) > 0? 2 : 0);
                                     } else {
                                         pixel1 = ((charData & 0x80) > 0? 0 : 2);
                                         pixel2 = ((charData & 0x40) > 0? 0 : 2);
                                         pixel3 = ((charData & 0x20) > 0? 0 : 2);
                                         pixel4 = ((charData & 0x10) > 0? 0 : 2);
-                                        pixel5 = ((charData & 0x08) > 0? 0 : 2);
                                     }
                                 } else {
                                     // Multicolour graphics.
                                     pixel1 = pixel2 = ((charData >> 6) & 0x03);
                                     pixel3 = pixel4 = ((charData >> 4) & 0x03);
-                                    pixel5 = ((charData >> 2) & 0x03);
                                 }
                               
                                 // Look up foreground colour before outputting first pixel.
@@ -890,11 +887,9 @@ void vic_core1_loop_ntsc(void) {
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel2]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel4]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel5]]);
                                     dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel2]];
                                     dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel3]];
                                     dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel4]];
-                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel5]];
                                 }
                                 
                                 // Calculate offset of data.
@@ -916,20 +911,27 @@ void vic_core1_loop_ntsc(void) {
                                 // Determine next character pixels.
                                 if (hiresMode) {
                                     if (non_reverse_mode != 0) {
+                                        pixel5 = ((charData & 0x08) > 0? 2 : 0);
                                         pixel6 = ((charData & 0x04) > 0? 2 : 0);
                                         pixel7 = ((charData & 0x02) > 0? 2 : 0);
                                         pixel8 = ((charData & 0x01) > 0? 2 : 0);
                                     } else {
+                                        pixel5 = ((charData & 0x08) > 0? 0 : 2);
                                         pixel6 = ((charData & 0x04) > 0? 0 : 2);
                                         pixel7 = ((charData & 0x02) > 0? 0 : 2);
                                         pixel8 = ((charData & 0x01) > 0? 0 : 2);
                                     }
                                 } else {
                                     // Multicolour graphics.
-                                    pixel6 = ((charData >> 2) & 0x03);
+                                    pixel5 = pixel6 = ((charData >> 2) & 0x03);
                                     pixel7 = pixel8 = (charData & 0x03);
                                 }
                                 
+                                if (horizontalCounter >= NTSC_HBLANK_END) {
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel5]]);
+                                    dvi_framebuf[lineCounter][pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel5]];
+                                }
+
                                 // Increment the video matrix counter to next cell.
                                 videoMatrixCounter++;
                                 
