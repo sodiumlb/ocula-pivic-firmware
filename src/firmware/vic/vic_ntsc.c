@@ -405,10 +405,6 @@ void vic_core1_loop_ntsc(void) {
                         fetchState = FETCH_OUTSIDE_MATRIX;
                         cellDepthCounter = 0;
                         halfLineCounter = 0;
-
-                        // Update raster line CR value to be 0.
-                        vic_cr4 = 0;
-                        vic_cr3 &= 0x7F;
                     } else {
                         // Half line counter simply toggles between 0 and 1.
                         halfLineCounter ^= 1;
@@ -421,10 +417,6 @@ void vic_core1_loop_ntsc(void) {
                         fetchState = FETCH_OUTSIDE_MATRIX;
                         cellDepthCounter = 0;
                         halfLineCounter = 0;
-                        
-                        // Update raster line CR value to be 0.
-                        vic_cr4 = 0;
-                        vic_cr3 &= 0x7F;
                     } else {
                         // Half line counter simply toggles between 0 and 1.
                         halfLineCounter ^= 1;
@@ -486,6 +478,13 @@ void vic_core1_loop_ntsc(void) {
                         pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_COLBURST_E);
                     }
                     pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BACKPORCH);
+                }
+
+                // The write to xram for the raster line CR is done after the CVBS commands so that we don't cause
+                // any delays in the CVBS output. Only update if we just reset VC to 0.
+                if (verticalCounter == 0) {
+                    vic_cr4 = 0;
+                    vic_cr3 &= 0x7F;
                 }
 
                 //
@@ -585,17 +584,6 @@ void vic_core1_loop_ntsc(void) {
 
                     // Half line counter simply toggles between 0 and 1.
                     halfLineCounter ^= 1;
-                }
-              
-                // Update the raster line value stored in the VIC registers. Note that this is
-                // correct for NTSC, i.e. the VIC control registers for the raster value do 
-                // change at HC=28 (not at HC=0 like PAL does). It can also change at HC=61,
-                // if the VC is reset to 0 during that cycle.
-                vic_cr4 = (verticalCounter >> 1);
-                if ((verticalCounter & 0x01) == 0) {
-                    vic_cr3 &= 0x7F;
-                } else {
-                    vic_cr3 |= 0x80;
                 }
 
                 // Output vertical blanking or vsync, if required. If the half-line counter is 1, then 
@@ -984,6 +972,21 @@ void vic_core1_loop_ntsc(void) {
                     // The horizontal counter reset always happens within the top level case 64 statement, so
                     // we only need to cater for HC increments here.
                     prevHorizontalCounter = horizontalCounter++;
+                }
+
+                // We write to xram for the raster line CR after the CVBS commands have been output, so that we don't 
+                // cause a delay to CVBS output. The xram write takes quite a few cycles.
+                if (prevHorizontalCounter == 28) {
+                    // Update the raster line value stored in the VIC registers. Note that this is
+                    // correct for NTSC, i.e. the VIC control registers for the raster value do 
+                    // change at HC=28 (not at HC=0 like PAL does). It can also change at HC=61,
+                    // if the VC is reset to 0 during that cycle.
+                    vic_cr4 = (verticalCounter >> 1);
+                    if ((verticalCounter & 0x01) == 0) {
+                        vic_cr3 &= 0x7F;
+                    } else {
+                        vic_cr3 |= 0x80;
+                    }
                 }
                 break;
         }
