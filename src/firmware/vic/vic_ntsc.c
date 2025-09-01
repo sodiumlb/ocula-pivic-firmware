@@ -19,8 +19,8 @@
 #include <stdio.h>
 
 // Constants related to video timing for NTSC.
-#define NTSC_HBLANK_END       8
-#define NTSC_HBLANK_START     58
+#define NTSC_HBLANK_END       9
+#define NTSC_HBLANK_START     59
 #define NTSC_LINE_END         64
 #define NTSC_VBLANK_START     1
 #define NTSC_VSYNC_START      4
@@ -140,12 +140,12 @@ void vic_core1_loop_ntsc(void) {
 
         // VERTICAL TIMINGS:
         // The definition of a line is somewhat fuzzy in the NTSC 6560 chip.
-        // The vertical counter (VC) increments partway through the visible part of the raster line (at HC=28)
-        // and can reset at two different points along the raster line (HC=28 or HC=61) depending on the 
+        // The vertical counter (VC) increments partway through the visible part of the raster line (at HC=29)
+        // and can reset at two different points along the raster line (HC=29 or HC=62) depending on the 
         // interlaced mode and half-line counter (HLC) states.
         // So, unlike the 6561 PAL chip, the VC and raster line are NOT equivalent in the 6560.
         // Also note that things like the vblank and vsync can start/end at two different HC values half a line 
-        // apart (HC=28 or HC=61), once again depending on the interlaced mode and half-line counter states.
+        // apart (HC=29 or HC=62), once again depending on the interlaced mode and half-line counter states.
         // Given that, then documenting what lines are vblank, vsync and visible is a little complex, as they
         // shift depending on state, and can span multiple vertical counter values. 
         // The code is the source of truth in that regard.
@@ -165,10 +165,10 @@ void vic_core1_loop_ntsc(void) {
         // The following are some events of note that happen for certain HC (horizontal counter) values:
         // 1: New line logic. Same as PAL.
         // 2: Vertical Cell Counter (VCC) reloaded if VC=0. Same as PAL.
-        // 8: Start of visible pixels. Technically they start halfway into the cycle.
-        // 28: Increments VC and HLC (half-line counter). Resets VC every second field for interlaced.
-        // 58: Horiz blanking starts half way into this cycle, for visible lines.
-        // 61: Increments half-line counter. Resets VC if non-interlaced, or every second field for interlaced.
+        // 9: Start of visible pixels. Technically they start halfway into the cycle.
+        // 29: Increments VC and HLC (half-line counter). Resets VC every second field for interlaced.
+        // 59: Horiz blanking starts, for visible lines.
+        // 62: Increments half-line counter. Resets VC if non-interlaced, or every second field for interlaced.
         // 64: Resets HC.
 
         switch (horizontalCounter) {
@@ -392,11 +392,11 @@ void vic_core1_loop_ntsc(void) {
                 prevHorizontalCounter = horizontalCounter++;
                 break;
 
-            // HC = 61 is one of the two increment points for the 1/2 line counter. It is also when 
+            // HC = 62 is one of the two increment points for the 1/2 line counter. It is also when 
             // the vertical counter resets when in non-interlaced mode, and for interlaced mode where 
             // it resets every second field. It is also one of two points where vertical blanking
             // and vertical sync can start and end.
-            case 61:
+            case 62:
                 if (interlaced_mode) {
                     if ((verticalCounter == NTSC_INTL_LAST_LINE) && !halfLineCounter) {
                         // For interlaced mode, the vertical counter resets here every second field, as
@@ -405,6 +405,10 @@ void vic_core1_loop_ntsc(void) {
                         fetchState = FETCH_OUTSIDE_MATRIX;
                         cellDepthCounter = 0;
                         halfLineCounter = 0;
+
+                        // Update raster line CR value to be 0.
+                        vic_cr4 = 0;
+                        vic_cr3 &= 0x7F;
                     } else {
                         // Half line counter simply toggles between 0 and 1.
                         halfLineCounter ^= 1;
@@ -417,6 +421,10 @@ void vic_core1_loop_ntsc(void) {
                         fetchState = FETCH_OUTSIDE_MATRIX;
                         cellDepthCounter = 0;
                         halfLineCounter = 0;
+
+                        // Update raster line CR value to be 0.
+                        vic_cr4 = 0;
+                        vic_cr3 &= 0x7F;
                     } else {
                         // Half line counter simply toggles between 0 and 1.
                         halfLineCounter ^= 1;
@@ -424,7 +432,7 @@ void vic_core1_loop_ntsc(void) {
                 }
 
                 // Output vertical blanking or vsync, if required. If the half-line counter is 1, then 
-                // vblank and vsync get delayed by half a line, i.e. to HC=28. 
+                // vblank and vsync get delayed by half a line, i.e. to HC=29. 
                 if (!halfLineCounter) {
                     if ((verticalCounter > 0) && (verticalCounter <= NTSC_VBLANK_END)) {
                         // Vertical blanking and sync - Lines 1-9.
@@ -480,22 +488,14 @@ void vic_core1_loop_ntsc(void) {
                     pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BACKPORCH);
                 }
 
-                // The write to xram for the raster line CR is done after the CVBS commands so that we don't cause
-                // any delays in the CVBS output. Only update if we just reset VC to 0.
-                if (verticalCounter == 0) {
-                    vic_cr4 = 0;
-                    vic_cr3 &= 0x7F;
-                }
-
                 //
-                // IMPORTANT: THE HC=61 CASE STATEMENT DELIBERATELY FALLS THROUGH TO NEXT BLOCK.
+                // IMPORTANT: THE HC=62 CASE STATEMENT DELIBERATELY FALLS THROUGH TO NEXT BLOCK.
                 //
 
             // These HC values are always in blanking and have no special behaviour other than
             // the standard state changes common to all cycles.
-            case 59:
             case 60:
-            case 62:
+            case 61:
             case 63:
                 // Simplified state changes. We're in hblank, so its just the bare minimum.
                 switch (fetchState) {
@@ -565,15 +565,15 @@ void vic_core1_loop_ntsc(void) {
                 pixelCounter = 0;
                 break;
 
-            // HC=28 is when the 6560 increments the vertical counter (VC). The 1/2 line counter also
+            // HC=29 is when the 6560 increments the vertical counter (VC). The 1/2 line counter also
             // toggles at this time. This is therefore the end of the raster line as reported by
             // the VIC registers, but is not the actual end of the raster, as that happens when the 
             // hsync occurs at HC=62.
-            case 28:
-                // NOTE: The VC always resets at HC=61 when in non-interlaced mode, but for interlaced,
-                // it can reset in HC=28 as controlled by the half-line counter.
+            case 29:
+                // NOTE: The VC always resets at HC=62 when in non-interlaced mode, but for interlaced,
+                // it can reset in HC=29 as controlled by the half-line counter.
                 if (interlaced_mode && (verticalCounter == NTSC_INTL_LAST_LINE) && !halfLineCounter) {
-                    // For interlaced mode, the vertical counter resets every second field at HC=28.
+                    // For interlaced mode, the vertical counter resets every second field at HC=29.
                     verticalCounter = 0;
                     fetchState = FETCH_OUTSIDE_MATRIX;
                     cellDepthCounter = 0;
@@ -586,8 +586,19 @@ void vic_core1_loop_ntsc(void) {
                     halfLineCounter ^= 1;
                 }
 
+                // Update the raster line value stored in the VIC registers. Note that this is
+                // correct for NTSC, i.e. the VIC control registers for the raster value do 
+                // change at HC=29 (not at HC=1 like PAL does). It can also change at HC=62,
+                // if the VC is reset to 0 during that cycle.
+                vic_cr4 = (verticalCounter >> 1);
+                if ((verticalCounter & 0x01) == 0) {
+                    vic_cr3 &= 0x7F;
+                } else {
+                    vic_cr3 |= 0x80;
+                }
+
                 // Output vertical blanking or vsync, if required. If the half-line counter is 1, then 
-                // vblank and vsync get delayed by half a line, i.e. to HC=61. 
+                // vblank and vsync get delayed by half a line, i.e. to HC=62. 
                 if (!halfLineCounter) {
                     if ((verticalCounter > 0) && (verticalCounter <= NTSC_VBLANK_END)) {
                         // Vertical blanking and sync - Lines 1-9.
@@ -624,7 +635,7 @@ void vic_core1_loop_ntsc(void) {
                 }
 
                 //
-                // IMPORTANT: THE HC=28 CASE STATEMENT DELIBERATELY FALLS THROUGH TO THE DEFAULT BLOCK.
+                // IMPORTANT: THE HC=29 CASE STATEMENT DELIBERATELY FALLS THROUGH TO THE DEFAULT BLOCK.
                 //
 
             // Covers from HC=3 to HC=58.
@@ -671,7 +682,7 @@ void vic_core1_loop_ntsc(void) {
                         }
                         
                         // We output the start of horiz blanking here, enough of it to last to the start
-                        // of HC=61, where a decision is then made as to whether it will be horizontal
+                        // of HC=62, where a decision is then made as to whether it will be horizontal
                         // blanking or vertical blanking. This is why there is a part 1 and 2 of the front
                         // porch.
                         pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_FRONTPORCH_1);
@@ -936,7 +947,7 @@ void vic_core1_loop_ntsc(void) {
                     }
                 } else {
                     // Inside vertical blanking. The CVBS commands for each line were already sent during 
-                    // either HC=28 or HC=61. In case the screen origin Y is set within the vertical blanking
+                    // either HC=29 or HC=62. In case the screen origin Y is set within the vertical blanking
                     // lines, we still need to update the fetch state, video matrix counter, and the horizontal
                     // cell counter, even though we're not outputting character pixels. So for the rest of the 
                     // line, it is a simplified version of the standard line, except that we don't output 
@@ -972,21 +983,6 @@ void vic_core1_loop_ntsc(void) {
                     // The horizontal counter reset always happens within the top level case 64 statement, so
                     // we only need to cater for HC increments here.
                     prevHorizontalCounter = horizontalCounter++;
-                }
-
-                // We write to xram for the raster line CR after the CVBS commands have been output, so that we don't 
-                // cause a delay to CVBS output. The xram write takes quite a few cycles.
-                if (prevHorizontalCounter == 28) {
-                    // Update the raster line value stored in the VIC registers. Note that this is
-                    // correct for NTSC, i.e. the VIC control registers for the raster value do 
-                    // change at HC=28 (not at HC=0 like PAL does). It can also change at HC=61,
-                    // if the VC is reset to 0 during that cycle.
-                    vic_cr4 = (verticalCounter >> 1);
-                    if ((verticalCounter & 0x01) == 0) {
-                        vic_cr3 &= 0x7F;
-                    } else {
-                        vic_cr3 |= 0x80;
-                    }
                 }
                 break;
         }
