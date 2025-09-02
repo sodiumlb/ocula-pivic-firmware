@@ -101,6 +101,8 @@ void vic_pio_init(void) {
 void vic_memory_init() {
     // Load the VIC 20 Character ROM into internal PIVIC RAM.
     memcpy((void*)(&xram[ADDR_UPPERCASE_GLYPHS_CHRSET]), (void*)vic_char_rom, sizeof(vic_char_rom));
+    // Clear VIC CRs for deterministic loop start-up
+    memset((void*)(&xram[0x1000]), 0, 16); 
 }
 
 void vic_splash_init() {
