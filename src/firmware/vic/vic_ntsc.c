@@ -733,15 +733,15 @@ void vic_core1_loop_ntsc(void) {
                                     
                                     if (hiresMode) {
                                         if (non_reverse_mode != 0) {
-                                            pixel5 = ((charData & 0x08) > 0? 2 : 0);
-                                            pixel6 = ((charData & 0x04) > 0? 2 : 0);
-                                            pixel7 = ((charData & 0x02) > 0? 2 : 0);
-                                            pixel8 = ((charData & 0x01) > 0? 2 : 0);
+                                            pixel5 = ((charData & 0x08) ? 2 : 0);
+                                            pixel6 = ((charData & 0x04) ? 2 : 0);
+                                            pixel7 = ((charData & 0x02) ? 2 : 0);
+                                            pixel8 = ((charData & 0x01) ? 2 : 0);
                                         } else {
-                                            pixel5 = ((charData & 0x08) > 0? 0 : 2);
-                                            pixel6 = ((charData & 0x04) > 0? 0 : 2);
-                                            pixel7 = ((charData & 0x02) > 0? 0 : 2);
-                                            pixel8 = ((charData & 0x01) > 0? 0 : 2);
+                                            pixel5 = ((charData & 0x08) ? 0 : 2);
+                                            pixel6 = ((charData & 0x04) ? 0 : 2);
+                                            pixel7 = ((charData & 0x02) ? 0 : 2);
+                                            pixel8 = ((charData & 0x01) ? 0 : 2);
                                         }
                                     } else {
                                         // Multicolour graphics.
@@ -832,15 +832,15 @@ void vic_core1_loop_ntsc(void) {
                               
                                 if (hiresMode) {
                                     if (non_reverse_mode != 0) {
-                                        pixel1 = ((charData & 0x80) > 0? 2 : 0);
-                                        pixel2 = ((charData & 0x40) > 0? 2 : 0);
-                                        pixel3 = ((charData & 0x20) > 0? 2 : 0);
-                                        pixel4 = ((charData & 0x10) > 0? 2 : 0);
+                                        pixel1 = ((charData & 0x80) ? 2 : 0);
+                                        pixel2 = ((charData & 0x40) ? 2 : 0);
+                                        pixel3 = ((charData & 0x20) ? 2 : 0);
+                                        pixel4 = ((charData & 0x10) ? 2 : 0);
                                     } else {
-                                        pixel1 = ((charData & 0x80) > 0? 0 : 2);
-                                        pixel2 = ((charData & 0x40) > 0? 0 : 2);
-                                        pixel3 = ((charData & 0x20) > 0? 0 : 2);
-                                        pixel4 = ((charData & 0x10) > 0? 0 : 2);
+                                        pixel1 = ((charData & 0x80) ? 0 : 2);
+                                        pixel2 = ((charData & 0x40) ? 0 : 2);
+                                        pixel3 = ((charData & 0x20) ? 0 : 2);
+                                        pixel4 = ((charData & 0x10) ? 0 : 2);
                                     }
                                 } else {
                                     // Multicolour graphics.
@@ -915,15 +915,15 @@ void vic_core1_loop_ntsc(void) {
                                 // Determine next character pixels.
                                 if (hiresMode) {
                                     if (non_reverse_mode != 0) {
-                                        pixel5 = ((charData & 0x08) > 0? 2 : 0);
-                                        pixel6 = ((charData & 0x04) > 0? 2 : 0);
-                                        pixel7 = ((charData & 0x02) > 0? 2 : 0);
-                                        pixel8 = ((charData & 0x01) > 0? 2 : 0);
+                                        pixel5 = ((charData & 0x08) ? 2 : 0);
+                                        pixel6 = ((charData & 0x04) ? 2 : 0);
+                                        pixel7 = ((charData & 0x02) ? 2 : 0);
+                                        pixel8 = ((charData & 0x01) ? 2 : 0);
                                     } else {
-                                        pixel5 = ((charData & 0x08) > 0? 0 : 2);
-                                        pixel6 = ((charData & 0x04) > 0? 0 : 2);
-                                        pixel7 = ((charData & 0x02) > 0? 0 : 2);
-                                        pixel8 = ((charData & 0x01) > 0? 0 : 2);
+                                        pixel5 = ((charData & 0x08) ? 0 : 2);
+                                        pixel6 = ((charData & 0x04) ? 0 : 2);
+                                        pixel7 = ((charData & 0x02) ? 0 : 2);
+                                        pixel8 = ((charData & 0x01) ? 0 : 2);
                                     }
                                 } else {
                                     // Multicolour graphics.
