@@ -107,8 +107,7 @@ void vic_core1_loop_ntsc(void) {
     };
 
     // Optimisation to represent "in matrix", "address output enabled", and "pixel output enabled" 
-    // all with one simple state variable. It might not be 100% accurate but should work for most 
-    // cases.
+    // all with one simple state variable.
     uint8_t fetchState = FETCH_OUTSIDE_MATRIX;
     
     // Due to the complexity of how the NTSC vertical blanking shifts depending on state, we keep 
@@ -155,17 +154,18 @@ void vic_core1_loop_ntsc(void) {
         // The horizontal timings for the NTSC 6560 are also quite strange compared to the PAL 6561.
         // There are 65 cycles per "line" (see above for comments on the obscure nature of what a line is)
         // The horizontal counter (HC) continously counts from 0 to 64, then resets back to 0.
-        // 15 cycles for horizontal blanking, between HC=58.5 and HC=8.5.
-        // - 4 cycles of front porch [58.5 -> 62.5]
-        // - 5 cycles of hsync [62.5 -> 2.5]
-        // - 0.5 cycles of breezeway [2.5 -> 3]
-        // - 5 cycles colour burst [3 -> 8]
-        // - 0.5 back porch [8 -> 8.5]
-        // 50 cycles for visible pixels, making 200 visible pixels total [8.5 -> 58.5]
+        // 15 cycles for horizontal blanking, between HC=59 and HC=9.
+        // - 4 cycles of front porch [59 -> 63]
+        // - 5 cycles of hsync [63 -> 3]
+        // - 0.5 cycles of breezeway [3 -> 3.5]
+        // - 5 cycles colour burst [3.5 -> 8.5]
+        // - 0.5 back porch [8.5 -> 9]
+        // 50 cycles for visible pixels, making 200 visible pixels total [9 -> 59]
         //
         // The following are some events of note that happen for certain HC (horizontal counter) values:
         // 1: New line logic. Same as PAL.
-        // 2: Vertical Cell Counter (VCC) reloaded if VC=0. Same as PAL.
+        // 2: Horizontal Cell Counter (HCC) reloaded.
+        // 3: Vertical Cell Counter (VCC) reloaded if VC=0. Same as PAL.
         // 9: Start of visible pixels. Technically they start halfway into the cycle.
         // 29: Increments VC and HLC (half-line counter). Resets VC every second field for interlaced.
         // 59: Horiz blanking starts, for visible lines.
@@ -471,9 +471,8 @@ void vic_core1_loop_ntsc(void) {
 
                 // If we're not in vertical blanking, i.e. we didn't output the CVBS commands above, 
                 // then we continue horizontal blanking commands instead, including hsync and colour 
-                // burst. It will end at HC=8.5
+                // burst. It will end at HC=9
                 if (!vblanking) {
-                    // TODO: How does colour burst work when vblanking finishes halfway through line?
                     pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_FRONTPORCH_2);
                     pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_HSYNC);
                     pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BREEZEWAY);
@@ -639,7 +638,7 @@ void vic_core1_loop_ntsc(void) {
                 // IMPORTANT: THE HC=29 CASE STATEMENT DELIBERATELY FALLS THROUGH TO THE DEFAULT BLOCK.
                 //
 
-            // Covers from HC=3 to HC=58.
+            // Covers from HC=4 to HC=59.
             default:
                 // Line 0, and Lines after 9, are "visible", i.e. not within the vertical blanking.
                 if (!vblanking) {
@@ -692,7 +691,7 @@ void vic_core1_loop_ntsc(void) {
                         prevHorizontalCounter = horizontalCounter++;
                     }
                     else {
-                        // Covers visible line cycles from HC=4 to HC=57, i.e. 1 cycle before HBLANK start.
+                        // Covers visible line cycles from HC=4 to HC=58, i.e. 1 cycle before HBLANK start.
                         switch (fetchState) {
                             case FETCH_OUTSIDE_MATRIX:
                                 if ((verticalCounter >> 1) == screen_origin_y) {
@@ -767,7 +766,7 @@ void vic_core1_loop_ntsc(void) {
                                 }
                                 else if (prevHorizontalCounter == screen_origin_x) {
                                     // Still in horizontal blanking, but we still need to prepare for the case
-                                    // where the next cycle isn't in horiz blanking, i.e. when HC=7 this cycle.
+                                    // where the next cycle isn't in horiz blanking, i.e. when HC=8 this cycle.
                                     fetchState = FETCH_MATRIX_DLY_1;
                                 }
                                 
@@ -990,7 +989,7 @@ void vic_core1_loop_ntsc(void) {
 
         aud_tick_inline((uint32_t*)&vic_cra);
 
-        // DEBUG: Temporary check to see if we've overshot the 120 cycle allowance.
+        // DEBUG: Temporary check to see if we've overshot the cycle allowance per loop.
         if (pio_interrupt_get(VIC_PIO, 1)) {
             overruns = 1;
         }
