@@ -181,6 +181,8 @@ void vic_core1_loop_ntsc(void) {
                 // Reset pixel output buffer to be all border colour.
                 pixel1 = pixel2 = pixel3 = pixel4 = pixel5 = pixel6 = pixel7 = pixel8 = 1;
                 hiresMode = false;
+                colourData = 0x08;
+                charData = charDataLatch = 0x55;
 
                 // Simplified state updates for HC=0. Counters and states still need to 
                 // change as appropriate, regardless of it being during blanking.
