@@ -42,6 +42,7 @@
 #define PAL_BREEZEWAY    CVBS_CMD_PAL_DC_RUN( 9, 3)        // Actual breezeway this delay + burst command delay
 #define PAL_BACKPORCH    CVBS_CMD_PAL_DC_RUN( 9, 4)
 
+//Burst command is special as it is only synced to dotclock at the end, thus delay + 16 periods counts as 17 dotclks
 #define PAL_COLBURST_O	 CVBS_CMD_PAL_BURST(12, 6, 9,14,16)
 #define PAL_COLBURST_E	 CVBS_CMD_PAL_BURST( 6,12, 9, 5,16)
 
