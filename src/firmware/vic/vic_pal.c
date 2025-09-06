@@ -704,12 +704,13 @@ void vic_core1_loop_pal(void) {
                                     // Pixel 5 has to be output after the pixel var calculations above.
                                     pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel5]]);
 
+                                    // Output DVI after all the CVBS commands, to avoid CVBS delays.
                                     if (horizontalCounter > PAL_HBLANK_END) {
                                         dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel2]];
                                         dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel3]];
                                         dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel4]];
-                                        dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel5]];
                                     }
+                                    dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel5]];
                                   
                                     // Rotate pixels so that the other 3 remaining char pixels are output
                                     // and then border colours takes over after that.
