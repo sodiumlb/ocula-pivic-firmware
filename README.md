@@ -10,7 +10,7 @@ A modern implementation of the MOS VIC 6560 and 6561, used in Commodore VIC-20 8
 
 ## Dev Setup
 
-This is only for building the LOCI firmware.
+This is only for building the OCULA and PIVIC firmware.
 
 Install the C/C++ toolchain for the Raspberry Pi Pico. For more information, read [Getting started with the Raspberry Pi Pico](https://rptl.io/pico-get-started).
 ```
@@ -32,3 +32,9 @@ cd build
 cmake ../
 make
 ```
+
+## Related projects
+* [OCULA documentation project](https://github.com/sodiumlb/ocula-docs/wiki)
+* OCULA hardware project
+* PIVIC documentation project
+* PIVIC hardware project
