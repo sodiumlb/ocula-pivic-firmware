@@ -232,28 +232,28 @@ void cvbs_test_img_pal(void){
 
 void cvbs_ntsc_gen(uint32_t* col,uint8_t delay,uint8_t base_col){
 
-   uint8_t L0 = (ntsc_palette[0][base_col] >>  0) & 0x1F;
-   uint8_t L1 = (ntsc_palette[0][base_col] >> 10) & 0x1F;
-   uint8_t head[] = { 0, 6,11,17};
-   uint8_t pixlen[] = {38,39,39,39};
-   if(delay > 22){
+   uint8_t L0 = (ntsc_palette[0][base_col] >>  5) & 0x1F;
+   uint8_t L1 = (ntsc_palette[0][base_col] >> 16) & 0x1F;
+   uint8_t head[] = { 0,11,22,33};
+   uint8_t pixlen[] = {77,77,77,77};
+   if(delay > 44){
       uint8_t tmp = L0;
       L0 = L1;
       L1 = tmp;
-      delay = delay - 22;
+      delay = delay - 44;
    }
    printf("Delay:%2d\n", delay);
    for(uint8_t i=0; i < 4; i++){
       uint8_t delay0 = delay + head[i]; 
-      uint8_t delay1 = 22;
+      uint8_t delay1 = 44;
       uint8_t L0o, L1o, L2o;
-      if(delay0 > 22){
-         delay0 = delay0 - 22;
+      if(delay0 > 44){
+         delay0 = delay0 - 44;
          L0o = L0;
          L1o = L1;
          L2o = L0;
       }else if(delay0 == 0){
-         delay0 = 22;
+         delay0 = 44;
          L0o = L0;
          L1o = L1;
          L2o = L0;

@@ -55,7 +55,7 @@ postdelay:
 ; command word coming in
 
 .program cvbs_ntsc
-.clock_div 2.0
+.clock_div 1.0
 .origin 0
 public entry:
     out pc 5           ;Next command (new word)
@@ -76,16 +76,16 @@ dc_loop:
 
 ; PIXEL Command
 ; Output one set of pre-calulated levels and delays during one dot clock
-;  29                 0 
+;  31                            0 
 ; |L2|delay1|L1|delay0|L0|id_pixel|
-;   5    5    5    5    5    5    bits
+;   5    6    5    6    5    5    bits
 public cvbs_cmd_pixel:
     out pins 5         ;Out L0
-    out x 5            ;delay0 in x
+    out x 6            ;delay0 in x
 delay0:
     jmp x-- delay0
     out pins 5         ;Out L1
-    out x 5            ;delay1 in x
+    out x 6            ;delay1 in x
 delay1:
     jmp x-- delay1
     out pins 5         ;Out L2
@@ -95,18 +95,20 @@ delay1:
 ; BURST Command
 ; Output a train of L0/L1 colour burst periods, ending with DC 
 ; NOTE: Only synched to dot clock at the end - timing calculations needed
-;  29                 0 
+;  30                 0 
 ; |DC|L1|L0|predelay|repeat|id_burst|
-;   5  5  5     5       5      5    bits
+;   5  5  5     6       5      5    bits
 public cvbs_cmd_burst:
     out y 5            ;repeat count
-    out x 5            ;get predelay
+    out x 6            ;get predelay
     out isr 5          ;keep L0 in isr
 predelay_burst:
     jmp x-- predelay_burst
 burst_loop:
     mov pins isr  [21] ;L0 out
+    nop           [21]
     mov pins osr  [20] ;L1 out
+    nop           [21]
     jmp y-- burst_loop
     out null 5         ;Dump L1
     out pins 5         ;DC out, trigger autopull
