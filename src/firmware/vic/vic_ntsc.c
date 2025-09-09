@@ -93,6 +93,8 @@ void vic_core1_loop_ntsc(void) {
     uint8_t pixel7 = 0;
     uint8_t pixel8 = 0;
 
+    bool oddLine = true;
+
     // NTSC Palette data.
     uint8_t pIndex = 0;
     uint32_t palette[8][16] = {
@@ -478,7 +480,7 @@ void vic_core1_loop_ntsc(void) {
                     pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_FRONTPORCH_2);
                     pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_HSYNC);
                     pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BREEZEWAY);
-                    if (verticalCounter & 1) {
+                    if (oddLine) {
                         // Odd line. Switch palette starting offset.
                         pIndex = 2;
                         pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_COLBURST_O);
@@ -489,6 +491,7 @@ void vic_core1_loop_ntsc(void) {
                     }
                     pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BACKPORCH);
                 }
+                oddLine = !oddLine;
 
                 //
                 // IMPORTANT: THE HC=62 CASE STATEMENT DELIBERATELY FALLS THROUGH TO NEXT BLOCK.
