@@ -124,6 +124,7 @@ void vic_core1_loop_ntsc(void) {
 
     // Temporary variables, not a core part of the state.
     uint16_t charDataOffset = 0;
+    uint8_t interlaced_mode_latched = 0;
 
     // Index of the current border colour (used temporarily when we don't want to use the define multiple times in a cycle)
     uint8_t borderColourIndex = 0;
@@ -402,7 +403,8 @@ void vic_core1_loop_ntsc(void) {
             // it resets every second field. It is also one of two points where vertical blanking
             // and vertical sync can start and end.
             case 62:
-                if (interlaced_mode) {
+                interlaced_mode_latched = interlaced_mode;
+                if (interlaced_mode_latched) {
                     if ((verticalCounter == NTSC_INTL_LAST_LINE) && !halfLineCounter) {
                         // For interlaced mode, the vertical counter resets here every second field, as
                         // controlled by the half-line counter.
@@ -577,7 +579,7 @@ void vic_core1_loop_ntsc(void) {
             case 29:
                 // NOTE: The VC always resets at HC=62 when in non-interlaced mode, but for interlaced,
                 // it can reset in HC=29 as controlled by the half-line counter.
-                if (interlaced_mode && (verticalCounter == NTSC_INTL_LAST_LINE) && !halfLineCounter) {
+                if (interlaced_mode_latched && (verticalCounter == NTSC_INTL_LAST_LINE) && !halfLineCounter) {
                     // For interlaced mode, the vertical counter resets every second field at HC=29.
                     verticalCounter = 0;
                     fetchState = FETCH_OUTSIDE_MATRIX;
