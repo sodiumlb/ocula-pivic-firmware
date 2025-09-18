@@ -125,6 +125,11 @@ void vic_core1_loop_ntsc(void) {
     // Temporary variables, not a core part of the state.
     uint16_t charDataOffset = 0;
 
+    // Flag variable to delay vblank command push to late in cycle
+    #define DO_VBLANK_LONG 1
+    #define DO_VBLANK_SHORT 2
+    uint8_t do_vblank = 0;
+
     // Index of the current border colour (used temporarily when we don't want to use the define multiple times in a cycle)
     uint8_t borderColourIndex = 0;
 
@@ -403,7 +408,7 @@ void vic_core1_loop_ntsc(void) {
             // and vertical sync can start and end.
             case 62:
                 if (interlaced_mode) {
-                    if ((verticalCounter == NTSC_INTL_LAST_LINE) && !halfLineCounter) {
+                    if ((verticalCounter >= NTSC_INTL_LAST_LINE) && !halfLineCounter) {
                         // For interlaced mode, the vertical counter resets here every second field, as
                         // controlled by the half-line counter.
                         verticalCounter = 0;
@@ -604,6 +609,7 @@ void vic_core1_loop_ntsc(void) {
 
                 // Output vertical blanking or vsync, if required. If the half-line counter is 1, then 
                 // vblank and vsync get delayed by half a line, i.e. to HC=62. 
+                // Actual FIFO submission moved to the end of the cycle (default case) to counter FIFO overruns. 
                 if (!halfLineCounter) {
                     if ((verticalCounter > 0) && (verticalCounter <= NTSC_VBLANK_END)) {
                         // Vertical blanking and sync - Lines 1-9.
@@ -611,27 +617,18 @@ void vic_core1_loop_ntsc(void) {
 
                         if (verticalCounter < NTSC_VSYNC_START) {
                             // Lines 1, 2, 3.
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                            do_vblank = DO_VBLANK_SHORT;
                         }
                         else if (verticalCounter <= NTSC_VSYNC_END) {
                             // Vertical sync, lines 4, 5, 6.
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_L);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_H);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_L);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_H);
+                            do_vblank = DO_VBLANK_LONG;
 
                             // Vertical sync is what resets the video matrix latch.
                             videoMatrixLatch = videoMatrixCounter = 0;
                         }
                         else {
                             // Lines 7, 8, 9.
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                            do_vblank = DO_VBLANK_SHORT;
                         }
                     }
                     else {
@@ -952,7 +949,8 @@ void vic_core1_loop_ntsc(void) {
                     }
                 } else {
                     // Inside vertical blanking. The CVBS commands for each line were already sent during 
-                    // either HC=29 or HC=62. In case the screen origin Y is set within the vertical blanking
+                    // HC=62 or decided in HC=29 and output here (to avoid FIFO overruns)
+                    // In case the screen origin Y is set within the vertical blanking
                     // lines, we still need to update the fetch state, video matrix counter, and the horizontal
                     // cell counter, even though we're not outputting character pixels. So for the rest of the 
                     // line, it is a simplified version of the standard line, except that we don't output 
@@ -983,6 +981,22 @@ void vic_core1_loop_ntsc(void) {
                             videoMatrixCounter++;
                             fetchState = FETCH_SCREEN_CODE;
                             break;
+                    }
+
+                    //Delayed FIFO put to avoid overrun
+                    if(do_vblank == DO_VBLANK_LONG){
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_L);
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_H);
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_L);
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_H);
+                        do_vblank = 0;
+                    }
+                    if(do_vblank == DO_VBLANK_SHORT){
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
+                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                        do_vblank = 0;
                     }
     
                     // The horizontal counter reset always happens within the top level case 64 statement, so
