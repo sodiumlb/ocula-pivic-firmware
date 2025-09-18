@@ -7,6 +7,7 @@
 #include "main.h"
 #include "cvbs_ntsc.h"
 #include "vic/aud.h"
+#include "vic/pen.h"
 #include "vic/vic.h"
 #include "vic/vic_ntsc.h"
 #include "sys/dvi.h"
@@ -184,7 +185,11 @@ void vic_core1_loop_ntsc(void) {
             // HC = 0. The main reason for this having its own special case block is due to the special
             // handling for screen origin X matching when HC=0.
             case 0: 
-              
+
+                // Reset light pen counter
+                // 15:8=VC/2 7:0=0 
+                *pen_xy = (verticalCounter & 0xFC) << 7;
+
                 // Reset pixel output buffer to be all border colour.
                 pixel1 = pixel2 = pixel3 = pixel4 = pixel5 = pixel6 = pixel7 = pixel8 = 1;
                 hiresMode = false;
@@ -419,6 +424,9 @@ void vic_core1_loop_ntsc(void) {
                         // Update raster line CR value to be 0.
                         vic_cr4 = 0;
                         vic_cr3 &= 0x7F;
+
+                        // Reset Pen latch
+                        *pen_dma_trans_reg = 1;
                     } else {
                         // Half line counter simply toggles between 0 and 1.
                         halfLineCounter ^= 1;
@@ -435,6 +443,9 @@ void vic_core1_loop_ntsc(void) {
                         // Update raster line CR value to be 0.
                         vic_cr4 = 0;
                         vic_cr3 &= 0x7F;
+
+                        // Reset Pen latch
+                        *pen_dma_trans_reg = 1;
                     } else {
                         // Half line counter simply toggles between 0 and 1.
                         halfLineCounter ^= 1;

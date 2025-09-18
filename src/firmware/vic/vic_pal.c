@@ -7,6 +7,7 @@
 #include "main.h"
 #include "cvbs_pal.h"
 #include "vic/aud.h"
+#include "vic/pen.h"
 #include "vic/vic.h"
 #include "vic/vic_pal.h"
 #include "sys/dvi.h"
@@ -210,6 +211,10 @@ void vic_core1_loop_pal(void) {
       
             // HC = 0 is handled in a single block for ALL lines.
             case 0: 
+
+                // Reset light pen counter
+                // 15:8=VC/2 7:0=0 
+                *pen_xy = (verticalCounter & 0xFC) << 7;
               
                 // Reset pixel output buffer to be all border colour at start of line.
                 pixel1 = pixel2 = pixel3 = pixel4 = pixel5 = pixel6 = pixel7 = pixel8 = 1;
@@ -278,6 +283,8 @@ void vic_core1_loop_pal(void) {
                     verticalCounter = 0;
                     fetchState = FETCH_OUTSIDE_MATRIX;
                     cellDepthCounter = 0;
+                    // Reset Pen latch
+                    *pen_dma_trans_reg = 1;
                 } else {
                     // Otherwise increment line counter.
                     verticalCounter++;

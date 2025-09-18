@@ -84,6 +84,11 @@ bool main_prog(uint16_t *xregs);
 #define POTY_PWM_SLICE 4
 #define POTY_PWM_CH PWM_CHAN_B
 
+#define PEN_PIN 47
+#define PEN_PWM_SLICE 11
+#define PEN_PWM_CH PWM_CHAN_B
+#define PEN_COUNTER_PWM_SLICE 10
+
 #endif
 
 #ifdef OCULA
