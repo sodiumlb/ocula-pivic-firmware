@@ -33,14 +33,14 @@ void clk_init(void){
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
         case(VIC_MODE_TEST_NTSC):
-            clk_set_qmi_clkdiv(5);
+            clk_set_qmi_clkdiv(6);
             set_sys_clock_khz(315000, true);
             clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 315000000, 315000000/2);
             break;
         case(VIC_MODE_PAL):
         case(VIC_MODE_TEST_PAL):
         default:
-            clk_set_qmi_clkdiv(5);
+            clk_set_qmi_clkdiv(6);
             set_sys_clock_khz(319200, true);
             clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 319200000, 319200000/2);
             break;
