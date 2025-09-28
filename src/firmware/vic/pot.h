@@ -14,4 +14,4 @@
  
  void pot_print_status(void);
  
- #endif /* _CVBS_H_ */
+ #endif /* _POT_H_ */

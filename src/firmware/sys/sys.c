@@ -11,6 +11,7 @@
 #include "sys/lfs.h"
 #ifdef PIVIC
 #include "vic/aud.h"
+#include "vic/pen.h"
 #include "vic/pot.h"
 #include "vic/vic.h"
 #include "vic/cvbs.h"
@@ -59,6 +60,7 @@ void sys_mon_status(const char *args, size_t len)
     cvbs_print_status();
     aud_print_status();
     pot_print_status();
+    pen_print_status();
 #endif
 #ifdef OCULA
     ula_print_status();
