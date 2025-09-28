@@ -442,14 +442,14 @@ void xread_pio_init(void){
     }
     for(uint32_t i = 0; i < ADDR_PIN_COUNT; i++){
         gpio_init(ADDR_PIN_BASE+i);
-        gpio_set_pulls(ADDR_PIN_BASE+i, false, true);   //E9 work-around
+        gpio_set_pulls(ADDR_PIN_BASE+i, false, false);
         pio_gpio_init(XREAD_PIO, ADDR_PIN_BASE+i);
         gpio_set_input_enabled(ADDR_PIN_BASE+i, true);
     }
     pio_sm_set_consecutive_pindirs(XREAD_PIO, XREAD_SM, ADDR_PIN_BASE, ADDR_PIN_COUNT, false);
     gpio_init(RNW_PIN);
     gpio_set_input_enabled(RNW_PIN, true);
-    gpio_set_pulls(RNW_PIN, false, false);              //E9 work-around
+    gpio_set_pulls(RNW_PIN, false, false);
 
     uint offset = pio_add_program(XREAD_PIO, &xread_program);
     pio_sm_config config = xread_program_get_default_config(offset);
