@@ -86,7 +86,8 @@ void aud_init(void){
     multicore_doorbell_claim(2, 0b11);
     multicore_doorbell_claim(3, 0b11);
 
-    VIC_CRA = 0xED;     //Startup tone C
+    //VIC audio registers reset values. TODO: should be done central in vic.c?
+    VIC_CRA = 0x00;
     VIC_CRB = 0x00;
     VIC_CRC = 0x00;
     VIC_CRD = 0x00;
