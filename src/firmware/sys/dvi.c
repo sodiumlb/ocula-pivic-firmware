@@ -182,7 +182,7 @@ static void dma_irq_handler() {
 }
 
 void dvi_fb_clear(void){
-    memset((void*)dvi_framebuf, 0xE0, sizeof(dvi_framebuf));
+    memset((void*)dvi_framebuf, 0x00, sizeof(dvi_framebuf));
 }
 
 void dvi_init(void){
