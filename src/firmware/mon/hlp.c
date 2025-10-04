@@ -24,12 +24,12 @@ static const char __in_flash("helptext") hlp_text_help[] =
 static const char __in_flash("helptext") hlp_text_set[] =
     "Settings:\n"
     "HELP SET attr       - Show information about a setting.\n"
-    "SET CAPS (0|1|2)    - Invert or force caps while 6502 is running.\n"
-    "SET PHI2 (kHz)      - Query or set PHI2 speed. This is the 6502 clock.\n"
-    "SET BOOT (rom|-)    - Select ROM to boot from cold start. \"-\" for none.\n"
+    // "SET CAPS (0|1|2)    - Invert or force caps while 6502 is running.\n"
+    // "SET PHI2 (kHz)      - Query or set PHI2 speed. This is the 6502 clock.\n"
+    // "SET BOOT (rom|-)    - Select ROM to boot from cold start. \"-\" for none.\n"
     "SET SPLASH (0|1)    - Disable or enable splash screen.\n"
     "SET DVI (0|1|2)     - Query or set display type for DVI output.\n"
-    "SET MODE (0|1|2|3)  - Query or set VIC mode (PIVIC only)";
+    "SET MODE (0|1|2|3)  - Query or set main operational mode.";
 
 static const char __in_flash("helptext") hlp_text_about[] =
     "    OCULA & PIVIC - Copyright (c) 2025 Sodiumlightbaby & Dreamseal\n"
@@ -149,11 +149,19 @@ static const char __in_flash("helptext") hlp_text_dvi[] =
     "  2 - 720x576 @ 50Hz";
 
 static const char __in_flash("helptext") hlp_text_mode[] =
-    "SET MODE selects the type of VIC emulation(PIVIC only)\n"
+#ifdef PIVIC
+    "SET MODE selects the type of VIC emulation\n"
     "  0 - VIC 6560 NTSC 60Hz\n"
     "  1 - VIC 6561 PAL 50Hz\n"
     "  2 - VIC 6560 NTSC 60Hz test screen\n"
-    "  3 - VIC 6561 PAL 50Hz test screen";
+    "  3 - VIC 6561 PAL 50Hz test screen"
+#endif
+#ifdef OCULA
+    "SET MODE selects how RAM works in the system\n"
+    " 0 - DRAM-is-the-RAM. Original ULA operation."
+    " 1 - OCULA-is-the-RAM. Advanced mode. Mux bridges required."
+#endif
+;
 
 static struct
 {

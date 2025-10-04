@@ -26,9 +26,9 @@ static const char filename[] = "CONFIG.SYS";
 
 static uint32_t cfg_phi2_khz;
 static uint8_t cfg_caps;
-static uint8_t cfg_splash;
-static uint8_t cfg_dvi_display;
-static uint8_t cfg_mode;
+static uint8_t cfg_splash = 1;
+static uint8_t cfg_dvi_display = 0;
+static uint8_t cfg_mode = 1;
 
 // Optional string can replace boot string
 static void cfg_save_with_boot_opt(char *opt_str)

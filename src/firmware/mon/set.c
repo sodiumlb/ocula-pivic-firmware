@@ -149,10 +149,16 @@ static void set_dvi(const char *args, size_t len)
 static void set_print_mode()
 {
     const char *const mode_labels[] = {
+#ifdef PIVIC
         "0 - VIC 6560 NTSC/60",
         "1 - VIC 6561 PAL/50", 
         "2 - VIC 6560 NTSC/60 test screen",
         "3 - VIC 6561 PAL/50 test screen", 
+#endif
+#ifdef OCULA
+        "0 - DRAM-is-the-RAM",
+        "1 - OCULA-is-the-RAM",
+#endif
     };
     printf("MODE  : %s\n", mode_labels[cfg_get_mode()]);
 }
@@ -192,9 +198,9 @@ static const size_t SETTERS_COUNT = sizeof SETTERS / sizeof *SETTERS;
 
 static void set_print_all(void)
 {
-    set_print_phi2();
-    set_print_caps();
-    set_print_boot();
+    // set_print_phi2();
+    // set_print_caps();
+    // set_print_boot();
     set_print_splash();
     set_print_dvi();
     set_print_mode();
