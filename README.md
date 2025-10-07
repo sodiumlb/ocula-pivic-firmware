@@ -36,5 +36,5 @@ make
 ## Related projects
 * [OCULA documentation project](https://github.com/sodiumlb/ocula-docs/wiki)
 * OCULA hardware project
-* PIVIC documentation project
+* [PIVIC documentation project](https://github.com/sodiumlb/pivic-docs/wiki)
 * PIVIC hardware project
