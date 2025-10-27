@@ -8,6 +8,7 @@
 //#include "sys/ria.h"
 #include "oric/ula.h"
 #include "oric/oric_font.h"
+#include "sys/cfg.h"
 #include "sys/dvi.h"
 #include "sys/mem.h"
 #include "ula.pio.h"
@@ -612,14 +613,17 @@ void xdir_pio_init(void){
 }
 
 void ula_init(void){
-    memcpy((void*)(&xram[ADDR_LORES_STD_CHRSET+(0x20*8)]), (void*)oric_font, sizeof(oric_font));
-    memset((void*)&xram[ADDR_LORES_SCR], 0x20, 40*28);
-    sprintf((char*)(&xram[ADDR_LORES_SCR]), "Oric OCULA test " __DATE__);
-    for(uint8_t i=0; i< 40; i++){
-        xram[ADDR_LORES_SCR + 40*2 + i] =  0x10 | (i & 0x7);
-    }
-    for(uint8_t i=0; i<(0x7F-0x20); i++){
-        xram[ADDR_LORES_SCR + 40*4 + i] =  0x20 + i;    
+    if(cfg_get_splash()){
+        memcpy((void*)(&xram[ADDR_LORES_STD_CHRSET+(0x20*8)]), (void*)oric_font, sizeof(oric_font));
+        memset((void*)&xram[ADDR_LORES_SCR], 0x20, 40*28);
+        xram[0xBFDF] = 0x1A;    //50Hz Text mode
+        sprintf((char*)(&xram[ADDR_LORES_SCR]), "Oric OCULA " __VERSION__);
+        for(uint8_t i=0; i< 40; i++){
+            xram[ADDR_LORES_SCR + 40*2 + i] =  0x10 | (i & 0x7);
+        }
+        for(uint8_t i=0; i<(0x7F-0x20); i++){
+            xram[ADDR_LORES_SCR + 40*4 + i] =  0x20 + i;    
+        }
     }
     // for(uint8_t i=0; i<(0x7F-0x20); i++){
     //     xram[ADDR_LORES_SCR + 40*7 + i] =  0x80 | (0x20 + i);    
