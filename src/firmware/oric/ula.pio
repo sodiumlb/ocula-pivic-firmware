@@ -17,9 +17,9 @@
  irq 0      side 0
  irq prev 0 side 0 [14]     ;sync RGBS PIO program in pio#-1
  nop        side 0 [ 6]
- irq 1      side 0 [15]
- nop        side 0 [ 6]
- irq 2      side 1 [15]
+ irq 1      side 0 [15]     ;second ULA phase irq - trigger first decode program phase (IO)
+ nop        side 0 [ 6]     ;
+ irq 2      side 1 [15]     ;CPU phase irq - trigger second decode program phase (MAP)
  nop        side 1 [ 6]
 .wrap
 
@@ -90,8 +90,7 @@ start:
 .wrap_target
 start:
     wait 1 irq 0        ; Wait for, then clear IRQ. Signaled by decode. Only run if not ROM or IO
-    jmp pin dir_out     ; If PHI pin is high, jump to dir_out 
-    jmp start           ; else return to IRQ loop
+    wait 1 gpio 29 [30] ; Wait for phi0 rising edge + setup time
 dir_out:
     mov y pins          ; Get RnW
     jmp !y start        ; If write, abort output
@@ -105,7 +104,7 @@ dir_out:
 ; Decode logic for driving DIR and indirectly nROMSEL and nIO
 ; PIO needs to run in upper GPIO bank while nROMSEL and nIO is in lower
 ; Requires nMAP to be polarity inverted in GPIO setup 
-; This program freeruns to get close to the original decode logic behaviour
+; This program is triggered by the phi program irq 2
 ; x set to 0x3 in setup for comparing to A[15:8] and A[15:14]
 .program decode
 ;;.clock_div 2.0
@@ -113,7 +112,8 @@ dir_out:
 .out 32 right
 .wrap_target
 start:
-    wait 0 gpio 29      ; Only run while PHI is low - avoid glitches
+    irq clear 2         ; Make sure second phase IRQ trigger is cleared
+    wait 1 irq 1        ; Wait for phi program trigger
     mov y pins          ; Get A15-A8
     jmp x!=y not_io     ; Skip if not page 3
 is_io:
@@ -121,17 +121,17 @@ is_io:
     irq prev set 1      ; Assert nIO
     jmp start
 not_io:
-    jmp pin not_rom     ; if MAP is asserted
+    irq prev clear 1    ; Clear nIO
     mov osr pins        ; Get A15-A8
     out null 6          ; Spool out A13-A8
     out y 2             ; Get A15-A14
     jmp x!=y not_rom    ; Skip if not [A15:A14]==0b11
+    wait 1 irq 2   [10] ; Wait for phi program trigger + MAP signal margin
+    jmp pin not_rom     ; Skip if MAP is asserted
 is_rom:
-    irq prev clear 1    ; Clear nIO
     irq prev set 2      ; Assert nROMSEL
     jmp start
 not_rom:
-    irq prev clear 1    ; Clear nIO
     irq prev clear 2    ; Clear nROMSEL
     irq next set 0      ; Signal xdir on pio#+1 
 .wrap
