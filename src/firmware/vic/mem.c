@@ -184,6 +184,7 @@ void xdir_pio_init(void){
     sm_config_set_out_pin_base(&config, DATA_PIN_BASE);
     sm_config_set_out_pin_count(&config, 8);                        //Only output on lower 8 bit of data bus
     sm_config_set_in_pin_base(&config, ADDR_PIN_BASE+8);
+    sm_config_set_jmp_pin(&config, RNW_PIN);
     pio_sm_init(XDIR_PIO, XDIR_SM, offset, &config);
     pio_sm_put_blocking(XDIR_PIO, XDIR_SM, 0b1010000);  //Matching value RnW='1', A[13:8]=0b010000
     pio_sm_exec_wait_blocking(XDIR_PIO, XDIR_SM, pio_encode_pull(false, true));
