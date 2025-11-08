@@ -163,6 +163,14 @@ static const char __in_flash("helptext") hlp_text_mode[] =
 #endif
 ;
 
+#ifdef PIVIC
+static const char __in_flash("helptext") hlp_text_pot[] =
+    "SET POT selects the VIC potentiometer input range support for paddles."
+    " 0 - Commodore paddles (450kOhm)."
+    " 1 - Atari paddles (1MOhm)."
+;
+#endif
+
 static struct
 {
     size_t cmd_len;
@@ -196,6 +204,9 @@ static struct
     {6, "splash", hlp_text_splash},
     {3, "dvi", hlp_text_dvi},
     {4, "mode", hlp_text_mode},
+#ifdef PIVIC
+    {3, "pot", hlp_text_pot},
+#endif
 };
 static const size_t SETTINGS_COUNT = sizeof SETTINGS / sizeof *SETTINGS;
 

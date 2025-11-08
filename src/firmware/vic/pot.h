@@ -7,6 +7,10 @@
  #ifndef _POT_H_
  #define _POT_H_
 
+ #define POT_MODE_COUNT 2
+ #define POT_MODE_CMB 0
+ #define POT_MODE_ATARI 1
+
  #include <stddef.h>
 
  void pot_init(void);
