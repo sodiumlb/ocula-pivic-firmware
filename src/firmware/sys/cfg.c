@@ -14,6 +14,7 @@
 #ifdef PIVIC
 #include "sys/rev.h"
 #include "vic/vic.h"
+#include "vic/pot.h"
 #endif
 // Configuration is a plain ASCII file on the LFS. e.g.
 // +V1         | Version - Must be first
@@ -22,6 +23,7 @@
 // +S1         | Splash screen enable
 // +D0         | DVI display type
 // +M0         | Mode (e.g. VIC PAL/NTSC for PIVIC)
+// +O0         | Paddle pot tuning (CMB or Atari)
 // BASIC       | Boot ROM - Must be last
 
 #define CFG_VERSION 1
@@ -32,6 +34,7 @@ static uint8_t cfg_caps;
 static uint8_t cfg_splash = 1;
 static uint8_t cfg_dvi_display = 0;
 static uint8_t cfg_mode = 1;
+static uint8_t cfg_pot = 0;
 
 // Optional string can replace boot string
 static void cfg_save_with_boot_opt(char *opt_str)
@@ -70,6 +73,7 @@ static void cfg_save_with_boot_opt(char *opt_str)
                                "+S%d\n"
                                "+D%d\n"
                                "+M%d\n"
+                               "+O%d\n"
                                "%s",
                                CFG_VERSION,
                                cfg_phi2_khz,
@@ -77,6 +81,7 @@ static void cfg_save_with_boot_opt(char *opt_str)
                                cfg_splash,
                                cfg_dvi_display,
                                cfg_mode,
+                               cfg_pot,
                                opt_str);
         if (lfsresult < 0)
             printf("?Unable to write %s contents (%d)\n", filename, lfsresult);
@@ -129,6 +134,8 @@ static void cfg_load_with_boot_opt(bool boot_only)
                 break;
             case 'M':
                 cfg_mode = val;
+            case 'O':
+                cfg_pot = val;
             default:
                 break;
             }
@@ -249,4 +256,19 @@ bool cfg_set_mode(uint8_t mode){
 
 uint8_t cfg_get_mode(void){
     return cfg_mode;
+}
+
+bool cfg_set_pot(uint8_t pot){
+    if(pot >= POT_MODE_COUNT){
+        return false;
+    }
+    if(cfg_pot != pot){
+        cfg_pot = pot;
+        cfg_save_with_boot_opt(NULL);
+    }
+    return true;
+}
+
+uint8_t cfg_get_pot(void){
+    return cfg_pot;
 }

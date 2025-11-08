@@ -67,7 +67,7 @@ void pot_init(void){
             pwm_config_set_clkdiv_int(&config, 72);         //Assuming 319.2MHz 
         break;
         default:
-            printf("POT mode %d not supported\n", cfg_get_mode());
+            printf("POT video mode %d not supported\n", cfg_get_mode());
     }
     pwm_init(potx_pwm_slice, &config, true);
     pwm_init(poty_pwm_slice, &config, true);
@@ -84,24 +84,46 @@ void pot_task(void){
             pot_x_counter = pwm_get_counter(potx_pwm_slice);
             pot_y_counter = pwm_get_counter(poty_pwm_slice);
 
-            //Paddle calibration currently static based on VIC original 470kOhm paddles
-            //TODO make calibration configurable, or at least add Atari calibration profile
-            //500 is ca low point for the PWM counter
-            //1073 is ca high point the PWM counter calculated as the reverse of the (<<2 / 9) range
-            if(pot_x_counter > 1142){
-                pot_x_counter = 1142;
-            }else if(pot_x_counter < 250){
-                pot_x_counter = 250;
+            switch(cfg_get_pot()){
+                //Paddle calibration CMB original 470kOhm paddles
+                // 250 is ca low point for the PWM counter
+                // 1073 is ca high point the PWM counter calculated as the reverse of the (<<1 / 7) range
+                // 256us sample time
+                case POT_MODE_CMB:
+                    if(pot_x_counter > 1142){
+                        pot_x_counter = 1142;
+                    }else if(pot_x_counter < 250){
+                        pot_x_counter = 250;
+                    }
+                    if(pot_y_counter > 1142){
+                        pot_y_counter = 1142;
+                    }else if(pot_y_counter < 250){
+                        pot_y_counter = 250;
+                    }
+                    vic_cr8 = 255 - (((pot_x_counter - 250)<<1) / 7);
+                    vic_cr9 = 255 - (((pot_y_counter - 250)<<1) / 7);
+                    break;
+                //Paddle calibration Atari original 1MOhm paddles
+                // 10 is ca low point for th PWM counter
+                // 2050 is ca high point for the PWM counter calcuated as the reverse of ( / 8) range
+                // 512us sample time
+                case POT_MODE_ATARI:
+                    if(pot_x_counter > 2050){
+                        pot_x_counter = 2050;
+                    }else if(pot_x_counter < 10){
+                        pot_x_counter = 10;
+                    }
+                    if(pot_y_counter > 2050){
+                        pot_y_counter = 2050;
+                    }else if(pot_y_counter < 10){
+                        pot_y_counter = 10;
+                    }
+                    vic_cr8 = 255 - ((pot_x_counter-10) / 8);
+                    vic_cr9 = 255 - ((pot_y_counter-10) / 8);
+                    break;
+                default:
+                    printf("POT pot mode %d not supported\n", cfg_get_pot());
             }
-            if(pot_y_counter > 1142){
-                pot_y_counter = 1142;
-            }else if(pot_y_counter < 250){
-                pot_y_counter = 250;
-            }
-            // 250 low point 
-            // 1140 high point
-            vic_cr8 = 255 - (((pot_x_counter - 250)<<1) / 7);
-            vic_cr9 = 255 - (((pot_y_counter - 250)<<1) / 7);
 
             //Reset external RC circuit
             gpio_set_function(potx_pin, GPIO_FUNC_SIO);
@@ -121,7 +143,17 @@ void pot_task(void){
             gpio_set_function(potx_pin, GPIO_FUNC_PWM);
             gpio_set_function(poty_pin, GPIO_FUNC_PWM);
             do_sample = true;
-            pot_timer = delayed_by_us(get_absolute_time(), 256);
+            uint sample_time_us;
+            switch(cfg_get_pot()){
+                case POT_MODE_ATARI:
+                    sample_time_us = 512;
+                    break;
+                case POT_MODE_CMB:
+                default:
+                    sample_time_us = 256;
+                    break;
+            }
+            pot_timer = delayed_by_us(get_absolute_time(), sample_time_us);
         }
     }
     // if(absolute_time_diff_us(get_absolute_time(), print_timer) < 0){

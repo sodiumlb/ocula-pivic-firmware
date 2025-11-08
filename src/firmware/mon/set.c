@@ -183,6 +183,33 @@ static void set_mode(const char *args, size_t len)
     set_print_mode();
 }
 
+#ifdef PIVIC
+static void set_print_pot()
+{
+    const char *const pot_labels[] = {
+        "0 - Commodore paddles",
+        "1 - Atari paddles",
+    };
+    printf("POT   : %s\n", pot_labels[cfg_get_pot()]);
+}
+
+static void set_pot(const char *args, size_t len)
+{
+    uint32_t val;
+    if (len)
+    {
+        if (!parse_uint32(&args, &len, &val) ||
+            !parse_end(args, len) ||
+            !cfg_set_pot(val))
+        {
+            printf("?invalid argument\n");
+            return;
+        }
+    }
+    set_print_pot();
+}
+#endif
+
 
 typedef void (*set_function)(const char *, size_t);
 static struct
@@ -196,7 +223,10 @@ static struct
     {4, "boot", set_boot},
     {6, "splash", set_splash},
     {3, "dvi", set_dvi},
-    {4, "mode", set_mode}
+    {4, "mode", set_mode},
+#ifdef PIVIC
+    {3, "pot", set_pot},
+#endif
 };
 static const size_t SETTERS_COUNT = sizeof SETTERS / sizeof *SETTERS;
 
@@ -208,6 +238,9 @@ static void set_print_all(void)
     set_print_splash();
     set_print_dvi();
     set_print_mode();
+#ifdef PIVIC
+    set_print_pot();
+#endif
 }
 
 void set_mon_set(const char *args, size_t len)
