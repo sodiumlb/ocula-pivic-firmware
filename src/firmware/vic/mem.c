@@ -18,6 +18,7 @@
 
 uint8_t xread_dma_addr_chan;
 uint8_t xread_dma_data_chan;
+uint8_t xread_dma_mask_chan;
 void xread_pio_init(void){
     pio_set_gpio_base (XREAD_PIO, XREAD_PIN_OFFS);
     for(uint32_t i = 0; i < DATA_PIN_COUNT; i++){
@@ -52,11 +53,35 @@ void xread_pio_init(void){
     //Autopull/autopush enabled. Clear the FIFOs before use
     pio_sm_clear_fifos(XREAD_PIO, XREAD_SM);
 
+    offset = pio_add_program(XREAD_MASK_PIO, &mask_address_program);
+    pio_sm_config config2 = mask_address_program_get_default_config(offset);
+    pio_sm_init(XREAD_MASK_PIO, XREAD_MASK_SM, offset, &config2);
+    pio_sm_put_blocking(XREAD_MASK_PIO, XREAD_MASK_SM, ((uintptr_t)xram >> 8) | 0x10);
+    pio_sm_exec_wait_blocking(XREAD_MASK_PIO, XREAD_MASK_SM, pio_encode_pull(false, true));
+    pio_sm_exec_wait_blocking(XREAD_MASK_PIO, XREAD_MASK_SM, pio_encode_out(pio_x, 32));
+    
+
     // Set up two DMA channels for fetching address then data
     int addr_chan = dma_claim_unused_channel(true);
     int data_chan = dma_claim_unused_channel(true);
+    int mask_chan = dma_claim_unused_channel(true);
     xread_dma_addr_chan = addr_chan;
     xread_dma_data_chan = data_chan;
+    xread_dma_mask_chan = mask_chan;
+
+    // DMA move address from XREAD SM to masking SM
+    dma_channel_config mask_dma = dma_channel_get_default_config(mask_chan);
+    channel_config_set_high_priority(&mask_dma, true);
+    channel_config_set_read_increment(&mask_dma, false);
+    channel_config_set_write_increment(&mask_dma, false);
+    channel_config_set_dreq(&mask_dma, pio_get_dreq(XREAD_PIO, XREAD_SM, false));
+    dma_channel_configure(
+        mask_chan,
+        &mask_dma,
+        &XREAD_MASK_PIO->txf[XREAD_MASK_SM],  // dst
+        &XREAD_PIO->rxf[XREAD_SM],            // src
+        -1,                                   // endless transfers
+        true);
 
     // DMA move the requested memory data to PIO for output
     dma_channel_config data_dma = dma_channel_get_default_config(data_chan);
@@ -77,7 +102,7 @@ void xread_pio_init(void){
     // DMA move address from PIO into the data DMA config
     dma_channel_config addr_dma = dma_channel_get_default_config(addr_chan);
     channel_config_set_high_priority(&addr_dma, true);
-    channel_config_set_dreq(&addr_dma, pio_get_dreq(XREAD_PIO, XREAD_SM, false));
+    channel_config_set_dreq(&addr_dma, pio_get_dreq(XREAD_MASK_PIO, XREAD_MASK_SM, false));
     channel_config_set_read_increment(&addr_dma, false);
     channel_config_set_write_increment(&addr_dma, false);
     channel_config_set_chain_to(&addr_dma, data_chan);
@@ -85,7 +110,7 @@ void xread_pio_init(void){
         addr_chan,
         &addr_dma,
         &dma_channel_hw_addr(data_chan)->read_addr,      // dst
-        &XREAD_PIO->rxf[XREAD_SM],                       // src
+        &XREAD_MASK_PIO->rxf[XREAD_MASK_SM],             // src
         1,
         true);
     
@@ -94,6 +119,7 @@ void xread_pio_init(void){
 
 uint8_t xwrite_dma_addr_chan;
 uint8_t xwrite_dma_data_chan;
+uint8_t xwrite_dma_mask_chan;
 void xwrite_pio_init(void){
     pio_set_gpio_base (XWRITE_PIO, XWRITE_PIN_OFFS);
     uint offset = pio_add_program(XWRITE_PIO, &xwrite_program);
@@ -106,16 +132,40 @@ void xwrite_pio_init(void){
     pio_sm_exec_wait_blocking(XWRITE_PIO, XWRITE_SM, pio_encode_mov(pio_x, pio_osr));
     //pio_sm_set_enabled(XWRITE_PIO, XWRITE_SM, true);
 
+    //TODO Make both mask programs use the same instruction memory
+    offset = pio_add_program(XWRITE_MASK_PIO, &mask_address_program);
+    pio_sm_config config2 = mask_address_program_get_default_config(offset);
+    pio_sm_init(XWRITE_MASK_PIO, XWRITE_MASK_SM, offset, &config2);
+    pio_sm_put_blocking(XWRITE_MASK_PIO, XWRITE_MASK_SM, ((uintptr_t)xram >> 8) | 0x10);
+    pio_sm_exec_wait_blocking(XWRITE_MASK_PIO, XWRITE_MASK_SM, pio_encode_pull(false, true));
+    pio_sm_exec_wait_blocking(XWRITE_MASK_PIO, XWRITE_MASK_SM, pio_encode_out(pio_x, 32));
+
     // Set up two DMA channels for fetching address then data
     int addr_chan = dma_claim_unused_channel(true);
     int data_chan = dma_claim_unused_channel(true);
+    int mask_chan = dma_claim_unused_channel(true);
     xwrite_dma_addr_chan = addr_chan;
     xwrite_dma_data_chan = data_chan;
+    xwrite_dma_mask_chan = mask_chan;
+
+    // DMA move address and data from XWRITE SM to masking SM
+    dma_channel_config mask_dma = dma_channel_get_default_config(mask_chan);
+    channel_config_set_high_priority(&mask_dma, true);
+    channel_config_set_read_increment(&mask_dma, false);
+    channel_config_set_write_increment(&mask_dma, false);
+    channel_config_set_dreq(&mask_dma, pio_get_dreq(XWRITE_PIO, XWRITE_SM, false));
+    dma_channel_configure(
+        mask_chan,
+        &mask_dma,
+        &XWRITE_MASK_PIO->txf[XWRITE_MASK_SM],  // dst
+        &XWRITE_PIO->rxf[XWRITE_SM],            // src
+        -1,                                     // endless transfers
+        true);
 
     // DMA move the requested memory data to PIO for output
     dma_channel_config data_dma = dma_channel_get_default_config(data_chan);
     channel_config_set_high_priority(&data_dma, true);
-    channel_config_set_dreq(&data_dma, pio_get_dreq(XWRITE_PIO, XWRITE_SM, false));
+    channel_config_set_dreq(&data_dma, pio_get_dreq(XWRITE_MASK_PIO, XWRITE_MASK_SM, false));
     channel_config_set_read_increment(&data_dma, false);
     channel_config_set_write_increment(&data_dma, false);
     channel_config_set_transfer_data_size(&data_dma, DMA_SIZE_8);
@@ -123,26 +173,25 @@ void xwrite_pio_init(void){
     dma_channel_configure(
         data_chan,
         &data_dma,
-        xram,                            // dst
-        &XWRITE_PIO->rxf[XWRITE_SM],       // src
+        xram,                                        // dst - dynamically updated by addr_dma
+        &XWRITE_MASK_PIO->rxf[XWRITE_MASK_SM],       // src
         1,
         false);
 
     // DMA move address from PIO into the data DMA config
     dma_channel_config addr_dma = dma_channel_get_default_config(addr_chan);
     channel_config_set_high_priority(&addr_dma, true);
-    channel_config_set_dreq(&addr_dma, pio_get_dreq(XWRITE_PIO, XWRITE_SM, false));
+    channel_config_set_dreq(&addr_dma, pio_get_dreq(XWRITE_MASK_PIO, XWRITE_MASK_SM, false));
     channel_config_set_read_increment(&addr_dma, false);
     channel_config_set_write_increment(&addr_dma, false);
     channel_config_set_chain_to(&addr_dma, data_chan);
     dma_channel_configure(
         addr_chan,
         &addr_dma,
-        &dma_channel_hw_addr(data_chan)->write_addr,            // dst
-        &XWRITE_PIO->rxf[XWRITE_SM],                            // src
+        &dma_channel_hw_addr(data_chan)->write_addr,  // dst
+        &XWRITE_MASK_PIO->rxf[XWRITE_MASK_SM],        // src
         1,
-        true);
-    
+        true);  
 }
 
 #define TRACE_BUF &xram[0x10000]
@@ -211,6 +260,7 @@ void mem_init(void){
     xuncon_pio_init();
     //trace_pio_init();    
     //Synchronized start of irq dependent PIO programs
+    pio_set_sm_mask_enabled(XREAD_MASK_PIO, (1u << XREAD_MASK_SM) | (1u << XWRITE_MASK_SM), true);
     pio_set_sm_mask_enabled(XREAD_PIO, (1u << XREAD_SM) | (1u << XDIR_SM) | (1u << XWRITE_SM) | (1u << XUNCON_SM) /*| (1u << TRACE_SM)*/, true);
 }
 

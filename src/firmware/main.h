@@ -41,6 +41,12 @@ bool main_prog(uint16_t *xregs);
 #define VIC_DOTCLK_PIO pio1
 #define VIC_DOTCLK_SM 1
 
+#define XREAD_MASK_PIO pio1
+#define XREAD_MASK_SM 2
+
+#define XWRITE_MASK_PIO pio1
+#define XWRITE_MASK_SM 3
+
 #define XREAD_PIN_OFFS PIO2_PIN_OFFS
 #define XREAD_PIO pio2
 #define XREAD_SM 0

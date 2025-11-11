@@ -88,3 +88,26 @@ start:
     mov isr pins           ; Get data
     mov rxfifo[0] isr      ; Move data to RX FIFO register 0
 .wrap
+
+; Program to mask out bit 7-4 in a word when bit 31-8 matches register xdir
+; Used by xread and xwrite DMA chain to make VIC register space wrapping work
+; Same program used for both xread and xwrite as the data sent by xwrite will never
+; match and pass unchanged through
+; Matching address set in x (A31-A15=xram, A14-A8=0x10)
+; If so, strip A7-A4 
+.program mask_address
+.in 1 left auto 32
+.out 1 left auto 32
+.wrap_target
+    out y 24                  ; get A31-A8 in y (autopull)
+    in y 24                   ; copy A31-A8 to isr
+    jmp x!=y no_mask          ; jump if not VIC register access
+mask:
+    out null 4                ; dump out 4 bits A7-A4
+    out y 4                   ; shift out 4 bits A3-A0 to y
+    jmp finish                ; jump to the output stage
+no_mask:
+    out y 8                   ; get A7-A0 in y
+finish:
+    in y 8                    ; autopush
+.wrap
