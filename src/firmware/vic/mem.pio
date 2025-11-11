@@ -22,7 +22,6 @@
 
 ; Address of the memory to write to is set in x by setup
 ; DMA setup required to take the address then data and write to memory
-; VIC-20 specifics - assumes RnW is gated by clock 
 ; A14 = '0' for BLK4 writes - data in same CPU period
 ; A14 = '1' for non BLK4 writes - data in following VIC period
 .program xwrite
@@ -32,7 +31,7 @@
 .wrap_target
 start:
     mov isr x           ; System top address bits
-    wait 0 pin 26  [20] ; Wait for RnW falling edge == write + 200ns
+    wait 1 irq 3        ; Wait for write detect in xdir program
     mov osr pins        ; Capture D[7:0],D[11:8],A[13:0],RnW
     out y 12            ; Keep D[11:0] in y (in case BLK4)
     in osr 14           ; shift in bottom address
@@ -61,6 +60,9 @@ start:
     wait 0 irq 1   [29] ; Wait for phi1 rising edge + ca 200ns for data hold
     mov pindirs null    ; Disable data pins output
     wait 0 irq 0   [29] ; Wait for phi1 falling edge + ca 200ns for address hold
+    jmp pin isread      ; Sample RnW pin skip next if read
+    irq set 3           ; Signal xwrite program
+isread:
     mov y pins          ; Get A[13:8],RnW
     jmp x!=y start      ; If not reading of registers, goto start 
     irq set 2           ; Signal trace
