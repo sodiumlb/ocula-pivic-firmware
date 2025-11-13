@@ -826,11 +826,6 @@ void vic_core1_loop_pal(void) {
                                     dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel7]];
                                 }
 
-                                // Note that when we first enter this state, these variables are primed
-                                // to initially output border pixels while the process of fetching the 
-                                // first real character is taking place, which happens over the first two 
-                                // cycles.
-
                                 if (non_reverse_mode != 0) {
                                     // New non-reversed mode value kicks in a pixel before new character.
                                     if (hiresMode) {
