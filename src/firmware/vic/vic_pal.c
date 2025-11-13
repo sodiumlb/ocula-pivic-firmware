@@ -526,6 +526,7 @@ void vic_core1_loop_pal(void) {
                                     // a different state for the first part of the first video matrix line.
                                     fetchState = FETCH_IN_MATRIX_Y;
                                 }
+                                borderColour = border_colour_index;
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
