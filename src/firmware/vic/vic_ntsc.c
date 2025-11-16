@@ -738,33 +738,36 @@ void vic_core1_loop_ntsc(void) {
                                     
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel2]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel4]]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel2]];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel3]];
-                                    dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel4]];
                                     
+                                    // Pixels 4-7 calculations are less complex, since the hires mode,
+                                    // reverse mode and char data stay the same four all four pixels.
                                     if (hiresMode) {
                                         if (non_reverse_mode != 0) {
+                                            pixel4 = ((charData & 0x10) ? 2 : 0);
                                             pixel5 = ((charData & 0x08) ? 2 : 0);
                                             pixel6 = ((charData & 0x04) ? 2 : 0);
                                             pixel7 = ((charData & 0x02) ? 2 : 0);
-                                            pixel8 = ((charData & 0x01) ? 2 : 0);
                                         } else {
+                                            pixel4 = ((charData & 0x10) ? 0 : 2);
                                             pixel5 = ((charData & 0x08) ? 0 : 2);
                                             pixel6 = ((charData & 0x04) ? 0 : 2);
                                             pixel7 = ((charData & 0x02) ? 0 : 2);
-                                            pixel8 = ((charData & 0x01) ? 0 : 2);
                                         }
                                     } else {
                                         // Multicolour graphics.
+                                        pixel4 = ((charData >> 4) & 0x03);
                                         pixel5 = pixel6 = ((charData >> 2) & 0x03);
-                                        pixel7 = pixel8 = (charData & 0x03);
+                                        pixel7 = (charData & 0x03);
                                     }
 
-                                    // Pixel 5 has to be output after the pixel var calculations above.
+                                    // Pixels 4 & 5 have to be output after the pixel var calculations above.
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel4]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel5]]);
+                                    dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel4]];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel5]];
-                                  
+                                    
                                     // Rotate pixels so that the other 3 remaining char pixels are output
                                     // and then border colours takes over after that.
                                     pixel2 = pixel6;
@@ -828,36 +831,60 @@ void vic_core1_loop_ntsc(void) {
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel6]];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel7]];
-                                    dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel8]];
                                 }
                                 
-                                // Update operating hires state and char data immediately prior to
-                                // shifting out new character. Note that when we first enter this state,
-                                // these variables are primed to initially output border pixels while 
-                                // the process of fetching the first real character is taking place, 
-                                // which happens over the first two cycles.
-                                hiresMode = ((colourData & 0x08) == 0);
-                                charData = charDataLatch;
-                              
-                                if (hiresMode) {
-                                    if (non_reverse_mode != 0) {
+                                if (non_reverse_mode != 0) {
+                                    // New non-reversed mode value kicks in a pixel before new character.
+                                    if (hiresMode) {
+                                        pixel8 = ((charData & 0x01) ? 2 : 0);
+                                    } else {
+                                        pixel8 = (charData & 0x03);
+                                    }
+                                    
+                                    // Update the operating hires state and char data immediately prior to
+                                    // shifting out new character pixel.
+                                    hiresMode = ((colourData & 0x08) == 0);
+                                    charData = charDataLatch;
+                                    
+                                    // Pixel 1 should be same non-reversed mode but pick up the new hires mode.
+                                    if (hiresMode) {
                                         pixel1 = ((charData & 0x80) ? 2 : 0);
                                         pixel2 = ((charData & 0x40) ? 2 : 0);
                                         pixel3 = ((charData & 0x20) ? 2 : 0);
-                                        pixel4 = ((charData & 0x10) ? 2 : 0);
                                     } else {
+                                        pixel1 = pixel2 = ((charData >> 6) & 0x03);
+                                        pixel3 = ((charData >> 4) & 0x03);
+                                    }
+                                } else {
+                                    // New reversed mode value kicks in a pixel before new character.
+                                    if (hiresMode) {
+                                        pixel8 = ((charData & 0x01) ? 0 : 2);
+                                    } else {
+                                        pixel8 = (charData & 0x03);
+                                    }
+                                    
+                                    // Update the operating hires state and char data immediately prior to
+                                    // shifting out new character pixel.
+                                    hiresMode = ((colourData & 0x08) == 0);
+                                    charData = charDataLatch;
+                                    
+                                    // Pixel 1 should be same reversed mode but pick up the new hires mode.
+                                    if (hiresMode) {
                                         pixel1 = ((charData & 0x80) ? 0 : 2);
                                         pixel2 = ((charData & 0x40) ? 0 : 2);
                                         pixel3 = ((charData & 0x20) ? 0 : 2);
-                                        pixel4 = ((charData & 0x10) ? 0 : 2);
+                                    } else {
+                                        pixel1 = pixel2 = ((charData >> 6) & 0x03);
+                                        pixel3 = ((charData >> 4) & 0x03);
                                     }
-                                } else {
-                                    // Multicolour graphics.
-                                    pixel1 = pixel2 = ((charData >> 6) & 0x03);
-                                    pixel3 = pixel4 = ((charData >> 4) & 0x03);
+                                }
+
+                                // The 3rd pixel is from the previous character with new reverse mode applied (see above).
+                                if (horizontalCounter >= NTSC_HBLANK_END) {
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
+                                    dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel8]];
                                 }
                               
                                 // Look up foreground colour before outputting first pixel.
@@ -902,10 +929,8 @@ void vic_core1_loop_ntsc(void) {
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel2]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel4]]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel2]];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel3]];
-                                    dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel4]];
                                 }
                                 
                                 // Calculate offset of data.
@@ -924,27 +949,32 @@ void vic_core1_loop_ntsc(void) {
                                          break;
                                 }
                                 
-                                // Determine next character pixels.
+                                // Pixels 4-7 calculations are less complex, since the hires mode,
+                                // reverse mode and char data stay the same four all four pixels.
                                 if (hiresMode) {
                                     if (non_reverse_mode != 0) {
+                                        pixel4 = ((charData & 0x10) ? 2 : 0);
                                         pixel5 = ((charData & 0x08) ? 2 : 0);
                                         pixel6 = ((charData & 0x04) ? 2 : 0);
                                         pixel7 = ((charData & 0x02) ? 2 : 0);
-                                        pixel8 = ((charData & 0x01) ? 2 : 0);
                                     } else {
+                                        pixel4 = ((charData & 0x10) ? 0 : 2);
                                         pixel5 = ((charData & 0x08) ? 0 : 2);
                                         pixel6 = ((charData & 0x04) ? 0 : 2);
                                         pixel7 = ((charData & 0x02) ? 0 : 2);
-                                        pixel8 = ((charData & 0x01) ? 0 : 2);
                                     }
                                 } else {
                                     // Multicolour graphics.
+                                    pixel4 = ((charData >> 4) & 0x03);
                                     pixel5 = pixel6 = ((charData >> 2) & 0x03);
-                                    pixel7 = pixel8 = (charData & 0x03);
+                                    pixel7 = (charData & 0x03);
                                 }
                                 
+                                // Pixels 4 & 5 have to be output after the pixel var calculations above.
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel4]]);
                                     pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel5]]);
+                                    dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel4]];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel5]];
                                 }
 
