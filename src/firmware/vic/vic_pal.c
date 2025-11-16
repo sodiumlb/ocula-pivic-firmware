@@ -586,7 +586,7 @@ void vic_core1_loop_pal(void) {
                                 if (non_reverse_mode != 0) {
                                     // New non-reversed mode value kicks in a pixel before new character.
                                     if (hiresMode) {
-                                        pixel8 = ((charData & 0x01) > 0? 2 : 0);
+                                        pixel8 = ((charData & 0x01)? 2 : 0);
                                     } else {
                                         pixel8 = (charData & 0x03);
                                     }
@@ -598,14 +598,14 @@ void vic_core1_loop_pal(void) {
                                     
                                     // Pixel 1 should be same non-reversed mode but pick up the new hires mode.
                                     if (hiresMode) {
-                                        pixel1 = ((charData & 0x80) > 0? 2 : 0);
+                                        pixel1 = ((charData & 0x80)? 2 : 0);
                                     } else {
                                         pixel1 = ((charData >> 6) & 0x03);
                                     }
                                 } else {
                                     // New reversed mode value kicks in a pixel before new character.
                                     if (hiresMode) {
-                                        pixel8 = ((charData & 0x01) > 0? 0 : 2);
+                                        pixel8 = ((charData & 0x01)? 0 : 2);
                                     } else {
                                         pixel8 = (charData & 0x03);
                                     }
@@ -617,7 +617,7 @@ void vic_core1_loop_pal(void) {
                                     
                                     // Pixel 1 should be same reversed mode but pick up the new hires mode.
                                     if (hiresMode) {
-                                        pixel1 = ((charData & 0x80) > 0? 0 : 2);
+                                        pixel1 = ((charData & 0x80)? 0 : 2);
                                     } else {
                                         pixel1 = ((charData >> 6) & 0x03);
                                     }
@@ -720,15 +720,15 @@ void vic_core1_loop_pal(void) {
                                     // reverse mode and char data stay the same four all four pixels.
                                     if (hiresMode) {
                                         if (non_reverse_mode != 0) {
-                                            pixel4 = ((charData & 0x10) > 0? 2 : 0);
-                                            pixel5 = ((charData & 0x08) > 0? 2 : 0);
-                                            pixel6 = ((charData & 0x04) > 0? 2 : 0);
-                                            pixel7 = ((charData & 0x02) > 0? 2 : 0);
+                                            pixel4 = ((charData & 0x10)? 2 : 0);
+                                            pixel5 = ((charData & 0x08)? 2 : 0);
+                                            pixel6 = ((charData & 0x04)? 2 : 0);
+                                            pixel7 = ((charData & 0x02)? 2 : 0);
                                         } else {
-                                            pixel4 = ((charData & 0x10) > 0? 0 : 2);
-                                            pixel5 = ((charData & 0x08) > 0? 0 : 2);
-                                            pixel6 = ((charData & 0x04) > 0? 0 : 2);
-                                            pixel7 = ((charData & 0x02) > 0? 0 : 2);
+                                            pixel4 = ((charData & 0x10)? 0 : 2);
+                                            pixel5 = ((charData & 0x08)? 0 : 2);
+                                            pixel6 = ((charData & 0x04)? 0 : 2);
+                                            pixel7 = ((charData & 0x02)? 0 : 2);
                                         }
                                     } else {
                                         // Multicolour graphics.
@@ -829,7 +829,7 @@ void vic_core1_loop_pal(void) {
                                 if (non_reverse_mode != 0) {
                                     // New non-reversed mode value kicks in a pixel before new character.
                                     if (hiresMode) {
-                                        pixel8 = ((charData & 0x01) > 0? 2 : 0);
+                                        pixel8 = ((charData & 0x01)? 2 : 0);
                                     } else {
                                         pixel8 = (charData & 0x03);
                                     }
@@ -841,9 +841,9 @@ void vic_core1_loop_pal(void) {
                                     
                                     // Pixel 1 should be same non-reversed mode but pick up the new hires mode.
                                     if (hiresMode) {
-                                        pixel1 = ((charData & 0x80) > 0? 2 : 0);
-                                        pixel2 = ((charData & 0x40) > 0? 2 : 0);
-                                        pixel3 = ((charData & 0x20) > 0? 2 : 0);
+                                        pixel1 = ((charData & 0x80)? 2 : 0);
+                                        pixel2 = ((charData & 0x40)? 2 : 0);
+                                        pixel3 = ((charData & 0x20)? 2 : 0);
                                     } else {
                                         pixel1 = pixel2 = ((charData >> 6) & 0x03);
                                         pixel3 = ((charData >> 4) & 0x03);
@@ -851,7 +851,7 @@ void vic_core1_loop_pal(void) {
                                 } else {
                                     // New reversed mode value kicks in a pixel before new character.
                                     if (hiresMode) {
-                                        pixel8 = ((charData & 0x01) > 0? 0 : 2);
+                                        pixel8 = ((charData & 0x01)? 0 : 2);
                                     } else {
                                         pixel8 = (charData & 0x03);
                                     }
@@ -863,9 +863,9 @@ void vic_core1_loop_pal(void) {
                                     
                                     // Pixel 1 should be same reversed mode but pick up the new hires mode.
                                     if (hiresMode) {
-                                        pixel1 = ((charData & 0x80) > 0? 0 : 2);
-                                        pixel2 = ((charData & 0x40) > 0? 0 : 2);
-                                        pixel3 = ((charData & 0x20) > 0? 0 : 2);
+                                        pixel1 = ((charData & 0x80)? 0 : 2);
+                                        pixel2 = ((charData & 0x40)? 0 : 2);
+                                        pixel3 = ((charData & 0x20)? 0 : 2);
                                     } else {
                                         pixel1 = pixel2 = ((charData >> 6) & 0x03);
                                         pixel3 = ((charData >> 4) & 0x03);
@@ -949,15 +949,15 @@ void vic_core1_loop_pal(void) {
                                 // Determine next character pixels.
                                 if (hiresMode) {
                                     if (non_reverse_mode != 0) {
-                                        pixel4 = ((charData & 0x10) > 0? 2 : 0);
-                                        pixel5 = ((charData & 0x08) > 0? 2 : 0);
-                                        pixel6 = ((charData & 0x04) > 0? 2 : 0);
-                                        pixel7 = ((charData & 0x02) > 0? 2 : 0);
+                                        pixel4 = ((charData & 0x10)? 2 : 0);
+                                        pixel5 = ((charData & 0x08)? 2 : 0);
+                                        pixel6 = ((charData & 0x04)? 2 : 0);
+                                        pixel7 = ((charData & 0x02)? 2 : 0);
                                     } else {
-                                        pixel4 = ((charData & 0x10) > 0? 0 : 2);
-                                        pixel5 = ((charData & 0x08) > 0? 0 : 2);
-                                        pixel6 = ((charData & 0x04) > 0? 0 : 2);
-                                        pixel7 = ((charData & 0x02) > 0? 0 : 2);
+                                        pixel4 = ((charData & 0x10)? 0 : 2);
+                                        pixel5 = ((charData & 0x08)? 0 : 2);
+                                        pixel6 = ((charData & 0x04)? 0 : 2);
+                                        pixel7 = ((charData & 0x02)? 0 : 2);
                                     }
                                 } else {
                                     // Multicolour graphics.
