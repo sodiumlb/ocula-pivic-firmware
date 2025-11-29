@@ -14,6 +14,7 @@ target_sources(tinyusb_firmware PRIVATE
     ${TINY_USB_SRC_FILES}
 )
 
+string(APPEND CMAKE_EXE_LINKER_FLAGS "-Wl,--print-memory-usage")
 
 # The Oric OCULA
 
