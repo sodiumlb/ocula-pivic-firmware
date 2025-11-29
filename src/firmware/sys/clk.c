@@ -29,7 +29,7 @@ void clk_set_qmi_clkdiv(uint8_t div){
 
 void clk_init(void){
 #ifdef PIVIC
-    vreg_set_voltage(VREG_VOLTAGE_1_20);
+    vreg_set_voltage(VREG_VOLTAGE_1_25);
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
         case(VIC_MODE_TEST_NTSC):
