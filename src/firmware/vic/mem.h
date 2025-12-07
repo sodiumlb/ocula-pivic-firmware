@@ -9,5 +9,6 @@
 
 void mem_init(void);
 void mem_task(void);
+void mem_alias_enable(bool);
 
 #endif /* _VIC_MEM_H_ */

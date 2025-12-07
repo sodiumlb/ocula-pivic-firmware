@@ -19,6 +19,7 @@
 uint8_t xread_dma_addr_chan;
 uint8_t xread_dma_data_chan;
 uint8_t xread_dma_mask_chan;
+uint xread_mask_pio_offset;
 void xread_pio_init(void){
     pio_set_gpio_base (XREAD_PIO, XREAD_PIN_OFFS);
     for(uint32_t i = 0; i < DATA_PIN_COUNT; i++){
@@ -54,6 +55,7 @@ void xread_pio_init(void){
     pio_sm_clear_fifos(XREAD_PIO, XREAD_SM);
 
     offset = pio_add_program(XREAD_MASK_PIO, &mask_address_program);
+    xread_mask_pio_offset = offset;
     pio_sm_config config2 = mask_address_program_get_default_config(offset);
     pio_sm_init(XREAD_MASK_PIO, XREAD_MASK_SM, offset, &config2);
     pio_sm_put_blocking(XREAD_MASK_PIO, XREAD_MASK_SM, ((uintptr_t)xram >> 8) | 0x10);
@@ -266,4 +268,12 @@ void mem_init(void){
 }
 
 void mem_task(void){
+}
+
+void mem_alias_enable(bool enable){
+    if(enable){
+        XREAD_MASK_PIO->instr_mem[xread_mask_pio_offset + mask_address_offset_enable] = (uint16_t)(pio_encode_jmp_x_ne_y(xread_mask_pio_offset + mask_address_offset_no_mask));
+    }else{
+        XREAD_MASK_PIO->instr_mem[xread_mask_pio_offset + mask_address_offset_enable] = (uint16_t)(pio_encode_jmp(xread_mask_pio_offset + mask_address_offset_no_mask));
+    }
 }
