@@ -32,7 +32,11 @@
 start:
     mov isr x           ; System top address bits
     wait 1 irq 3        ; Wait for write detect in xdir program
-    mov osr pins        ; Capture D[7:0],D[11:8],A[13:0],RnW
+    mov osr pins        ; Capture RnW, A[13:0], D[11:0]
+    out null 24         ; Spool out A[11:0], D[11:0]
+    out y 2             ; Inspect A[13:12]
+    jmp !y start        ; If zero then CHR ROM, abort capturing the write
+    mov osr pins        ; Capture RnW, A[13:0], D[11:0]
     out y 12            ; Keep D[11:0] in y (in case BLK4)
     in osr 14           ; shift in bottom address
     push noblock        ; Send address to FIFO
@@ -44,7 +48,6 @@ not_blk4:
     mov isr pins        ; Assume not BLK4, capture new data in isr
 push_data:
     push noblock        ; Send data to FIFO
-    wait 1 pin 26       ; Safe guard
 .wrap
 
 ; Direction control of data bus
@@ -103,12 +106,13 @@ isread:
 .wrap_target
     out y 24                  ; get A31-A8 in y (autopull)
     in y 24                   ; copy A31-A8 to isr
+PUBLIC enable:
     jmp x!=y no_mask          ; jump if not VIC register access
 mask:
     out null 4                ; dump out 4 bits A7-A4
     out y 4                   ; shift out 4 bits A3-A0 to y
     jmp finish                ; jump to the output stage
-no_mask:
+PUBLIC no_mask:
     out y 8                   ; get A7-A0 in y
 finish:
     in y 8                    ; autopush
