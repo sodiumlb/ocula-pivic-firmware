@@ -172,7 +172,7 @@ void cvbs_pio_mode_init(void){
          entry = cvbs_pal_offset_entry;
          break;
       }
-   sm_config_set_out_shift(&config, true, true, 30); 
+   sm_config_set_out_shift(&config, true, true, 32); 
    sm_config_set_out_pins(&config, CVBS_PIN_BASE, 5);             
    sm_config_set_fifo_join(&config, PIO_FIFO_JOIN_TX);
    pio_sm_init(CVBS_PIO, CVBS_SM, offset, &config);
