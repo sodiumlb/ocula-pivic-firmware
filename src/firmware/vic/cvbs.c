@@ -149,11 +149,12 @@ static const uint32_t pal_palette_e[16] = {
 
 void cvbs_pio_mode_init(void){ 
    pio_set_gpio_base (CVBS_PIO, CVBS_PIN_OFFS);
-   for(uint32_t i = 0; i < 5; i++){
+   for(uint32_t i = 0; i < CVBS_PIN_COUNT; i++){
       pio_gpio_init(CVBS_PIO, CVBS_PIN_BASE+i);
       gpio_set_drive_strength(CVBS_PIN_BASE+i, GPIO_DRIVE_STRENGTH_2MA);
       gpio_set_slew_rate(CVBS_PIN_BASE+i, GPIO_SLEW_RATE_SLOW);
    }
+   gpio_set_pulls(CVBS_SYNC_PIN, false, false); //Not used for direct CVBS
    pio_sm_set_consecutive_pindirs(CVBS_PIO, CVBS_SM, CVBS_PIN_BASE, 5, true);
    uint offset, entry;
    pio_sm_config config;
