@@ -30,10 +30,10 @@
 #define CVBS_CMD_PIXEL(L0,delay0,L1,delay1,L2) \
         (((L2&0x1F) << 27) |  (((delay1-3)&0x3F) << 21) | ((L1&0x1F) << 16) | (((delay0-3)&0x3F) << 10) | ((L0&0x1F) << 5) | CVBS_CMD_ID_PIXEL)
 #define CVBS_CMD_BURST(L0,L1,DC,delay,count) \
-        (((DC&0x1F) << 26) | ((L1&0x1F) << 21) | ((L0&0x1F) << 16) | (((delay-1)&0x1F) << 11) | (((count-1)&0x3F) << 5) | CVBS_CMD_ID_BURST)
+        (((DC&0x1F) << 27) | ((L1&0x1F) << 22) | ((L0&0x1F) << 17) | (((delay-1)&0x1F) << 11) | (((count-1)&0x3F) << 5) | CVBS_CMD_ID_BURST)
 
 #define CVBS_CMD_BURST_DELAY(cmd,delay) \
-        ((cmd & ~(0x3F<<10)) | ((delay-1)&0x3F)<<10)
+        ((cmd & ~(0x3F<<11)) | ((delay-1)&0x3F)<<11)
 
 //Front porch split into two, to allow for change to vertical blanking after first part, if required.
 #define NTSC_FRONTPORCH_1 CVBS_CMD_DC_RUN( 9,12)

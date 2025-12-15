@@ -27,13 +27,15 @@
 
 #define CVBS_CMD_PAL_DC_RUN(L0,count) \
         (((count-2) << 10) | ((L0&0x1F) << 5)| CVBS_CMD_PAL_ID_DC_RUN)
+// Moving from 2x to 1x clock divider for PAL for stability. Using +1 on delay shifts instead. This can be removed
+// to get NTSC level of fine tuning, but then the fixed delay values in the palette need to be doubled.
 #define CVBS_CMD_PAL_PIXEL(L0,delay0,L1,delay1,L2) \
-        (((L2&0x1F) << 25) |  (((delay1-2)&0x1F) << 20) | ((L1&0x1F) << 15) | (((delay0-2)&0x1F) << 10) | ((L0&0x1F) << 5) | CVBS_CMD_PAL_ID_PIXEL)
+        (((L2&0x1F) << 27) |  (((delay1-2)&0x1F) << (21+1)) | ((L1&0x1F) << 16) | (((delay0-2)&0x1F) << (10+1)) | ((L0&0x1F) << 5) | CVBS_CMD_PAL_ID_PIXEL)
 #define CVBS_CMD_PAL_BURST(L0,L1,DC,delay,count) \
-        (((DC&0x1F) << 25) | ((L1&0x1F) << 20) | ((L0&0x1F) << 15) | (((delay-1)&0x1F) << 10) | (((count-1)&0x1F) << 5) | CVBS_CMD_PAL_ID_BURST)
+        (((DC&0x1F) << 27) | ((L1&0x1F) << 22) | ((L0&0x1F) << 17) | (((delay-1)&0x1F) << 11) | (((count-1)&0x1F) << 5) | CVBS_CMD_PAL_ID_BURST)
 
 #define CVBS_CMD_PAL_BURST_DELAY(cmd,delay) \
-        ((cmd & ~(0x1F<<10)) | ((delay-1)&0x1F)<<10)
+        ((cmd & ~(0x1F<<11)) | ((delay-1)&0x1F)<<11)
 
 #define PAL_HSYNC        CVBS_CMD_PAL_DC_RUN( 0,20)
 #define PAL_FRONTPORCH   CVBS_CMD_PAL_DC_RUN( 9, 7)
@@ -43,8 +45,8 @@
 #define PAL_BACKPORCH    CVBS_CMD_PAL_DC_RUN( 9, 4)
 
 //Burst command is special as it is only synced to dotclock at the end, thus delay + 16 periods counts as 17 dotclks
-#define PAL_COLBURST_O	 CVBS_CMD_PAL_BURST(12, 6, 9,14,16)
-#define PAL_COLBURST_E	 CVBS_CMD_PAL_BURST( 6,12, 9, 5,16)
+#define PAL_COLBURST_O	 CVBS_CMD_PAL_BURST(12, 6, 9,28,16)
+#define PAL_COLBURST_E	 CVBS_CMD_PAL_BURST( 6,12, 9,10,16)
 
 // Vertical blanking and sync.
 // TODO: From original cvbs.c code. Doesn't match VIC chip timings.
