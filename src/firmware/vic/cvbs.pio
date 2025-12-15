@@ -57,8 +57,6 @@ postdelay:
 .program cvbs_ntsc
 .clock_div 1.0
 .origin 0
-public entry:
-    out pc 5           ;Next command (new word)
 
 ; DC RUN Command
 ; Output a DC level for repeat+2 number of dot clock cycles
@@ -72,6 +70,7 @@ dc_loop:
     wait 1 irq 1        ;Wait for dotclock
     jmp y-- dc_loop     ;loop y times
     wait 1 irq 1        ;Wait for dotclock again
+public entry:           ;Reuse as initial program start
     out pc 5            ;Next command (new word)
 
 ; PIXEL Command
@@ -124,8 +123,6 @@ burst_loop:
 .program cvbs_pal
 .clock_div 2.0
 .origin 0
-public entry:
-    out pc 5           ;Next command (new word)
 
 ; DC RUN Command
 ; Output a DC level for repeat+2 number of dot clock cycles
@@ -139,6 +136,7 @@ dc_loop:
     wait 1 irq 1        ;Wait for dotclock
     jmp y-- dc_loop     ;loop y times
     wait 1 irq 1        ;Wait for dotclock again
+public entry:           ;Reuse as initial program start
     out pc 5            ;Next command (new word)
 
 ; PIXEL Command

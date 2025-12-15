@@ -155,19 +155,21 @@ void cvbs_pio_mode_init(void){
       gpio_set_slew_rate(CVBS_PIN_BASE+i, GPIO_SLEW_RATE_SLOW);
    }
    pio_sm_set_consecutive_pindirs(CVBS_PIO, CVBS_SM, CVBS_PIN_BASE, 5, true);
-   uint offset;
+   uint offset, entry;
    pio_sm_config config;
    switch(cvbs_mode){
       case(VIC_MODE_NTSC):
       case(VIC_MODE_TEST_NTSC):
          offset = pio_add_program(CVBS_PIO, &cvbs_ntsc_program);
          config = cvbs_ntsc_program_get_default_config(offset);
+         entry = cvbs_ntsc_offset_entry;
          break;
       case(VIC_MODE_PAL):
       case(VIC_MODE_TEST_PAL):
       default:
          offset = pio_add_program(CVBS_PIO, &cvbs_pal_program);
          config = cvbs_pal_program_get_default_config(offset);
+         entry = cvbs_pal_offset_entry;
          break;
       }
    sm_config_set_out_shift(&config, true, true, 30); 
@@ -175,6 +177,7 @@ void cvbs_pio_mode_init(void){
    sm_config_set_fifo_join(&config, PIO_FIFO_JOIN_TX);
    pio_sm_init(CVBS_PIO, CVBS_SM, offset, &config);
    //pio_sm_put(CVBS_PIO, CVBS_SM, 0x84210FFF);    
+   pio_sm_exec_wait_blocking(CVBS_PIO, CVBS_SM, pio_encode_jmp(entry));
    pio_sm_set_enabled(CVBS_PIO, CVBS_SM, true);   
    printf("CVBS mode init done\n");
 }
