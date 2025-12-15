@@ -14,8 +14,6 @@ void main_flush(void);
 void main_reclock(void);
 bool main_prog(uint16_t *xregs);
 
-#define CPU_PHI2_PIN 21
-
 #define COM_UART uart0
 #define COM_UART_BAUD_RATE 115200
 #define COM_UART_TX_PIN 0
@@ -30,13 +28,24 @@ bool main_prog(uint16_t *xregs);
 #define CVBS_PIO pio0
 #define CVBS_SM 0
 #define CVBS_PIN_OFFS PIO0_PIN_OFFS
-#define CVBS_PIN_BASE 3
+//Direct CVBS pin defines
+#define CVBS_PIN_BASE 5
 #define CVBS_PIN_COUNT 5
+//Luma+Chroma CVBS pin defines
+#define CVBS_CHROMA_PIN_BASE 3
+#define CVBS_CHROMA_PIN_COUNT 2
+#define CVBS_LUMA_PIN_BASE 5
+#define CVBS_LUMA_PIN_COUNT 3
+#define CVBS_SYNC_PIN 10
+
 
 #define VIC_PIO pio1
 #define VIC_SM 0
 #define VIC_PIN_OFFS PIO1_PIN_OFFS
-#define VIC_PIN_BASE 8
+#define VIC_PIN_BASE 28
+#define VIC_PHI2_PIN 28
+#define VIC_PHI1_PIN 30
+
 
 #define VIC_DOTCLK_PIO pio1
 #define VIC_DOTCLK_SM 1
@@ -72,10 +81,8 @@ bool main_prog(uint16_t *xregs);
 #define AUDIO_PWM_SLICE 1
 #define AUDIO_PWM_CH  PWM_CHAN_A
 
-#define PHI_PIN 8
-
 #define DATA_PIN_BASE 20
-#define DATA_PIN_COUNT 12
+#define DATA_PIN_COUNT 8
 
 #define ADDR_PIN_BASE 32
 #define ADDR_PIN_COUNT 14
@@ -83,11 +90,11 @@ bool main_prog(uint16_t *xregs);
 #define RNW_PIN 46
 #define DIR_PIN 47
 
-#define POTX_PIN 11
-#define POTX_PWM_SLICE 5
+#define POTX_PIN 31
+#define POTX_PWM_SLICE 7
 #define POTX_PWM_CH PWM_CHAN_B
-#define POTY_PIN 9
-#define POTY_PWM_SLICE 4
+#define POTY_PIN 29
+#define POTY_PWM_SLICE 6
 #define POTY_PWM_CH PWM_CHAN_B
 
 #define PEN_PIN 47
