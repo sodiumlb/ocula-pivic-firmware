@@ -747,7 +747,7 @@ void vic_core1_loop_pal(void) {
                                     }
                                     dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel1]];
                                     
-                                    pixel6 = pixel2 = ((charData >> 6) & 0x03);
+                                    pixel6 = pixel2 = pixel1;
                                     pixel7 = pixel3 = ((charData >> 4) & 0x03);
                                     pixel8 = pixel1 = pixel2 = pixel3 = pixel4 = pixel5 = 1;
 
