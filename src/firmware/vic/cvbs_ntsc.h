@@ -12,168 +12,71 @@
 //L0, L1 and L2 levels to be asserted on the DAC
 //Set L0, L1 and L2 to same level to get DC, or use DC_RUN command
 //Delay is used to shift the phase a number of sys cycles between each output to the DAC
-//Commands for the PIO program (each word 30 bits):
+//Commands for the PIO program (each word 32bits):
 //    dc_run: Repeate L0 for count periods
 //            [29:10]=repeat, [9:5]=L0, [4:0]=dc_run_id
 //
 //     pixel: CVBS pixel data payload for pixel_run commands
-//            [29:25]=L2, [24:20]=delay1, [19:15]=L1, [14:10]=delay0, [9:5] L0, [4:0]=pixel_id
+//            [31:25]=delay1, [24:18]=L1, [17:12]=delay0, [11:5] L0, [4:0]=pixel_id
 //     burst: Colour burst special. Alternative to doing pixel_run of burst pixels
-//            [29:25]=L1, [24:20]=L0, [19:15]=pre_delay(phase), [14:5]=repeat(burst periods), [4:0]=burst_id
+//            [31:25]=DC, [24:18]=L1, [17:11]=L0, [10:5]=pre_delay(phase), [4:0]=burst_id
 
+#define CVBS_CMD_ID_SYNC cvbs_ntsc_offset_cvbs_cmd_sync
+#define CVBS_CMD_ID_BLANK cvbs_ntsc_offset_cvbs_cmd_blank
 #define CVBS_CMD_ID_DC_RUN cvbs_ntsc_offset_cvbs_cmd_dc_run
 #define CVBS_CMD_ID_PIXEL cvbs_ntsc_offset_cvbs_cmd_pixel
 #define CVBS_CMD_ID_BURST cvbs_ntsc_offset_cvbs_cmd_burst
 
 #define CVBS_CMD_DC_RUN(L0,count) \
-        (((count-2) << 10) | ((L0&0x1F) << 5)| CVBS_CMD_ID_DC_RUN)
-#define CVBS_CMD_PIXEL(L0,delay0,L1,delay1,L2) \
-        (((L2&0x1F) << 27) |  (((delay1-3)&0x3F) << 21) | ((L1&0x1F) << 16) | (((delay0-3)&0x3F) << 10) | ((L0&0x1F) << 5) | CVBS_CMD_ID_PIXEL)
-#define CVBS_CMD_BURST(L0,L1,DC,delay,count) \
-        (((DC&0x1F) << 27) | ((L1&0x1F) << 22) | ((L0&0x1F) << 17) | (((delay-1)&0x1F) << 11) | (((count-1)&0x3F) << 5) | CVBS_CMD_ID_BURST)
-
-#define CVBS_CMD_BURST_DELAY(cmd,delay) \
-        ((cmd & ~(0x3F<<11)) | ((delay-1)&0x3F)<<11)
+        (((count-2) << 12) | ((L0&0x7F) << 5)| CVBS_CMD_ID_DC_RUN)
+#define CVBS_CMD_PIXEL(L0,delay0,L1,delay1,L2_unused) \
+        ((((delay1-4)&0x3F) << 25) | ((L1&0x7F) << 18) | (((delay0-3)&0x3F) << 12) | ((L0&0x7F) << 5) | CVBS_CMD_ID_PIXEL)
+#define CVBS_CMD_BURST(L0,L1,DC,delay,count_unused) \
+        (((DC&0x7F) << 25) | ((L1&0x7F) << 18) | ((L0&0x7F) << 11) | (((delay-1)&0x3F) << 5) | CVBS_CMD_ID_BURST)
 
 //Front porch split into two, to allow for change to vertical blanking after first part, if required.
-#define NTSC_FRONTPORCH_1 CVBS_CMD_DC_RUN( 9,12)
-#define NTSC_FRONTPORCH_2 CVBS_CMD_DC_RUN( 9,4)
+#define NTSC_FRONTPORCH_1 CVBS_CMD_DC_RUN( 9<<2,12)
+#define NTSC_FRONTPORCH_2 CVBS_CMD_DC_RUN( 9<<2,4)
 
-#define NTSC_FRONTPORCH  CVBS_CMD_DC_RUN( 9,16)
-#define NTSC_HSYNC       CVBS_CMD_DC_RUN( 0,20)
-#define NTSC_BREEZEWAY   CVBS_CMD_DC_RUN( 9, 2)
-#define NTSC_BACKPORCH   CVBS_CMD_DC_RUN( 9, 2)
-#define NTSC_LONG_SYNC_L  CVBS_CMD_DC_RUN( 0,110)
-#define NTSC_LONG_SYNC_H  CVBS_CMD_DC_RUN( 9, 20)
-#define NTSC_SHORT_SYNC_L CVBS_CMD_DC_RUN( 0, 20)
-#define NTSC_SHORT_SYNC_H CVBS_CMD_DC_RUN( 9,110)
-#define NTSC_BLANKING     CVBS_CMD_DC_RUN( 9,200)
+#define NTSC_FRONTPORCH  CVBS_CMD_DC_RUN( 9<<2,16)
+#define NTSC_HSYNC       CVBS_CMD_DC_RUN( 0<<2,20)
+#define NTSC_BREEZEWAY   CVBS_CMD_DC_RUN( 9<<2, 2)
+#define NTSC_BACKPORCH   CVBS_CMD_DC_RUN( 9<<2, 2)
+#define NTSC_LONG_SYNC_L  CVBS_CMD_DC_RUN( 0<<2,110)
+#define NTSC_LONG_SYNC_H  CVBS_CMD_DC_RUN( 9<<2, 20)
+#define NTSC_SHORT_SYNC_L CVBS_CMD_DC_RUN( 0<<2, 20)
+#define NTSC_SHORT_SYNC_H CVBS_CMD_DC_RUN( 9<<2,110)
+#define NTSC_BLANKING     CVBS_CMD_DC_RUN( 9<<2,200)
 //Two NTSC burst methodes available CMD_BURST or PIXEL_RUN
 //CMD_BURST is more experimental since it runs carrier cycles instead of dot clock cycles
 //17 carrier cycles => 19,5 dot clock cycles, syncs up as 20 dot clock cycles
-#define NTSC_COLBURST_O     CVBS_CMD_BURST(13, 5, 9, 4,17)
-#define NTSC_COLBURST_E     CVBS_CMD_BURST( 5,13, 9, 4,17)
 
 //VIC-20 NTSC dot clock/colour carrier ratio is 4/3.5
 //We solve this by using 8 precomputed carrier to pixel
 //mappings per color bearing pixel.
 //Run versions 0..7 0..7 etc
 
-#define NTSC_BLACK      CVBS_CMD_PIXEL( 9,44, 9,3, 9)
-#define NTSC_WHITE      CVBS_CMD_PIXEL(28,44,28,3,28)
-
-#define NTSC_RED_0	CVBS_CMD_PIXEL(21,21,7,44,21)
-#define NTSC_RED_4	CVBS_CMD_PIXEL(7,21,21,44,7)
-#define NTSC_RED_1	CVBS_CMD_PIXEL(21,32,7,3,7)
-#define NTSC_RED_5	CVBS_CMD_PIXEL(7,32,21,3,21)
-#define NTSC_RED_2	CVBS_CMD_PIXEL(21,43,7,3,7)
-#define NTSC_RED_6	CVBS_CMD_PIXEL(7,43,21,3,21)
-#define NTSC_RED_3	CVBS_CMD_PIXEL(7,10,21,44,7)
-#define NTSC_RED_7	CVBS_CMD_PIXEL(21,10,7,44,21)
-#define NTSC_CYAN_0	CVBS_CMD_PIXEL(16,21,30,44,16)
-#define NTSC_CYAN_4	CVBS_CMD_PIXEL(30,21,16,44,30)
-#define NTSC_CYAN_1	CVBS_CMD_PIXEL(16,32,30,3,30)
-#define NTSC_CYAN_5	CVBS_CMD_PIXEL(30,32,16,3,16)
-#define NTSC_CYAN_2	CVBS_CMD_PIXEL(16,43,30,3,30)
-#define NTSC_CYAN_6	CVBS_CMD_PIXEL(30,43,16,3,16)
-#define NTSC_CYAN_3	CVBS_CMD_PIXEL(30,10,16,44,30)
-#define NTSC_CYAN_7	CVBS_CMD_PIXEL(16,10,30,44,16)
-#define NTSC_PURPLE_0	CVBS_CMD_PIXEL(23,32,9,3,9)
-#define NTSC_PURPLE_4	CVBS_CMD_PIXEL(9,32,23,3,23)
-#define NTSC_PURPLE_1	CVBS_CMD_PIXEL(23,43,9,3,9)
-#define NTSC_PURPLE_5	CVBS_CMD_PIXEL(9,43,23,3,23)
-#define NTSC_PURPLE_2	CVBS_CMD_PIXEL(9,10,23,44,9)
-#define NTSC_PURPLE_6	CVBS_CMD_PIXEL(23,10,9,44,23)
-#define NTSC_PURPLE_3	CVBS_CMD_PIXEL(9,21,23,44,9)
-#define NTSC_PURPLE_7	CVBS_CMD_PIXEL(23,21,9,44,23)
-#define NTSC_GREEN_0	CVBS_CMD_PIXEL(14,32,28,3,28)
-#define NTSC_GREEN_4	CVBS_CMD_PIXEL(28,32,14,3,14)
-#define NTSC_GREEN_1	CVBS_CMD_PIXEL(14,43,28,3,28)
-#define NTSC_GREEN_5	CVBS_CMD_PIXEL(28,43,14,3,14)
-#define NTSC_GREEN_2	CVBS_CMD_PIXEL(28,10,14,44,28)
-#define NTSC_GREEN_6	CVBS_CMD_PIXEL(14,10,28,44,14)
-#define NTSC_GREEN_3	CVBS_CMD_PIXEL(28,21,14,44,28)
-#define NTSC_GREEN_7	CVBS_CMD_PIXEL(14,21,28,44,14)
-#define NTSC_BLUE_0	CVBS_CMD_PIXEL(6,4,20,44,6)
-#define NTSC_BLUE_4	CVBS_CMD_PIXEL(20,4,6,44,20)
-#define NTSC_BLUE_1	CVBS_CMD_PIXEL(6,15,20,44,6)
-#define NTSC_BLUE_5	CVBS_CMD_PIXEL(20,15,6,44,20)
-#define NTSC_BLUE_2	CVBS_CMD_PIXEL(6,26,20,44,6)
-#define NTSC_BLUE_6	CVBS_CMD_PIXEL(20,26,6,44,20)
-#define NTSC_BLUE_3	CVBS_CMD_PIXEL(6,37,20,3,20)
-#define NTSC_BLUE_7	CVBS_CMD_PIXEL(20,37,6,3,6)
-#define NTSC_YELLOW_0	CVBS_CMD_PIXEL(31,4,17,44,31)
-#define NTSC_YELLOW_4	CVBS_CMD_PIXEL(17,4,31,44,17)
-#define NTSC_YELLOW_1	CVBS_CMD_PIXEL(31,15,17,44,31)
-#define NTSC_YELLOW_5	CVBS_CMD_PIXEL(17,15,31,44,17)
-#define NTSC_YELLOW_2	CVBS_CMD_PIXEL(31,26,17,44,31)
-#define NTSC_YELLOW_6	CVBS_CMD_PIXEL(17,26,31,44,17)
-#define NTSC_YELLOW_3	CVBS_CMD_PIXEL(31,37,17,3,17)
-#define NTSC_YELLOW_7	CVBS_CMD_PIXEL(17,37,31,3,31)
-#define NTSC_ORANGE_0	CVBS_CMD_PIXEL(24,15,10,44,24)
-#define NTSC_ORANGE_4	CVBS_CMD_PIXEL(10,15,24,44,10)
-#define NTSC_ORANGE_1	CVBS_CMD_PIXEL(24,26,10,44,24)
-#define NTSC_ORANGE_5	CVBS_CMD_PIXEL(10,26,24,44,10)
-#define NTSC_ORANGE_2	CVBS_CMD_PIXEL(24,37,10,3,10)
-#define NTSC_ORANGE_6	CVBS_CMD_PIXEL(10,37,24,3,24)
-#define NTSC_ORANGE_3	CVBS_CMD_PIXEL(10,4,24,44,10)
-#define NTSC_ORANGE_7	CVBS_CMD_PIXEL(24,4,10,44,24)
-#define NTSC_LORANGE_0	CVBS_CMD_PIXEL(27,23,19,44,27)
-#define NTSC_LORANGE_4	CVBS_CMD_PIXEL(19,23,27,44,19)
-#define NTSC_LORANGE_1	CVBS_CMD_PIXEL(27,34,19,3,19)
-#define NTSC_LORANGE_5	CVBS_CMD_PIXEL(19,34,27,3,27)
-#define NTSC_LORANGE_2	CVBS_CMD_PIXEL(19,3,27,42,19)
-#define NTSC_LORANGE_6	CVBS_CMD_PIXEL(27,3,19,42,27)
-#define NTSC_LORANGE_3	CVBS_CMD_PIXEL(19,12,27,44,19)
-#define NTSC_LORANGE_7	CVBS_CMD_PIXEL(27,12,19,44,27)
-#define NTSC_PINK_0	CVBS_CMD_PIXEL(25,28,17,44,25)
-#define NTSC_PINK_4	CVBS_CMD_PIXEL(17,28,25,44,17)
-#define NTSC_PINK_1	CVBS_CMD_PIXEL(25,39,17,3,17)
-#define NTSC_PINK_5	CVBS_CMD_PIXEL(17,39,25,3,25)
-#define NTSC_PINK_2	CVBS_CMD_PIXEL(17,6,25,44,17)
-#define NTSC_PINK_6	CVBS_CMD_PIXEL(25,6,17,44,25)
-#define NTSC_PINK_3	CVBS_CMD_PIXEL(17,17,25,44,17)
-#define NTSC_PINK_7	CVBS_CMD_PIXEL(25,17,17,44,25)
-#define NTSC_LCYAN_0	CVBS_CMD_PIXEL(22,28,30,44,22)
-#define NTSC_LCYAN_4	CVBS_CMD_PIXEL(30,28,22,44,30)
-#define NTSC_LCYAN_1	CVBS_CMD_PIXEL(22,39,30,3,30)
-#define NTSC_LCYAN_5	CVBS_CMD_PIXEL(30,39,22,3,22)
-#define NTSC_LCYAN_2	CVBS_CMD_PIXEL(30,6,22,44,30)
-#define NTSC_LCYAN_6	CVBS_CMD_PIXEL(22,6,30,44,22)
-#define NTSC_LCYAN_3	CVBS_CMD_PIXEL(30,17,22,44,30)
-#define NTSC_LCYAN_7	CVBS_CMD_PIXEL(22,17,30,44,22)
-#define NTSC_LPURPLE_0	CVBS_CMD_PIXEL(27,39,19,3,19)
-#define NTSC_LPURPLE_4	CVBS_CMD_PIXEL(19,39,27,3,27)
-#define NTSC_LPURPLE_1	CVBS_CMD_PIXEL(19,6,27,44,19)
-#define NTSC_LPURPLE_5	CVBS_CMD_PIXEL(27,6,19,44,27)
-#define NTSC_LPURPLE_2	CVBS_CMD_PIXEL(19,17,27,44,19)
-#define NTSC_LPURPLE_6	CVBS_CMD_PIXEL(27,17,19,44,27)
-#define NTSC_LPURPLE_3	CVBS_CMD_PIXEL(19,28,27,44,19)
-#define NTSC_LPURPLE_7	CVBS_CMD_PIXEL(27,28,19,44,27)
-#define NTSC_LGREEN_0	CVBS_CMD_PIXEL(21,39,29,3,29)
-#define NTSC_LGREEN_4	CVBS_CMD_PIXEL(29,39,21,3,21)
-#define NTSC_LGREEN_1	CVBS_CMD_PIXEL(29,6,21,44,29)
-#define NTSC_LGREEN_5	CVBS_CMD_PIXEL(21,6,29,44,21)
-#define NTSC_LGREEN_2	CVBS_CMD_PIXEL(29,17,21,44,29)
-#define NTSC_LGREEN_6	CVBS_CMD_PIXEL(21,17,29,44,21)
-#define NTSC_LGREEN_3	CVBS_CMD_PIXEL(29,28,21,44,29)
-#define NTSC_LGREEN_7	CVBS_CMD_PIXEL(21,28,29,44,21)
-#define NTSC_LBLUE_0	CVBS_CMD_PIXEL(16,12,24,44,16)
-#define NTSC_LBLUE_4	CVBS_CMD_PIXEL(24,12,16,44,24)
-#define NTSC_LBLUE_1	CVBS_CMD_PIXEL(16,23,24,44,16)
-#define NTSC_LBLUE_5	CVBS_CMD_PIXEL(24,23,16,44,24)
-#define NTSC_LBLUE_2	CVBS_CMD_PIXEL(16,34,24,3,24)
-#define NTSC_LBLUE_6	CVBS_CMD_PIXEL(24,34,16,3,16)
-#define NTSC_LBLUE_3	CVBS_CMD_PIXEL(16,45,24,3,24)
-#define NTSC_LBLUE_7	CVBS_CMD_PIXEL(24,45,16,3,16)
-#define NTSC_LYELLOW_0	CVBS_CMD_PIXEL(31,12,23,44,31)
-#define NTSC_LYELLOW_4	CVBS_CMD_PIXEL(23,12,31,44,23)
-#define NTSC_LYELLOW_1	CVBS_CMD_PIXEL(31,23,23,44,31)
-#define NTSC_LYELLOW_5	CVBS_CMD_PIXEL(23,23,31,44,23)
-#define NTSC_LYELLOW_2	CVBS_CMD_PIXEL(31,34,23,3,23)
-#define NTSC_LYELLOW_6	CVBS_CMD_PIXEL(23,34,31,3,31)
-#define NTSC_LYELLOW_3	CVBS_CMD_PIXEL(31,45,23,3,23)
-#define NTSC_LYELLOW_7	CVBS_CMD_PIXEL(23,45,31,3,31)
-
+static const cvbs_palette_t palette_default_ntsc = {
+        .version = 1,
+        .burst = {  4,  9, +2, 0 },
+        .colours = {
+                 { 44,  9,  0, 0 },     //Black
+                 { 44, 28,  0, 0 },     //White
+                 { 21, 14, +4, 0 },     //Red
+                 { 21, 23, -4, 0 },     //Cyan
+                 { 32, 16, +4, 0 },     //Purple
+                 { 32, 21, -4, 0 },     //Green
+                 {  4, 13, -4, 0 },     //Blue
+                 {  4, 24, +4, 0 },     //Yellow
+                 { 15, 17, +4, 0 },     //Orange
+                 { 23, 23, +2, 0 },     //LOrange
+                 { 28, 21, +2, 0 },     //Pink
+                 { 28, 26, -2, 0 },     //LCyan
+                 { 39, 23, +2, 0 },     //LPurple
+                 { 39, 25, -2, 0 },     //LGreen
+                 { 12, 20, -2, 0 },     //LBlue
+                 { 12, 27, +2, 0 }      //LYellow
+        }
+};
 #endif /* _CVBS_NTSC_H_ */
  

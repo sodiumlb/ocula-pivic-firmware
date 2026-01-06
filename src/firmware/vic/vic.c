@@ -77,12 +77,16 @@ void vic_pio_init(void) {
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
         case(VIC_MODE_TEST_NTSC):
+        case(VIC_MODE_NTSC_SVIDEO):
+        case(VIC_MODE_TEST_NTSC_SVIDEO):
             offset = pio_add_program(VIC_PIO, &clkgen_ntsc_program);
             config = clkgen_ntsc_program_get_default_config(offset);
             dot_div = 77;
             break;
         case(VIC_MODE_PAL):
         case(VIC_MODE_TEST_PAL):
+        case(VIC_MODE_PAL_SVIDEO):
+        case(VIC_MODE_TEST_PAL_SVIDEO):
             offset = pio_add_program(VIC_PIO, &clkgen_pal_program);
             config = clkgen_pal_program_get_default_config(offset);
             dot_div = 72;
@@ -109,10 +113,12 @@ void vic_splash_init() {
     // Set up hard coded control registers for now (from default PAL VIC).
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
+        case(VIC_MODE_NTSC_SVIDEO):
             xram[0x1000] = 0x05;    // Screen Origin X = 5 (NTSC)
             xram[0x1001] = 0x19;    // Screen Origin Y = 25 (NTSC)
             break;
         case(VIC_MODE_PAL):
+        case(VIC_MODE_PAL_SVIDEO):
         default:
             xram[0x1000] = 0x0C;    // Screen Origin X = 12 (PAL)
             xram[0x1001] = 0x26;    // Screen Origin Y = 38 (PAL)
@@ -120,10 +126,12 @@ void vic_splash_init() {
     }
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
+        case(VIC_MODE_NTSC_SVIDEO):
             xram[0x1000] = 0x05;    // Screen Origin X = 5 (NTSC)
             xram[0x1001] = 0x19;    // Screen Origin Y = 25 (NTSC)
             break;
         case(VIC_MODE_PAL):
+        case(VIC_MODE_PAL_SVIDEO):
         default:
             xram[0x1000] = 0x0C;    // Screen Origin X = 12 (PAL)
             xram[0x1001] = 0x26;    // Screen Origin Y = 38 (PAL)
@@ -190,10 +198,12 @@ void vic_init(void) {
         vic_splash_init();
     switch(cfg_get_mode()){
         case(VIC_MODE_PAL):
+        case(VIC_MODE_PAL_SVIDEO):
             dvi_set_mode(&vic_pal_mode);
             multicore_launch_core1(vic_core1_loop_pal);
             break;
         case(VIC_MODE_NTSC):
+        case(VIC_MODE_NTSC_SVIDEO):
             dvi_set_mode(&vic_ntsc_mode);
             multicore_launch_core1(vic_core1_loop_ntsc);
             break;

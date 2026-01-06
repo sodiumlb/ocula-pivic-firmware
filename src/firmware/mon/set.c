@@ -102,7 +102,7 @@ static void set_caps(const char *args, size_t len)
 
 static void set_print_splash()
 {
-    printf("SPLASH: %d\n", cfg_get_splash());
+    printf("SPLASH: %d\n", cfg_get_splash() ? "1 - On" : "0 - Off");
 }
 
 static void set_splash(const char *args, size_t len)
@@ -150,10 +150,14 @@ static void set_print_mode()
 {
     const char *const mode_labels[] = {
 #ifdef PIVIC
-        "0 - VIC 6560 NTSC/60",
-        "1 - VIC 6561 PAL/50", 
-        "2 - VIC 6560 NTSC/60 test screen",
-        "3 - VIC 6561 PAL/50 test screen", 
+        "0 - VIC 6560 NTSC/60 CVBS on Luma",
+        "1 - VIC 6561 PAL/50 CVBS on Luma", 
+        "2 - VIC 6560 NTSC/60 S-VIDEO",
+        "3 - VIC 6561 PAL/50 S-VIDEO", 
+        "4 - VIC 6560 NTSC/60 CVBS test screen",
+        "5 - VIC 6561 PAL/50 CVBS test screen", 
+        "6 - VIC 6560 NTSC/60 S-VIDEO test screen",
+        "7 - VIC 6561 PAL/50 S-VIDEO test screen", 
 #endif
 #ifdef OCULA
         "0 - DRAM-is-the-RAM",
