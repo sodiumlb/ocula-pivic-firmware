@@ -62,10 +62,14 @@ void pen_init(void){
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
         case(VIC_MODE_TEST_NTSC):
+        case(VIC_MODE_NTSC_SVIDEO):
+        case(VIC_MODE_TEST_NTSC_SVIDEO):
             pwm_config_set_clkdiv_int(&config, 154);         //Assuming 315MHz 
             break;
         case(VIC_MODE_PAL):
         case(VIC_MODE_TEST_PAL):
+        case(VIC_MODE_PAL_SVIDEO):
+        case(VIC_MODE_TEST_PAL_SVIDEO):
             pwm_config_set_clkdiv_int(&config, 144);         //Assuming 319.2MHz 
         break;
         default:

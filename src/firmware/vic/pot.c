@@ -43,10 +43,14 @@ void pot_init(void){
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
         case(VIC_MODE_TEST_NTSC):
+        case(VIC_MODE_NTSC_SVIDEO):
+        case(VIC_MODE_TEST_NTSC_SVIDEO):
             pwm_config_set_clkdiv_int(&config, 77);         //Assuming 315MHz 
             break;
         case(VIC_MODE_PAL):
         case(VIC_MODE_TEST_PAL):
+        case(VIC_MODE_PAL_SVIDEO):
+        case(VIC_MODE_TEST_PAL_SVIDEO):
             pwm_config_set_clkdiv_int(&config, 72);         //Assuming 319.2MHz 
         break;
         default:
@@ -71,18 +75,20 @@ void pot_task(void){
             //TODO make calibration configurable, or at least add Atari calibration profile
             //500 is ca low point for the PWM counter
             //1073 is ca high point the PWM counter calculated as the reverse of the (<<2 / 9) range
-            if(pot_x_counter > 1073){
-                pot_x_counter = 1073;
-            }else if(pot_x_counter < 500){
-                pot_x_counter = 500;
+            if(pot_x_counter > 1142){
+                pot_x_counter = 1142;
+            }else if(pot_x_counter < 250){
+                pot_x_counter = 250;
             }
-            if(pot_y_counter > 1073){
-                pot_y_counter = 1073;
-            }else if(pot_y_counter < 500){
-                pot_y_counter = 500;
+            if(pot_y_counter > 1142){
+                pot_y_counter = 1142;
+            }else if(pot_y_counter < 250){
+                pot_y_counter = 250;
             }
-            vic_cr8 = 255 - (((pot_x_counter - 500)<<2) / 9);
-            vic_cr9 = 255 - (((pot_y_counter - 500)<<2) / 9);
+            // 250 low point 
+            // 1140 high point
+            vic_cr8 = 255 - (((pot_x_counter - 250)<<1) / 7);
+            vic_cr9 = 255 - (((pot_y_counter - 250)<<1) / 7);
 
             //Reset external RC circuit
             gpio_set_function(POTX_PIN, GPIO_FUNC_SIO);
