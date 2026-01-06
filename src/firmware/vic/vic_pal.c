@@ -5,8 +5,9 @@
 */
 
 #include "main.h"
-#include "cvbs_pal.h"
 #include "vic/aud.h"
+#include "vic/cvbs.h"
+#include "vic/cvbs_pal.h"
 #include "vic/pen.h"
 #include "vic/vic.h"
 #include "vic/vic_pal.h"
@@ -29,81 +30,12 @@
 #define PAL_LAST_LINE         311
 
 // Colour command defines in cvbs_pal.h
-uint32_t pal_palette_o[16] = {
-    PAL_BLACK,
-    PAL_WHITE,
-    PAL_RED_O,
-    PAL_CYAN_O,
-    PAL_PURPLE_O,
-    PAL_GREEN_O,
-    PAL_BLUE_O,
-    PAL_YELLOW_O,
-    PAL_ORANGE_O,
-    PAL_LORANGE_O,
-    PAL_PINK_O,
-    PAL_LCYAN_O,
-    PAL_LPURPLE_O,
-    PAL_LGREEN_O,
-    PAL_LBLUE_O,
-    PAL_LYELLOW_O
-};
+// Palette structure loaded in cvbs.c
+uint32_t *pal_palette_o = cvbs_palette[0];
+uint32_t *pal_palette_e = cvbs_palette[1];
+uint32_t *pal_trunc_palette_o = cvbs_palette[2];
+uint32_t *pal_trunc_palette_e = cvbs_palette[3];
 
-uint32_t pal_palette_e[16] = {
-    PAL_BLACK,
-    PAL_WHITE,
-    PAL_RED_E,
-    PAL_CYAN_E,
-    PAL_PURPLE_E,
-    PAL_GREEN_E,
-    PAL_BLUE_E,
-    PAL_YELLOW_E,
-    PAL_ORANGE_E,
-    PAL_LORANGE_E,
-    PAL_PINK_E,
-    PAL_LCYAN_E,
-    PAL_LPURPLE_E,
-    PAL_LGREEN_E,
-    PAL_LBLUE_E,
-    PAL_LYELLOW_E
-};
-
-uint32_t pal_trunc_palette_o[16] = {
-    PAL_TRUNC_BLACK,
-    PAL_TRUNC_WHITE,
-    PAL_TRUNC_RED_O,
-    PAL_TRUNC_CYAN_O,
-    PAL_TRUNC_PURPLE_O,
-    PAL_TRUNC_GREEN_O,
-    PAL_TRUNC_BLUE_O,
-    PAL_TRUNC_YELLOW_O,
-    PAL_TRUNC_ORANGE_O,
-    PAL_TRUNC_LORANGE_O,
-    PAL_TRUNC_PINK_O,
-    PAL_TRUNC_LCYAN_O,
-    PAL_TRUNC_LPURPLE_O,
-    PAL_TRUNC_LGREEN_O,
-    PAL_TRUNC_LBLUE_O,
-    PAL_TRUNC_LYELLOW_O
-};
-
-uint32_t pal_trunc_palette_e[16] = {
-    PAL_TRUNC_BLACK,
-    PAL_TRUNC_WHITE,
-    PAL_TRUNC_RED_E,
-    PAL_TRUNC_CYAN_E,
-    PAL_TRUNC_PURPLE_E,
-    PAL_TRUNC_GREEN_E,
-    PAL_TRUNC_BLUE_E,
-    PAL_TRUNC_YELLOW_E,
-    PAL_TRUNC_ORANGE_E,
-    PAL_TRUNC_LORANGE_E,
-    PAL_TRUNC_PINK_E,
-    PAL_TRUNC_LCYAN_E,
-    PAL_TRUNC_LPURPLE_E,
-    PAL_TRUNC_LGREEN_E,
-    PAL_TRUNC_LBLUE_E,
-    PAL_TRUNC_LYELLOW_E
-};
 //For DVI output
 //TODO This is currently using NTSC based colours - needs to be adjusted
 static const uint8_t pal_palette_rgb332[16] = {
@@ -308,12 +240,12 @@ void vic_core1_loop_pal(void) {
                         // Odd line. Switch colour palettes.
                         pal_palette = pal_palette_o;
                         pal_trunc_palette = pal_trunc_palette_o;
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_COLBURST_O);
+                        pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_burst_cmd_odd);
                     } else {
                         // Even line. Switch colour palettes.
                         pal_palette = pal_palette_e;
                         pal_trunc_palette = pal_trunc_palette_e;
-                        pio_sm_put(CVBS_PIO, CVBS_SM, PAL_COLBURST_E);
+                        pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_burst_cmd_even);
                     }
                     pio_sm_put(CVBS_PIO, CVBS_SM, PAL_BACKPORCH);
                 }

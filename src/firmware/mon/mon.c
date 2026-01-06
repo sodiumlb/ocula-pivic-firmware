@@ -37,9 +37,11 @@ static struct
     {5, "reset", sys_mon_reset},
     {6, "binary", ram_mon_binary},
 #ifdef PIVIC
-    {4, "cvbs", cvbs_mon_tune},
+    {4, "tune", cvbs_mon_tune},
     {6, "colour", cvbs_mon_colour},
     {5, "color", cvbs_mon_colour},
+    {4, "save", cvbs_mon_save},
+    {4, "load", cvbs_mon_load},
 #endif
 };
 static const size_t COMMANDS_COUNT = sizeof COMMANDS / sizeof *COMMANDS;

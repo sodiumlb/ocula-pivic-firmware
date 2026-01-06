@@ -31,11 +31,11 @@ bool main_prog(uint16_t *xregs);
 //Direct CVBS pin defines
 #define CVBS_PIN_BASE 5
 #define CVBS_PIN_COUNT 5
-//Luma+Chroma CVBS pin defines
-#define CVBS_CHROMA_PIN_BASE 3
-#define CVBS_CHROMA_PIN_COUNT 2
+//Luma+Chroma S-VIDEO CVBS pin defines
+#define CVBS_SVIDEO_PIN_BASE 3
+#define CVBS_SVIDEO_PIN_COUNT 7
 #define CVBS_LUMA_PIN_BASE 5
-#define CVBS_LUMA_PIN_COUNT 3
+#define CVBS_LUMA_PIN_COUNT 5
 #define CVBS_SYNC_PIN 10
 
 
