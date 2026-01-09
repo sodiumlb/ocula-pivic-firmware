@@ -207,6 +207,11 @@ void vic_core1_loop_ntsc(void) {
                             // This is the line the video matrix starts on. As in the real chip, we use
                             // a different state for the first part of the first video matrix line.
                             fetchState = FETCH_IN_MATRIX_Y;
+
+                            // Screen origin X can match in the same cycle as Y.
+                            if (prevHorizontalCounter == screen_origin_x) {
+                                fetchState = FETCH_MATRIX_DLY_1;
+                            }
                         }
                         break;
                     case FETCH_IN_MATRIX_Y:
@@ -310,6 +315,11 @@ void vic_core1_loop_ntsc(void) {
                         // This is the line the video matrix starts on. As in the real chip, we use
                         // a different state for the first part of the first video matrix line.
                         fetchState = FETCH_IN_MATRIX_Y;
+
+                        // Screen origin X can match in the same cycle as Y.
+                        if (prevHorizontalCounter == screen_origin_x) {
+                            fetchState = FETCH_MATRIX_DLY_1;
+                        }
                     }
                 }
               
@@ -327,6 +337,11 @@ void vic_core1_loop_ntsc(void) {
                             // This is the line the video matrix starts on. As in the real chip, we use
                             // a different state for the first part of the first video matrix line.
                             fetchState = FETCH_IN_MATRIX_Y;
+
+                            // Screen origin X can match in the same cycle as Y.
+                            if (prevHorizontalCounter == screen_origin_x) {
+                                fetchState = FETCH_MATRIX_DLY_1;
+                            }
                         }
                         break;
                     case FETCH_IN_MATRIX_X:
@@ -375,6 +390,11 @@ void vic_core1_loop_ntsc(void) {
                             // This is the line the video matrix starts on. As in the real chip, we use
                             // a different state for the first part of the first video matrix line.
                             fetchState = FETCH_IN_MATRIX_Y;
+
+                            // Screen origin X can match in the same cycle as Y.
+                            if (prevHorizontalCounter == screen_origin_x) {
+                                fetchState = FETCH_MATRIX_DLY_1;
+                            }
                         }
                         break;
                     case FETCH_IN_MATRIX_Y:
@@ -525,6 +545,11 @@ void vic_core1_loop_ntsc(void) {
                             // This is the line the video matrix starts on. As in the real chip, we use
                             // a different state for the first part of the first video matrix line.
                             fetchState = FETCH_IN_MATRIX_Y;
+
+                            // Screen origin X can match in the same cycle as Y.
+                            if (prevHorizontalCounter == screen_origin_x) {
+                                fetchState = FETCH_MATRIX_DLY_1;
+                            }
                         }
                         break;
                     case FETCH_IN_MATRIX_Y:
@@ -558,6 +583,11 @@ void vic_core1_loop_ntsc(void) {
                             // This is the line the video matrix starts on. As in the real chip, we use
                             // a different state for the first part of the first video matrix line.
                             fetchState = FETCH_IN_MATRIX_Y;
+
+                            // Screen origin X can match in the same cycle as Y.
+                            if (prevHorizontalCounter == screen_origin_x) {
+                                fetchState = FETCH_MATRIX_DLY_1;
+                            }
                         }
                         break;
                     case FETCH_IN_MATRIX_Y:
@@ -664,6 +694,11 @@ void vic_core1_loop_ntsc(void) {
                                     // This is the line the video matrix starts on. As in the real chip, we use
                                     // a different state for the first part of the first video matrix line.
                                     fetchState = FETCH_IN_MATRIX_Y;
+
+                                    // Screen origin X can match in the same cycle as Y.
+                                    if (prevHorizontalCounter == screen_origin_x) {
+                                        fetchState = FETCH_MATRIX_DLY_1;
+                                    }
                                 }
                                 break;
                             case FETCH_IN_MATRIX_Y:
@@ -711,6 +746,11 @@ void vic_core1_loop_ntsc(void) {
                                     // This is the line the video matrix starts on. As in the real chip, we use
                                     // a different state for the first part of the first video matrix line.
                                     fetchState = FETCH_IN_MATRIX_Y;
+
+                                    // Screen origin X can match in the same cycle as Y.
+                                    if (prevHorizontalCounter == screen_origin_x) {
+                                        fetchState = FETCH_MATRIX_DLY_1;
+                                    }
                                 }
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
                                     borderColourIndex = border_colour_index;
@@ -1002,6 +1042,11 @@ void vic_core1_loop_ntsc(void) {
                                 // This is the line the video matrix starts on. As in the real chip, we use
                                 // a different state for the first part of the first video matrix line.
                                 fetchState = FETCH_IN_MATRIX_Y;
+
+                                // Screen origin X can match in the same cycle as Y.
+                                if (prevHorizontalCounter == screen_origin_x) {
+                                    fetchState = FETCH_MATRIX_DLY_1;
+                                }
                             }
                             break;
                         case FETCH_IN_MATRIX_Y:
