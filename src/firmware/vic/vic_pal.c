@@ -233,6 +233,11 @@ void vic_core1_loop_pal(void) {
                             // This is the line the video matrix starts on. As in the real chip, we use
                             // a different state for the first part of the first video matrix line.
                             fetchState = FETCH_IN_MATRIX_Y;
+
+                            // Screen origin X can match in the same cycle as Y.
+                            if (prevHorizontalCounter == screen_origin_x) {
+                                fetchState = FETCH_MATRIX_DLY_1;
+                            }
                         }
                         break;
                     case FETCH_IN_MATRIX_Y:
@@ -272,6 +277,11 @@ void vic_core1_loop_pal(void) {
                         // This is the line the video matrix starts on. As in the real chip, we use
                         // a different state for the first part of the first video matrix line.
                         fetchState = FETCH_IN_MATRIX_Y;
+
+                        // Screen origin X can match in the same cycle as Y.
+                        if (prevHorizontalCounter == screen_origin_x) {
+                            fetchState = FETCH_MATRIX_DLY_1;
+                        }
                     }
                 }
 
@@ -431,6 +441,11 @@ void vic_core1_loop_pal(void) {
                             // This is the line the video matrix starts on. As in the real chip, we use
                             // a different state for the first part of the first video matrix line.
                             fetchState = FETCH_IN_MATRIX_Y;
+
+                            // Screen origin X can match in the same cycle as Y.
+                            if (prevHorizontalCounter == screen_origin_x) {
+                                fetchState = FETCH_MATRIX_DLY_1;
+                            }
                         }
                         break;
                     case FETCH_IN_MATRIX_X:
@@ -479,6 +494,11 @@ void vic_core1_loop_pal(void) {
                             // This is the line the video matrix starts on. As in the real chip, we use
                             // a different state for the first part of the first video matrix line.
                             fetchState = FETCH_IN_MATRIX_Y;
+
+                            // Screen origin X can match in the same cycle as Y.
+                            if (prevHorizontalCounter == screen_origin_x) {
+                                fetchState = FETCH_MATRIX_DLY_1;
+                            }
                         }
                         break;
                     case FETCH_IN_MATRIX_Y:
@@ -525,6 +545,11 @@ void vic_core1_loop_pal(void) {
                                     // This is the line the video matrix starts on. As in the real chip, we use
                                     // a different state for the first part of the first video matrix line.
                                     fetchState = FETCH_IN_MATRIX_Y;
+
+                                    // Screen origin X can match in the same cycle as Y.
+                                    if (prevHorizontalCounter == screen_origin_x) {
+                                        fetchState = FETCH_MATRIX_DLY_1;
+                                    }
                                 }
                                 borderColour = border_colour_index;
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[borderColour]);
@@ -680,6 +705,11 @@ void vic_core1_loop_pal(void) {
                                     // This is the line the video matrix starts on. As in the real chip, we use
                                     // a different state for the first part of the first video matrix line.
                                     fetchState = FETCH_IN_MATRIX_Y;
+
+                                    // Screen origin X can match in the same cycle as Y.
+                                    if (prevHorizontalCounter == screen_origin_x) {
+                                        fetchState = FETCH_MATRIX_DLY_1;
+                                    }
                                 }
                                 if (horizontalCounter >= PAL_HBLANK_END) {
                                     // Output four border pixels.
@@ -998,6 +1028,11 @@ void vic_core1_loop_pal(void) {
                                 // This is the line the video matrix starts on. As in the real chip, we use
                                 // a different state for the first part of the first video matrix line.
                                 fetchState = FETCH_IN_MATRIX_Y;
+
+                                // Screen origin X can match in the same cycle as Y.
+                                if (prevHorizontalCounter == screen_origin_x) {
+                                    fetchState = FETCH_MATRIX_DLY_1;
+                                }
                             }
                             break;
                         case FETCH_IN_MATRIX_Y:
