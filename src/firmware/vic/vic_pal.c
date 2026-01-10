@@ -249,11 +249,14 @@ void vic_core1_loop_pal(void) {
                         fetchState++;
                         break;
                     case FETCH_SCREEN_CODE:
-                        fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                        fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                         break;
                     case FETCH_CHAR_DATA:
                         videoMatrixCounter++;
                         fetchState = FETCH_SCREEN_CODE;
+                        break;
+                    case FETCH_MATRIX_END:
+                        fetchState = FETCH_MATRIX_LINE;
                         break;
                 }
 
@@ -452,11 +455,14 @@ void vic_core1_loop_pal(void) {
                         break;
                     // In theory, the following states should not be possible at this point.
                     case FETCH_SCREEN_CODE:
-                        fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                        fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                         break;
                     case FETCH_CHAR_DATA:
                         videoMatrixCounter++;
                         fetchState = FETCH_SCREEN_CODE;
+                        break;
+                    case FETCH_MATRIX_END:
+                        fetchState = FETCH_MATRIX_LINE;
                         break;
                 }
               
@@ -494,11 +500,14 @@ void vic_core1_loop_pal(void) {
                         break;
                     // In theory, the following states should not be possible at this point.
                     case FETCH_SCREEN_CODE:
-                        fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                        fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                         break;
                     case FETCH_CHAR_DATA:
                         videoMatrixCounter++;
                         fetchState = FETCH_SCREEN_CODE;
+                        break;
+                    case FETCH_MATRIX_END:
+                        fetchState = FETCH_MATRIX_LINE;
                         break;
                 }
                 
@@ -634,10 +643,11 @@ void vic_core1_loop_pal(void) {
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_trunc_palette[multiColourTable[pixel1]]);
                                 dvi_framebuf[dvi_line][dvi_pixel++] = pal_palette_rgb332[multiColourTable[pixel1]];
                                 
-                                fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                                fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                                 break;
                           
                             case FETCH_CHAR_DATA:
+                            case FETCH_MATRIX_END:
                                 // Look up latest background, border and auxiliary colours.
                                 multiColourTable[0] = background_colour_index;
                                 multiColourTable[1] = border_colour_index;
@@ -659,9 +669,17 @@ void vic_core1_loop_pal(void) {
                                 // state, we need to keep incrementing the video matrix counter
                                 // until it is closed, which at the latest could be HC=1 on the
                                 // next line.
-                                videoMatrixCounter++;
-                                
-                                fetchState = FETCH_SCREEN_CODE;
+
+                                if (fetchState == FETCH_MATRIX_END) {
+                                    // Leaving the matrix
+                                    fetchState = FETCH_MATRIX_LINE;
+                                } else {
+                                    // Increment the video matrix counter to next cell.
+                                    videoMatrixCounter++;
+                                    
+                                    // Toggle fetch state. For efficiency, HCC deliberately not checked here.
+                                    fetchState = FETCH_SCREEN_CODE;
+                                }
                                 break;
                         }
                         
@@ -1005,11 +1023,14 @@ void vic_core1_loop_pal(void) {
                             fetchState++;
                             break;
                         case FETCH_SCREEN_CODE:
-                            fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                            fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                             break;
                         case FETCH_CHAR_DATA:
                             videoMatrixCounter++;
                             fetchState = FETCH_SCREEN_CODE;
+                            break;
+                        case FETCH_MATRIX_END:
+                            fetchState = FETCH_MATRIX_LINE;
                             break;
                     }
     
