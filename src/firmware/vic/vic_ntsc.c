@@ -223,11 +223,14 @@ void vic_core1_loop_ntsc(void) {
                         fetchState++;
                         break;
                     case FETCH_SCREEN_CODE:
-                        fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                        fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                         break;
                     case FETCH_CHAR_DATA:
                         videoMatrixCounter++;
                         fetchState = FETCH_SCREEN_CODE;
+                        break;
+                    case FETCH_MATRIX_END:
+                        fetchState = FETCH_MATRIX_LINE;
                         break;
                 }
                 dvi_line = (uint8_t*)&dvi_framebuf[verticalCounter];
@@ -348,11 +351,14 @@ void vic_core1_loop_ntsc(void) {
                         break;
                     // In theory, the following states should not be possible at this point.
                     case FETCH_SCREEN_CODE:
-                        fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                        fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                         break;
                     case FETCH_CHAR_DATA:
                         videoMatrixCounter++;
                         fetchState = FETCH_SCREEN_CODE;
+                        break;
+                    case FETCH_MATRIX_END:
+                        fetchState = FETCH_MATRIX_LINE;
                         break;
                 }
               
@@ -390,11 +396,14 @@ void vic_core1_loop_ntsc(void) {
                         break;
                     // In theory, the following states should not be possible at this point.
                     case FETCH_SCREEN_CODE:
-                        fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                        fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                         break;
                     case FETCH_CHAR_DATA:
                         videoMatrixCounter++;
                         fetchState = FETCH_SCREEN_CODE;
+                        break;
+                    case FETCH_MATRIX_END:
+                        fetchState = FETCH_MATRIX_LINE;
                         break;
                 }
                 
@@ -539,11 +548,14 @@ void vic_core1_loop_ntsc(void) {
                         fetchState++;
                         break;
                     case FETCH_SCREEN_CODE:
-                        fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                        fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                         break;
                     case FETCH_CHAR_DATA:
                         videoMatrixCounter++;
                         fetchState = FETCH_SCREEN_CODE;
+                        break;
+                    case FETCH_MATRIX_END:
+                        fetchState = FETCH_MATRIX_LINE;
                         break;
                 }
                 prevHorizontalCounter = horizontalCounter++;
@@ -572,11 +584,14 @@ void vic_core1_loop_ntsc(void) {
                         fetchState++;
                         break;
                     case FETCH_SCREEN_CODE:
-                        fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                        fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                         break;
                     case FETCH_CHAR_DATA:
                         videoMatrixCounter++;
                         fetchState = FETCH_SCREEN_CODE;
+                        break;
+                    case FETCH_MATRIX_END:
+                        fetchState = FETCH_MATRIX_LINE;
                         break;
                 } 
 
@@ -680,7 +695,7 @@ void vic_core1_loop_ntsc(void) {
                                 break;
                                 
                             case FETCH_SCREEN_CODE:
-                                fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                                fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                                 break;
                           
                             case FETCH_CHAR_DATA:
@@ -691,6 +706,10 @@ void vic_core1_loop_ntsc(void) {
                                 videoMatrixCounter++;
                                 
                                 fetchState = FETCH_SCREEN_CODE;
+                                break;
+
+                            case FETCH_MATRIX_END:
+                                fetchState = FETCH_MATRIX_LINE;
                                 break;
                         }
                         
@@ -1008,11 +1027,14 @@ void vic_core1_loop_ntsc(void) {
                             fetchState++;
                             break;
                         case FETCH_SCREEN_CODE:
-                            fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_LINE);
+                            fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                             break;
                         case FETCH_CHAR_DATA:
                             videoMatrixCounter++;
                             fetchState = FETCH_SCREEN_CODE;
+                            break;
+                        case FETCH_MATRIX_END:
+                            fetchState = FETCH_MATRIX_LINE;
                             break;
                     }
 
