@@ -14,6 +14,7 @@
 #include "sys/cfg.h"
 #include "sys/lfs.h"
 #include "sys/mem.h"
+#include "sys/rev.h"
 #include "cvbs.pio.h"
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
@@ -159,7 +160,7 @@ void cvbs_pio_mode_init(void){
          entry = cvbs_pal_offset_entry;
          break;
    }
-   if(is_svideo){
+   if(is_svideo && rev_get() == REV_1_2){
       for(uint32_t i = 0; i < CVBS_SVIDEO_PIN_COUNT; i++){
          pio_gpio_init(CVBS_PIO, CVBS_SVIDEO_PIN_BASE+i);
          //gpio_set_drive_strength(CVBS_SVIDEO_PIN_BASE+i,GPIO_DRIVE_STRENGTH_2MA);
@@ -172,18 +173,25 @@ void cvbs_pio_mode_init(void){
       sm_config_set_out_pins(&config, CVBS_SVIDEO_PIN_BASE, CVBS_SVIDEO_PIN_COUNT);
       sm_config_set_set_pins(&config, CVBS_LUMA_PIN_BASE, CVBS_LUMA_PIN_COUNT);             
    }else{
+      uint pin_base;
+      if(rev_get() == REV_1_1){
+         pin_base = CVBS_PIN_BASE_1_1;
+      }else{
+         pin_base = CVBS_PIN_BASE_1_2;
+      }
       for(uint32_t i = 0; i < CVBS_PIN_COUNT; i++){
-         pio_gpio_init(CVBS_PIO, CVBS_PIN_BASE+i);
+         pio_gpio_init(CVBS_PIO, pin_base+i);
          //gpio_set_drive_strength(CVBS_PIN_BASE+i, GPIO_DRIVE_STRENGTH_2MA);
-         gpio_set_slew_rate(CVBS_PIN_BASE+i, GPIO_SLEW_RATE_FAST);
+         gpio_set_slew_rate(pin_base+i, GPIO_SLEW_RATE_FAST);
       }
       gpio_set_pulls(CVBS_SYNC_PIN, false, false); //Not used for direct CVBS
       gpio_set_pulls(CVBS_SVIDEO_PIN_BASE+0, false, false);
       gpio_set_pulls(CVBS_SVIDEO_PIN_BASE+1, false, false);
-      pio_sm_set_consecutive_pindirs(CVBS_PIO, CVBS_SM, CVBS_PIN_BASE, CVBS_PIN_COUNT, true);
-      //Trick to reuse as much defines and code as possible. Lower two bits (chroma) are ignored
-      sm_config_set_out_pins(&config, CVBS_SVIDEO_PIN_BASE, CVBS_SVIDEO_PIN_COUNT);
-      sm_config_set_set_pins(&config, CVBS_PIN_BASE, CVBS_PIN_COUNT);             
+      pio_sm_set_consecutive_pindirs(CVBS_PIO, CVBS_SM, pin_base, CVBS_PIN_COUNT, true);
+      //Trick to reuse as much defines and code as possible. Lower two bits (chroma) are ignored on Rev 1.2
+      //and not mapped to PIO in Rev 1.1
+      sm_config_set_out_pins(&config, pin_base-2, CVBS_PIN_COUNT+2);
+      sm_config_set_set_pins(&config, pin_base, CVBS_PIN_COUNT);             
    }
 
    sm_config_set_out_shift(&config, true, true, 32); 
@@ -490,7 +498,7 @@ void cvbs_default_palette(uint8_t mode, const char *path){
       int lfs_result = lfs_file_opencfg(&lfs_volume, &lfs_file, str, LFS_O_RDWR | LFS_O_CREAT, &lfs_file_config);
       lfs_file_write(&lfs_volume, &lfs_file, path, LFS_NAME_MAX);
       lfs_file_close(&lfs_volume, &lfs_file);
-      printf("Default palette for mode %d set to %s\n", path);
+      printf("Default palette for mode %d set to %s\n", mode, path);
    }else{
       if(lfs_file_opencfg(&lfs_volume, &lfs_file, str, LFS_O_RDONLY, &lfs_file_config) >= 0){
          lfs_gets(str, LFS_NAME_MAX, &lfs_volume, &lfs_file);
@@ -725,6 +733,7 @@ void cvbs_mon_load(const char *args, size_t len){
          snprintf(full_path, LFS_NAME_MAX, "/palettes/%d/%s", cvbs_mode, args);
       }
       cvbs_load_palette(cvbs_mode, full_path);
+      cvbs_calc_palette(cvbs_mode, &cvbs_source_palette);
    }
 }
 
@@ -744,6 +753,8 @@ void cvbs_print_status(void){
    }
    printf("Available palettes:\n");
    cvbs_print_palette_list();
+
+   rev_print();
 
    // for(int i=0; i<16; i++){
    //    printf(" %08x %08x %08x %08x\n", cvbs_palette[0][i], cvbs_palette[1][i],cvbs_palette[2][i],cvbs_palette[3][i]);

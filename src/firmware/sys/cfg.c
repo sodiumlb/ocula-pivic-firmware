@@ -4,14 +4,17 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include "main.h"
 #include "str.h"
 #include "sys/cfg.h"
 #include "sys/cpu.h"
 #include "sys/lfs.h"
 #include "sys/mem.h"
 #include "sys/dvi.h"
+#ifdef PIVIC
+#include "sys/rev.h"
 #include "vic/vic.h"
-
+#endif
 // Configuration is a plain ASCII file on the LFS. e.g.
 // +V1         | Version - Must be first
 // +P8000      | PHI2
@@ -223,8 +226,20 @@ uint8_t cfg_get_dvi(void)
 }
 
 bool cfg_set_mode(uint8_t mode){
+#ifdef PIVIC
+    if(rev_get() == REV_1_1 && (
+        mode == VIC_MODE_NTSC_SVIDEO ||
+        mode == VIC_MODE_PAL_SVIDEO ||
+        mode == VIC_MODE_TEST_NTSC_SVIDEO ||
+        mode == VIC_MODE_TEST_PAL_SVIDEO))
+        return false;
     if(mode >= VIC_MODE_COUNT)
         return false;
+#endif
+#ifdef OCULA
+    if(mode >= 2)
+        return false;
+#endif
     if(cfg_mode != mode){
         cfg_mode = mode;
         cfg_save_with_boot_opt(NULL);

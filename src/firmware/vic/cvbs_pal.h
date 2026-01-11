@@ -54,8 +54,7 @@
 #define PAL_SHORT_SYNC_L CVBS_CMD_PAL_DC_RUN( 0,  9)
 #define PAL_SHORT_SYNC_H CVBS_CMD_PAL_DC_RUN(36,133)
 
-#define PAL_BLANKING     CVBS_CMD_PAL_DC_RUN( 9,234)
-#define PAL_BLANKING_SVIDEO     CVBS_CMD_PAL_DC_RUN(36,234)
+#define PAL_BLANKING     CVBS_CMD_PAL_DC_RUN(36,234)
 
 
 static const cvbs_palette_t palette_default_pal = {

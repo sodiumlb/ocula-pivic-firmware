@@ -13,6 +13,7 @@
 #include "sys/dvi.h"
 #include "sys/dvi.h"
 #include "sys/mem.h"
+#include "sys/rev.h"
 #include "vic.pio.h"
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
@@ -62,15 +63,21 @@ dvi_mode_t vic_ntsc_mode = {
 
 void vic_pio_init(void) {
     //Make PHI2 PIN possible to also sample as input
-    gpio_init(VIC_PHI2_PIN);
-    gpio_set_input_enabled(VIC_PHI2_PIN, true);
+    uint phi2_pin;
+    if(rev_get() == REV_1_1){
+        phi2_pin = VIC_PHI2_PIN_1_1;
+    }else{
+        phi2_pin = VIC_PHI2_PIN_1_2;
+    }
+    gpio_init(phi2_pin);
+    gpio_set_input_enabled(phi2_pin, true);
 
     // Set up VIC PIO.
     pio_set_gpio_base(VIC_PIO, VIC_PIN_OFFS);
     // TODO: We might add the second output clock in the future.
-    pio_gpio_init(VIC_PIO, VIC_PIN_BASE);
-    gpio_set_drive_strength(VIC_PIN_BASE, GPIO_DRIVE_STRENGTH_2MA);
-    pio_sm_set_consecutive_pindirs(VIC_PIO, VIC_SM, VIC_PIN_BASE, 1, true);
+    pio_gpio_init(VIC_PIO, phi2_pin);
+    gpio_set_drive_strength(phi2_pin, GPIO_DRIVE_STRENGTH_2MA);
+    pio_sm_set_consecutive_pindirs(VIC_PIO, VIC_SM, phi2_pin, 1, true);
     uint offset;
     pio_sm_config config;
     uint16_t dot_div;
@@ -92,7 +99,7 @@ void vic_pio_init(void) {
             dot_div = 72;
             break;
         }
-    sm_config_set_sideset_pin_base(&config, VIC_PIN_BASE);
+    sm_config_set_sideset_pin_base(&config, phi2_pin);
     pio_sm_init(VIC_PIO, VIC_SM, offset, &config);
     offset = pio_add_program(VIC_DOTCLK_PIO, &clkgen_dot_program);
     config = clkgen_dot_program_get_default_config(offset);

@@ -29,7 +29,8 @@ bool main_prog(uint16_t *xregs);
 #define CVBS_SM 0
 #define CVBS_PIN_OFFS PIO0_PIN_OFFS
 //Direct CVBS pin defines
-#define CVBS_PIN_BASE 5
+#define CVBS_PIN_BASE_1_1 3
+#define CVBS_PIN_BASE_1_2 5
 #define CVBS_PIN_COUNT 5
 //Luma+Chroma S-VIDEO CVBS pin defines
 #define CVBS_SVIDEO_PIN_BASE 3
@@ -42,9 +43,12 @@ bool main_prog(uint16_t *xregs);
 #define VIC_PIO pio1
 #define VIC_SM 0
 #define VIC_PIN_OFFS PIO1_PIN_OFFS
-#define VIC_PIN_BASE 28
-#define VIC_PHI2_PIN 28
-#define VIC_PHI1_PIN 30
+#define VIC_PIN_BASE_1_1 8
+#define VIC_PHI2_PIN_1_1 8
+#define VIC_PHI1_PIN_1_1 10
+#define VIC_PIN_BASE_1_2 28
+#define VIC_PHI2_PIN_1_2 28
+#define VIC_PHI1_PIN_1_2 30
 
 
 #define VIC_DOTCLK_PIO pio1
@@ -90,11 +94,16 @@ bool main_prog(uint16_t *xregs);
 #define RNW_PIN 46
 #define DIR_PIN 47
 
-#define POTX_PIN 31
-#define POTX_PWM_SLICE 7
+#define POTX_PIN_1_1 11
+#define POTX_PWM_SLICE_1_1 5
+#define POTX_PIN_1_2 31
+#define POTX_PWM_SLICE_1_2 7
 #define POTX_PWM_CH PWM_CHAN_B
-#define POTY_PIN 29
-#define POTY_PWM_SLICE 6
+
+#define POTY_PIN_1_1 9
+#define POTY_PWM_SLICE_1_1 4
+#define POTY_PIN_1_2 29
+#define POTY_PWM_SLICE_1_2 6
 #define POTY_PWM_CH PWM_CHAN_B
 
 #define PEN_PIN 47

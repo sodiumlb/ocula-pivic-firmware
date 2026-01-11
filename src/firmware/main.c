@@ -17,6 +17,7 @@
 #include "sys/cpu.h"
 #include "sys/dvi.h"
 #include "sys/lfs.h"
+#include "sys/rev.h"
 #include "sys/sys.h"
 #include "sys/vga.h"
 #include "term/font.h"
@@ -63,6 +64,7 @@ static void init(void)
     cdc_init();
     dvi_init();
 #ifdef PIVIC
+    rev_init();
     cvbs_init();
     vic_init();
     mem_init();
