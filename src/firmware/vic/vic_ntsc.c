@@ -787,8 +787,8 @@ void vic_core1_loop_ntsc(void) {
                                     multiColourTable[1] = border_colour_index;
                                     multiColourTable[3] = auxiliary_colour_index;
                                     
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel6]];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel7]];
                                     
@@ -808,8 +808,8 @@ void vic_core1_loop_ntsc(void) {
                                     charData = charDataLatch = 0x55;
                                     pixel1 = ((charData >> 6) & 0x03);
                                     
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, palette[(pIndex++ & 0x7)][multiColourTable[pixel1]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
+                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel1]]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel8]];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel1]];
                                     
