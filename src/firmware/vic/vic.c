@@ -13,6 +13,7 @@
 #include "sys/dvi.h"
 #include "sys/dvi.h"
 #include "sys/mem.h"
+#include "sys/rev.h"
 #include "vic.pio.h"
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
@@ -61,34 +62,44 @@ dvi_mode_t vic_ntsc_mode = {
 
 
 void vic_pio_init(void) {
-    //Make PHI PIN possible to also sample as input
-    gpio_init(PHI_PIN);
-    gpio_set_input_enabled(PHI_PIN, true);
+    //Make PHI2 PIN possible to also sample as input
+    uint phi2_pin;
+    if(rev_get() == REV_1_1){
+        phi2_pin = VIC_PHI2_PIN_1_1;
+    }else{
+        phi2_pin = VIC_PHI2_PIN_1_2;
+    }
+    gpio_init(phi2_pin);
+    gpio_set_input_enabled(phi2_pin, true);
 
     // Set up VIC PIO.
     pio_set_gpio_base(VIC_PIO, VIC_PIN_OFFS);
     // TODO: We might add the second output clock in the future.
-    pio_gpio_init(VIC_PIO, VIC_PIN_BASE);
-    gpio_set_drive_strength(VIC_PIN_BASE, GPIO_DRIVE_STRENGTH_2MA);
-    pio_sm_set_consecutive_pindirs(VIC_PIO, VIC_SM, VIC_PIN_BASE, 1, true);
+    pio_gpio_init(VIC_PIO, phi2_pin);
+    gpio_set_drive_strength(phi2_pin, GPIO_DRIVE_STRENGTH_2MA);
+    pio_sm_set_consecutive_pindirs(VIC_PIO, VIC_SM, phi2_pin, 1, true);
     uint offset;
     pio_sm_config config;
     uint16_t dot_div;
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
         case(VIC_MODE_TEST_NTSC):
+        case(VIC_MODE_NTSC_SVIDEO):
+        case(VIC_MODE_TEST_NTSC_SVIDEO):
             offset = pio_add_program(VIC_PIO, &clkgen_ntsc_program);
             config = clkgen_ntsc_program_get_default_config(offset);
             dot_div = 77;
             break;
         case(VIC_MODE_PAL):
         case(VIC_MODE_TEST_PAL):
+        case(VIC_MODE_PAL_SVIDEO):
+        case(VIC_MODE_TEST_PAL_SVIDEO):
             offset = pio_add_program(VIC_PIO, &clkgen_pal_program);
             config = clkgen_pal_program_get_default_config(offset);
             dot_div = 72;
             break;
         }
-    sm_config_set_sideset_pin_base(&config, VIC_PIN_BASE);
+    sm_config_set_sideset_pin_base(&config, phi2_pin);
     pio_sm_init(VIC_PIO, VIC_SM, offset, &config);
     offset = pio_add_program(VIC_DOTCLK_PIO, &clkgen_dot_program);
     config = clkgen_dot_program_get_default_config(offset);
@@ -109,10 +120,12 @@ void vic_splash_init() {
     // Set up hard coded control registers for now (from default PAL VIC).
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
+        case(VIC_MODE_NTSC_SVIDEO):
             xram[0x1000] = 0x05;    // Screen Origin X = 5 (NTSC)
             xram[0x1001] = 0x19;    // Screen Origin Y = 25 (NTSC)
             break;
         case(VIC_MODE_PAL):
+        case(VIC_MODE_PAL_SVIDEO):
         default:
             xram[0x1000] = 0x0C;    // Screen Origin X = 12 (PAL)
             xram[0x1001] = 0x26;    // Screen Origin Y = 38 (PAL)
@@ -120,10 +133,12 @@ void vic_splash_init() {
     }
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
+        case(VIC_MODE_NTSC_SVIDEO):
             xram[0x1000] = 0x05;    // Screen Origin X = 5 (NTSC)
             xram[0x1001] = 0x19;    // Screen Origin Y = 25 (NTSC)
             break;
         case(VIC_MODE_PAL):
+        case(VIC_MODE_PAL_SVIDEO):
         default:
             xram[0x1000] = 0x0C;    // Screen Origin X = 12 (PAL)
             xram[0x1001] = 0x26;    // Screen Origin Y = 38 (PAL)
@@ -190,10 +205,12 @@ void vic_init(void) {
         vic_splash_init();
     switch(cfg_get_mode()){
         case(VIC_MODE_PAL):
+        case(VIC_MODE_PAL_SVIDEO):
             dvi_set_mode(&vic_pal_mode);
             multicore_launch_core1(vic_core1_loop_pal);
             break;
         case(VIC_MODE_NTSC):
+        case(VIC_MODE_NTSC_SVIDEO):
             dvi_set_mode(&vic_ntsc_mode);
             multicore_launch_core1(vic_core1_loop_ntsc);
             break;

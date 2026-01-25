@@ -136,6 +136,7 @@ target_sources(pivic PRIVATE
     firmware/sys/dvi.c
     firmware/sys/lfs.c
     firmware/sys/mem.c
+    firmware/sys/rev.c
     firmware/sys/sys.c
 #    firmware/sys/vga.c
     firmware/term/color.c

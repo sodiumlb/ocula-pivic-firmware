@@ -151,10 +151,14 @@ static const char __in_flash("helptext") hlp_text_dvi[] =
 static const char __in_flash("helptext") hlp_text_mode[] =
 #ifdef PIVIC
     "SET MODE selects the type of VIC emulation\n"
-    "  0 - VIC 6560 NTSC 60Hz\n"
-    "  1 - VIC 6561 PAL 50Hz\n"
-    "  2 - VIC 6560 NTSC 60Hz test screen\n"
-    "  3 - VIC 6561 PAL 50Hz test screen"
+    "  0 - VIC 6560 NTSC/60 CVBS on Luma\n"
+    "  1 - VIC 6561 PAL/50 CVBS on Luma\n" 
+    "  2 - VIC 6560 NTSC/60 S-VIDEO\n"
+    "  3 - VIC 6561 PAL/50 S-VIDEO\n" 
+    "  4 - VIC 6560 NTSC/60 CVBS test screen\n"
+    "  5 - VIC 6561 PAL/50 CVBS test screen\n" 
+    "  6 - VIC 6560 NTSC/60 S-VIDEO test screen\n"
+    "  7 - VIC 6561 PAL/50 S-VIDEO test screen\n" 
 #endif
 #ifdef OCULA
     "SET MODE selects how RAM works in the system\n"
@@ -162,6 +166,44 @@ static const char __in_flash("helptext") hlp_text_mode[] =
     " 1 - OCULA-is-the-RAM. Advanced mode. Mux bridges required."
 #endif
 ;
+
+#ifdef PIVIC
+static const char __in_flash("helptext") hlp_text_colour[] =
+    "COLOUR|COLOR selects a single palette entry\n"
+    "for tuning with the TUNE command. Use 0-15\n"
+    "to select each of the 16 colours, or 16 for\n"
+    "burst (global chroma).\n";
+
+static const char __in_flash("helptext") hlp_text_tune[] =
+    "TUNE adjusts hue (phase), saturation (chroma)\n"
+    "and brightness (luma) for the current selected\n"
+    "colour with the COLOUR command.\n"
+    "Only one parameter can be tuned per command\n"
+    " +h/-h adjust hue 1 step\n"
+    " +s/-s adjust saturation 1 step\n"
+    " +b/-b adjust brightness 1 step\n"
+    "Note when tuning burst the adjustments have opposite\n"
+    "effect on the parameters\n"
+    "Note that S-Video saturation is limited\n";
+
+static const char __in_flash("helptext") hlp_text_load[] =
+    "LOAD a named palette previously stored with SAVE\n"
+    "and make it the active palette (but not default)\n"
+    "Palettes are uniqe per mode\n"
+    "To load the internal default palette: - \n"
+    "  LOAD -\n"
+    "To load a palette from a different mode, prefix\n"
+    "with full mode path: /<mode_num>/name\n"
+    "E.g. to load an NTSC CVBS palette named 'muted'\n"
+    "when in SVIDEO mode:\n" 
+    "  LOAD /0/muted\n";
+
+static const char __in_flash("helptext") hlp_text_save[] =
+    "SAVE a named palette for the current mode\n"
+    "and make it the default palette for this mode.\n"
+    "Palettes are unique per mode\n";
+#endif
+
 
 static struct
 {
@@ -180,6 +222,13 @@ static struct
     {5, "reset", hlp_text_reset},
     {6, "upload", hlp_text_upload},
     {6, "binary", hlp_text_binary},
+#ifdef PIVIC
+    {6, "colour", hlp_text_colour},
+    {5, "color", hlp_text_colour},
+    {4, "tune", hlp_text_tune},
+    {4, "load", hlp_text_load},
+    {4, "save", hlp_text_save},
+#endif
 };
 static const size_t COMMANDS_COUNT = sizeof COMMANDS / sizeof *COMMANDS;
 

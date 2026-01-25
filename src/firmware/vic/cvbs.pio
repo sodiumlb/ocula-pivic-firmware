@@ -57,16 +57,14 @@ postdelay:
 .program cvbs_ntsc
 .clock_div 1.0
 .origin 0
-public entry:
-    out pc 5           ;Next command (new word)
 
 ; DC RUN Command
 ; Output a DC level for repeat+2 number of dot clock cycles
-;  29                 0 
+; 31                  0 
 ; |repeat|DC|id_dc_run|
-;     20   5     5     bits
+;     20   7     5     bits
 public cvbs_cmd_dc_run:
-    out pins 5          ;DC level out
+    out pins 7          ;DC level out
     out y 20            ;Repeat count to y
 dc_loop:
     wait 1 irq 1        ;Wait for dotclock
@@ -76,32 +74,37 @@ dc_loop:
 
 ; PIXEL Command
 ; Output one set of pre-calulated levels and delays during one dot clock
-;  31                            0 
-; |L2|delay1|L1|delay0|L0|id_pixel|
-;   5    6    5    6    5    5    bits
+; Skips third phase (second output of L0) if delay1==0
+; 31                              0 
+; |delay1|L1|delay0|L0|id_pixel|
+;     7    7    6    7    5    bits
 public cvbs_cmd_pixel:
-    out pins 5         ;Out L0
+    mov pins osr       ;Out L0
+    out isr 7          ;L0 in isr
     out x 6            ;delay0 in x
 delay0:
     jmp x-- delay0
-    out pins 5         ;Out L1
-    out x 6            ;delay1 in x
+    out pins 7         ;Out L1
+    out x 7            ;delay1 in x
+    jmp !x tail        ;Skip second L0 output if delay1 = zero
 delay1:
     jmp x-- delay1
-    out pins 5         ;Out L2
-    wait 1 irq 1       ;Wait for dotclock
+    mov pins isr       ;Out L0 again
+public entry:          ;Also entry point
+tail:           
+    wait 1 irq 1       ;Wait for dotclock again
     out pc 5           ;Next command (new word)
 
 ; BURST Command
 ; Output a train of L0/L1 colour burst periods, ending with DC 
 ; NOTE: Only synched to dot clock at the end - timing calculations needed
-;  30                 0 
-; |DC|L1|L0|predelay|repeat|id_burst|
-;   5  5  5     6       5      5    bits
+; 31                                0 
+; |DC|L1|L0|predelay|id_burst|
+;   7  7  7     6       5    bits
 public cvbs_cmd_burst:
-    out y 5            ;repeat count
+    set y 16           ;repeat count
     out x 6            ;get predelay
-    out isr 5          ;keep L0 in isr
+    out isr 7          ;keep L0 in isr
 predelay_burst:
     jmp x-- predelay_burst
 burst_loop:
@@ -110,8 +113,8 @@ burst_loop:
     mov pins osr  [20] ;L1 out
     nop           [21]
     jmp y-- burst_loop
-    out null 5         ;Dump L1
-    out pins 5         ;DC out, trigger autopull
+    out null 7         ;Dump L1
+    out pins 7         ;DC out, trigger autopull
     irq clear 1        ;Make sure we are able to sync
     wait 1 irq 1       ;Wait for dotclock
     out pc 5           ;Next command (new word)
@@ -122,61 +125,69 @@ burst_loop:
 ; command word coming in
 
 .program cvbs_pal
-.clock_div 2.0
+.clock_div 1.0
 .origin 0
-public entry:
-    out pc 5           ;Next command (new word)
 
 ; DC RUN Command
 ; Output a DC level for repeat+2 number of dot clock cycles
-;  29                 0 
+; 31                  0 
 ; |repeat|DC|id_dc_run|
-;     20   5     5     bits
+;     20   7     5     bits
 public cvbs_cmd_dc_run:
-    out pins 5          ;DC level out
+    out pins 7          ;DC level out
     out y 20            ;Repeat count to y
 dc_loop:
     wait 1 irq 1        ;Wait for dotclock
     jmp y-- dc_loop     ;loop y times
-    wait 1 irq 1        ;Wait for dotclock again
-    out pc 5            ;Next command (new word)
+    jmp common_tail
 
 ; PIXEL Command
 ; Output one set of pre-calulated levels and delays during one dot clock
-;  29                 0 
-; |L2|delay1|L1|delay0|L0|id_pixel|
-;   5    5    5    5    5    5    bits
+; Skips third phase (second output of L0) if delay1==0
+; 31                              0 
+; |trunc|delay1|L1|delay0|L0|id_pixel|
+;     1    6    7    6    7    5    bits
 public cvbs_cmd_pixel:
-    out pins 5         ;Out L0
-    out x 5            ;delay0 in x
+    mov pins osr       ;Out L0
+    out isr 7          ;L0 in isr
+    out x 6            ;delay0 in x
 delay0:
     jmp x-- delay0
-    out pins 5         ;Out L1
-    out x 5            ;delay1 in x
+    out pins 7         ;Out L1
+    out x 6            ;delay1 in x
+    out y 1            ;trunc flag in y
+    jmp !x common_tail ;Skip second L0 output if delay1 = zero
 delay1:
     jmp x-- delay1
-    out pins 5         ;Out L2
-    wait 1 irq 1       ;Wait for dotclock
-    out pc 5           ;Next command (new word)
+    jmp !y no_truncate ;Skip truncating to blank
+    set pins 9         ;Set pins to blank
+    jmp common_tail
+no_truncate:
+    mov pins isr        ;Out L0 again if not truncate
+public entry:
+common_tail:            ;Also entry point
+    wait 1 irq 1        ;Wait for dotclock again
+    out pc 5            ;Next command (new word)
+
 
 ; BURST Command
-; Output a train of L0/L1 colour burst periods, ending with DC 
+; Output a train of 16 L0/L1 colour burst periods, ending with DC 
 ; NOTE: Only synched to dot clock at the end - timing calculations needed
-;  29                 0 
-; |DC|L1|L0|predelay|repeat|id_burst|
-;   5  5  5     5       5      5    bits
+; 31                                0 
+; |DC|L1|L0|predelay|id_burst|
+;   7  7  7     6       5    bits
 public cvbs_cmd_burst:
-    out y 5            ;repeat count
-    out x 5            ;get predelay
-    out isr 5          ;keep L0 in isr
+    set y 15           ;repeat count
+    out x 6            ;get predelay
+    out isr 7          ;keep L0 in isr
 predelay_burst:
     jmp x-- predelay_burst
 burst_loop:
     mov pins isr  [17] ;L0 out
-    mov pins osr  [16] ;L1 out
+    nop           [17]
+    mov pins osr  [31] ;L1 out
+    irq clear 1   [ 2] ;Make sure we will be able to sync (using delay slot)
     jmp y-- burst_loop
-    out null 5         ;Dump L1
-    out pins 5         ;DC out, trigger autopull
-    irq clear 1        ;Make sure we are able to sync
-    wait 1 irq 1       ;Wait for dotclock
-    out pc 5           ;Next command (new word)
+    out null 7         ;Dump L1
+    out pins 7         ;DC out, trigger autopull
+    jmp common_tail
