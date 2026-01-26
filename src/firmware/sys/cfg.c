@@ -259,9 +259,11 @@ uint8_t cfg_get_mode(void){
 }
 
 bool cfg_set_pot(uint8_t pot){
+#ifdef PIVIC
     if(pot >= POT_MODE_COUNT){
         return false;
     }
+#endif
     if(cfg_pot != pot){
         cfg_pot = pot;
         cfg_save_with_boot_opt(NULL);
