@@ -134,8 +134,10 @@ static void cfg_load_with_boot_opt(bool boot_only)
                 break;
             case 'M':
                 cfg_mode = val;
+                break;
             case 'O':
                 cfg_pot = val;
+                break;
             default:
                 break;
             }
