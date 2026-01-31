@@ -177,6 +177,14 @@ uint32_t inline __attribute__((always_inline)) rgbs_cmd_pixel(uint8_t ink, uint8
     return cmd;
 }
 
+uint16_t inline __attribute__((always_inline)) ula_text_address_algo(uint16_t vc, uint8_t hc){
+        uint16_t stage1, stage2, stage3;
+        stage1 = ((vc & 0xFF) >> 3) + 0xB0;
+        stage2 = (stage1 * 5) & 0x3FF;
+        stage3 = (stage2 << 3) + hc + 0xA000;
+        return stage3;
+}
+
 /*
     The core1_loop timing critical emulation
     Does the ULA rendering operation
@@ -264,6 +272,14 @@ void core1_loop(void){
             }
         }
         invert_flag = screen_data & ULA_INVERT;
+
+        //Output screen data during ULA phase of clock for LOCI screen mode detection
+        if(vscan){
+            XULA_PIO->txf[XULA_SM] = screen_data;    
+        }else{
+            uint16_t ula_addr = ula_text_address_algo(verticalCounter,horizontalCounter);
+            XULA_PIO->txf[XULA_SM] = xram[ula_addr];
+        }
 
         // Counter updates that will be used in the next cycle
         // This results in some numbers looking off by one,
@@ -612,6 +628,16 @@ void xdir_pio_init(void){
     //printf("XDIR PIO init done\n");   
 }
 
+void xula_pio_init(void){
+    pio_set_gpio_base (XULA_PIO, XULA_PIN_OFFS);
+    uint offset = pio_add_program(XULA_PIO, &xula_program);
+    pio_sm_config config = xula_program_get_default_config(offset);
+    sm_config_set_set_pin_base(&config, DIR_PIN);
+    sm_config_set_out_pin_base(&config, DATA_PIN_BASE);
+    sm_config_set_out_pin_count(&config, DATA_PIN_COUNT);
+    pio_sm_init(XULA_PIO, XULA_SM, offset, &config);  
+}
+
 void ula_init(void){
     if(cfg_get_splash()){
         memcpy((void*)(&xram[ADDR_LORES_STD_CHRSET+(0x20*8)]), (void*)oric_font, sizeof(oric_font));
@@ -644,6 +670,7 @@ void ula_init(void){
     phi_pio_init();
     xread_pio_init();
     xdir_pio_init();
+    xula_pio_init();
     decode_pio_init();
     nio_pio_init();
     xwrite_pio_init();
@@ -652,7 +679,7 @@ void ula_init(void){
 
     pio_enable_sm_mask_in_sync(pio0, 0x7);  //RBGS, NROMSEL, NIO
     pio_enable_sm_mask_in_sync(pio1, 0x7);  //PHI, Decode, Trace
-    pio_enable_sm_mask_in_sync(pio2, 0x7);  //XREAD, XWRITE, XDIR
+    pio_enable_sm_mask_in_sync(pio2, 0xF);  //XREAD, XWRITE, XDIR, XULA
     
 
     //Set unused outputs to defaults

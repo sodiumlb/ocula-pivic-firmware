@@ -154,6 +154,10 @@ bool main_prog(uint16_t *xregs);
 #define XDIR_PIO pio2
 #define XDIR_SM 2
 
+#define XULA_PIN_OFFS PIO2_PIN_OFFS
+#define XULA_PIO pio2 
+#define XULA_SM 3
+
 #define RGBS_PIN_BASE 2
 #define SYNC_PIN 2
 #define R_PIN 3
