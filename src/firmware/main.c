@@ -62,7 +62,6 @@ static void init(void)
     serno_init(); // before tusb
     tusb_init();
     cdc_init();
-    dvi_init();
 #ifdef PIVIC
     rev_init();
     cvbs_init();
@@ -75,6 +74,7 @@ static void init(void)
 #ifdef OCULA
     ula_init();
 #endif
+    dvi_init();
 }
 
 static void task(void)

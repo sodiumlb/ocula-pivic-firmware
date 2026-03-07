@@ -144,9 +144,8 @@ static const char __in_flash("helptext") hlp_text_splash[] =
 
 static const char __in_flash("helptext") hlp_text_dvi[] =
     "SET DVI selects the display type for DVI output.\n"
-    "  0 - 640x480 @ 60Hz\n"
-    "  1 - 720x480 @ 60Hz\n"
-    "  2 - 720x576 @ 50Hz";
+    "DVI modes available depends on emulation mode.\n"
+    "Use SET DVI without argument for list of DVI modes";
 
 static const char __in_flash("helptext") hlp_text_mode[] =
 #ifdef PIVIC

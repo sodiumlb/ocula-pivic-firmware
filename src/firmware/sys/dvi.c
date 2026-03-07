@@ -28,15 +28,24 @@
 
 volatile uint8_t dvi_framebuf[DVI_FB_HEIGHT][DVI_FB_WIDTH];
 
-dvi_mode_t default_mode = {
+//System specific configs are defined in their respective display subsystems
+dvi_modeline_t default_mode = {
     .pixel_format = dvi_4_rgb332,
     .scale_x = 3,
     .scale_y = 2,
     .offset_x = 0,
-    .offset_y = 0
-
+    .offset_y = 0,
+    .h_front_porch = 16,
+    .h_sync_width = 96,
+    .h_back_porch = 48,
+    .h_active_pixels = 640,
+    .v_front_porch = 10,
+    .v_sync_width = 2,
+    .v_back_porch = 33,
+    .v_active_lines = 480,
+    .sync_polarity = vneg_hneg,
 };
-dvi_mode_t *dvi_mode = &default_mode;
+dvi_modeline_t *dvi_mode = &default_mode;
 int32_t fb_mode_offset;
 uint32_t fb_mode_transfers;
 uint8_t fb_mode_vshift;
@@ -54,26 +63,26 @@ uint8_t fb_mode_vshift;
 #define SYNC_V1_H0 (TMDS_CTRL_10 | (TMDS_CTRL_00 << 10) | (TMDS_CTRL_00 << 20))
 #define SYNC_V1_H1 (TMDS_CTRL_11 | (TMDS_CTRL_00 << 10) | (TMDS_CTRL_00 << 20))
 
-#define MODE_H_SYNC_POLARITY 0
-#define MODE_H_FRONT_PORCH   16
-#define MODE_H_SYNC_WIDTH    96
-#define MODE_H_BACK_PORCH    48
-#define MODE_H_ACTIVE_PIXELS 640
+// #define MODE_H_SYNC_POLARITY 0
+// #define MODE_H_FRONT_PORCH   16
+// #define MODE_H_SYNC_WIDTH    96
+// #define MODE_H_BACK_PORCH    48
+// #define MODE_H_ACTIVE_PIXELS 640
 
-#define MODE_V_SYNC_POLARITY 0
-#define MODE_V_FRONT_PORCH   10
-#define MODE_V_SYNC_WIDTH    2
-#define MODE_V_BACK_PORCH    33
-#define MODE_V_ACTIVE_LINES  480
+// #define MODE_V_SYNC_POLARITY 0
+// #define MODE_V_FRONT_PORCH   10
+// #define MODE_V_SYNC_WIDTH    2
+// #define MODE_V_BACK_PORCH    33
+// #define MODE_V_ACTIVE_LINES  480
 
-#define MODE_H_TOTAL_PIXELS ( \
-    MODE_H_FRONT_PORCH + MODE_H_SYNC_WIDTH + \
-    MODE_H_BACK_PORCH  + MODE_H_ACTIVE_PIXELS \
-)
-#define MODE_V_TOTAL_LINES  ( \
-    MODE_V_FRONT_PORCH + MODE_V_SYNC_WIDTH + \
-    MODE_V_BACK_PORCH  + MODE_V_ACTIVE_LINES \
-)
+// #define MODE_H_TOTAL_PIXELS ( \
+//     MODE_H_FRONT_PORCH + MODE_H_SYNC_WIDTH + \
+//     MODE_H_BACK_PORCH  + MODE_H_ACTIVE_PIXELS \
+// )
+// #define MODE_V_TOTAL_LINES  ( \
+//     MODE_V_FRONT_PORCH + MODE_V_SYNC_WIDTH + \
+//     MODE_V_BACK_PORCH  + MODE_V_ACTIVE_LINES \
+// )
 
 #define HSTX_CMD_RAW         (0x0u << 12)
 #define HSTX_CMD_RAW_REPEAT  (0x1u << 12)
@@ -87,41 +96,81 @@ uint8_t fb_mode_vshift;
 // Lists are padded with NOPs to be >= HSTX FIFO size, to avoid DMA rapidly
 // pingponging and tripping up the IRQs.
 
-static uint32_t vblank_line_vsync_off[] = {
-    HSTX_CMD_RAW_REPEAT | MODE_H_FRONT_PORCH,
-    SYNC_V1_H1,
-    HSTX_CMD_RAW_REPEAT | MODE_H_SYNC_WIDTH,
-    SYNC_V1_H0,
-    HSTX_CMD_RAW_REPEAT | (MODE_H_BACK_PORCH + MODE_H_ACTIVE_PIXELS),
-    SYNC_V1_H1,
-    HSTX_CMD_NOP
-};
+static uint32_t vblank_line_vsync_off[7];
+static uint32_t vblank_line_vsync_on[7];
+static uint32_t vactive_line[9];
+static uint32_t vborder_line[10];
 
-static uint32_t vblank_line_vsync_on[] = {
-    HSTX_CMD_RAW_REPEAT | MODE_H_FRONT_PORCH,
-    SYNC_V0_H1,
-    HSTX_CMD_RAW_REPEAT | MODE_H_SYNC_WIDTH,
-    SYNC_V0_H0,
-    HSTX_CMD_RAW_REPEAT | (MODE_H_BACK_PORCH + MODE_H_ACTIVE_PIXELS),
-    SYNC_V0_H1,
-    HSTX_CMD_NOP
-};
+void dvi_build_hstx_lists(dvi_modeline_t *mode){
+    uint32_t* p;
+    uint32_t sync_von_hon, sync_von_hof, sync_vof_hon, sync_vof_hof;
+    switch(mode->sync_polarity){
+        case(vneg_hneg):
+            sync_von_hon = SYNC_V0_H0;
+            sync_von_hof = SYNC_V0_H1;
+            sync_vof_hon = SYNC_V1_H0;
+            sync_vof_hof = SYNC_V1_H1;
+            break;
+        case(vneg_hpos):
+            sync_von_hon = SYNC_V0_H1;
+            sync_von_hof = SYNC_V0_H0;
+            sync_vof_hon = SYNC_V1_H1;
+            sync_vof_hof = SYNC_V1_H0;
+            break;
+        case(vpos_hneg):
+            sync_von_hon = SYNC_V1_H0;
+            sync_von_hof = SYNC_V1_H1;
+            sync_vof_hon = SYNC_V0_H0;
+            sync_vof_hof = SYNC_V0_H1;
+            break;
+        case(vpos_hpos):
+            sync_von_hon = SYNC_V1_H1;
+            sync_von_hof = SYNC_V1_H0;
+            sync_vof_hon = SYNC_V0_H1;
+            sync_vof_hof = SYNC_V0_H0;
+            break;
+    }
+    p = &vblank_line_vsync_off[0];
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
+    *p++ = sync_vof_hof;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_sync_width;
+    *p++ = sync_vof_hon;
+    *p++ = HSTX_CMD_RAW_REPEAT | (mode->h_back_porch + mode->h_active_pixels);
+    *p++ = sync_vof_hof;
+    *p++ = HSTX_CMD_NOP;
 
-static uint32_t vactive_line[] = {
-    HSTX_CMD_RAW_REPEAT | MODE_H_FRONT_PORCH,
-    SYNC_V1_H1,
-    HSTX_CMD_NOP,
-    HSTX_CMD_RAW_REPEAT | MODE_H_SYNC_WIDTH,
-    SYNC_V1_H0,
-    HSTX_CMD_NOP,
-    HSTX_CMD_RAW_REPEAT | MODE_H_BACK_PORCH,
-    SYNC_V1_H1,
-    HSTX_CMD_TMDS       | MODE_H_ACTIVE_PIXELS
-};
+    p = &vblank_line_vsync_on[0];
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
+    *p++ = sync_von_hof;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_sync_width;
+    *p++ = sync_von_hon;
+    *p++ = HSTX_CMD_RAW_REPEAT | (mode->h_back_porch + mode->h_active_pixels);
+    *p++ = sync_von_hof;
+    *p++ = HSTX_CMD_NOP;
 
-void dvi_set_display(dvi_display_t display){
-    //TODO
-}
+    p = &vactive_line[0];
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
+    *p++ = sync_vof_hof;
+    *p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_sync_width;
+    *p++ = sync_vof_hon;
+    *p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_back_porch;
+    *p++ = sync_vof_hof;
+    *p++ = HSTX_CMD_TMDS       | mode->h_active_pixels;
+
+    p = &vborder_line[0];
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
+    *p++ = sync_vof_hof;
+    *p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_sync_width;
+    *p++ = sync_vof_hon;
+    *p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_back_porch;
+    *p++ = sync_vof_hof;
+    *p++ = HSTX_CMD_TMDS_REPEAT| mode->h_active_pixels;
+    *p++ = 0xFFFFFFFF; //white boarder
+};
 
 // ----------------------------------------------------------------------------
 // DMA logic
@@ -143,6 +192,13 @@ static bool vactive_cmdlist_posted = false;
 int DMACH_PING;
 int DMACH_PONG;
 
+static uint mode_h_total_pixels;
+static uint mode_v_total_lines;
+static uint mode_v_sync_end;
+static uint mode_v_blank_end;
+static uint mode_v_border_top_end;
+static uint mode_v_fb_end;
+
 static void dma_irq_handler() {
 
     irq_count++;
@@ -154,14 +210,22 @@ static void dma_irq_handler() {
     dma_hw->intr = 1u << ch_num;
     dma_pong = !dma_pong;
 
-    if (v_scanline >= MODE_V_FRONT_PORCH && v_scanline < (MODE_V_FRONT_PORCH + MODE_V_SYNC_WIDTH)) {
-        hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
-        ch->read_addr = (uintptr_t)vblank_line_vsync_on;
-        ch->transfer_count = count_of(vblank_line_vsync_on);
-    } else if (v_scanline < MODE_V_FRONT_PORCH + MODE_V_SYNC_WIDTH + MODE_V_BACK_PORCH) {
+    if (v_scanline < dvi_mode->v_front_porch) {
         hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
         ch->read_addr = (uintptr_t)vblank_line_vsync_off;
         ch->transfer_count = count_of(vblank_line_vsync_off);
+    } else if (v_scanline < mode_v_sync_end) {
+       hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
+        ch->read_addr = (uintptr_t)vblank_line_vsync_on;
+        ch->transfer_count = count_of(vblank_line_vsync_on);
+    } else if (v_scanline < mode_v_blank_end) {
+        hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
+        ch->read_addr = (uintptr_t)vblank_line_vsync_off;
+        ch->transfer_count = count_of(vblank_line_vsync_off);
+    } else if (v_scanline < mode_v_border_top_end || v_scanline >= mode_v_fb_end) {
+        hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
+        ch->read_addr = (uintptr_t)vborder_line;
+        ch->transfer_count = count_of(vborder_line);
     } else if (!vactive_cmdlist_posted) {
         hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
         ch->read_addr = (uintptr_t)vactive_line;
@@ -170,19 +234,19 @@ static void dma_irq_handler() {
     } else {
         hw_clear_bits(&ch->al1_ctrl, 0x3 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);   //DMA_SIZE_8
         ch->read_addr = (uintptr_t)&(dvi_framebuf[(v_scanline + fb_mode_offset)>>fb_mode_vshift]) + dvi_mode->offset_x;
-        ch->transfer_count = fb_mode_transfers;//
+        ch->transfer_count = fb_mode_transfers;
         vactive_cmdlist_posted = false;
     }
 
     if (!vactive_cmdlist_posted) {
-        if(++v_scanline >= MODE_V_TOTAL_LINES){
+        if(++v_scanline >= mode_v_total_lines){
             v_scanline = 0;
         }
     }
 }
 
 void dvi_fb_clear(void){
-    memset((void*)dvi_framebuf, 0x00, sizeof(dvi_framebuf));
+    memset((void*)dvi_framebuf, 0xC0, sizeof(dvi_framebuf));
 }
 
 void dvi_init(void){
@@ -195,7 +259,7 @@ void dvi_init(void){
         1  << HSTX_CTRL_EXPAND_TMDS_L0_NBITS_LSB |
         26 << HSTX_CTRL_EXPAND_TMDS_L0_ROT_LSB;
 
-    dvi_set_mode(&default_mode);
+    dvi_set_modeline(dvi_mode);
 
     // Serial output config: clock period of 5 cycles, pop from command
     // expander every 5 cycles, shift the output shiftreg by 2 every cycle.
@@ -206,11 +270,6 @@ void dvi_init(void){
         5u << HSTX_CTRL_CSR_N_SHIFTS_LSB |
         2u << HSTX_CTRL_CSR_SHIFT_LSB |
         HSTX_CTRL_CSR_EN_BITS;
-
-    // Note we are leaving the HSTX clock at the SDK default of 125 MHz; since
-    // we shift out two bits per HSTX clock cycle, this gives us an output of
-    // 250 Mbps, which is very close to the bit clock for 480p 60Hz (252 MHz).
-    // If we want the exact rate then we'll have to reconfigure PLLs.
 
     // HSTX outputs 0 through 7 appear on GPIO 12 through 19.
 
@@ -282,20 +341,40 @@ void dvi_init(void){
 void dvi_task(void){
 }
 
-void dvi_set_mode(dvi_mode_t *mode){
-    dvi_mode = mode;
+void dvi_set_modeline(dvi_modeline_t *ml){
+    dvi_mode = ml;
+    clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 
+        clock_get_hz(clk_sys), clock_get_hz(clk_sys)/ml->hstx_div);
+
     hstx_ctrl_hw->expand_shift =
         dvi_mode->scale_x << HSTX_CTRL_EXPAND_SHIFT_ENC_N_SHIFTS_LSB |
         8 << HSTX_CTRL_EXPAND_SHIFT_ENC_SHIFT_LSB |
         1 << HSTX_CTRL_EXPAND_SHIFT_RAW_N_SHIFTS_LSB |
         0 << HSTX_CTRL_EXPAND_SHIFT_RAW_SHIFT_LSB;
 
+    mode_h_total_pixels = 
+        dvi_mode->h_front_porch + 
+        dvi_mode->h_sync_width +
+        dvi_mode->h_back_porch +
+        dvi_mode->h_active_pixels;
+
+    mode_v_total_lines = 
+        dvi_mode->v_front_porch +
+        dvi_mode->v_sync_width +
+        dvi_mode->v_back_porch +
+        dvi_mode->v_active_lines;
+
+    dvi_build_hstx_lists(dvi_mode);
+
     switch(dvi_mode->scale_x){
         case(2):
-            fb_mode_transfers = MODE_H_ACTIVE_PIXELS / 2;
+            fb_mode_transfers = dvi_mode->h_active_pixels / 2;
             break;
         case(3):
-            fb_mode_transfers = (MODE_H_ACTIVE_PIXELS / 3) + 1;
+            fb_mode_transfers = (dvi_mode->h_active_pixels + 2) / 3;
+            break;
+        case(4):
+            fb_mode_transfers = dvi_mode->h_active_pixels / 4;
             break;
         default:
             printf("DVI mode scale X = %d not supported\n", dvi_mode->scale_x);
@@ -312,7 +391,26 @@ void dvi_set_mode(dvi_mode_t *mode){
             printf("DVI mode scale Y = %d not supported\n", dvi_mode->scale_y);
             break;
     }
-    fb_mode_offset = (dvi_mode->offset_y - (MODE_V_TOTAL_LINES - MODE_V_ACTIVE_LINES));
+    fb_mode_offset = (dvi_mode->offset_y - (mode_v_total_lines - dvi_mode->v_active_lines));
+
+    mode_v_sync_end = 
+        dvi_mode->v_front_porch +
+        dvi_mode->v_sync_width;
+
+    mode_v_blank_end = mode_v_total_lines - dvi_mode->v_active_lines;
+    mode_v_border_top_end = (dvi_mode->offset_y > 0) ? 0 : (mode_v_blank_end - dvi_mode->offset_y + 1);
+    mode_v_fb_end = mode_v_blank_end + (DVI_FB_HEIGHT * dvi_mode->scale_y) - dvi_mode->offset_y;
+}
+
+void dvi_print_modeline(dvi_modeline_t *ml){
+    uint dotclk = clock_get_hz(clk_sys) / (ml->hstx_div * 5); // Dot clk is DDR 10 bit per pixel 
+    uint htot = ml->h_active_pixels + ml->h_front_porch + ml->h_sync_width + ml->h_back_porch;
+    uint vtot = ml->v_active_lines + ml->v_front_porch + ml->v_sync_width + ml->v_back_porch;
+    printf(" %dx%d @ %.2f scale %dx%d\n", 
+        ml->h_active_pixels, ml->v_active_lines, 
+        dotclk / (htot * vtot * 1.0),
+        ml->scale_x, ml->scale_y
+    );
 }
 
 void dvi_print_status(void){
@@ -320,4 +418,6 @@ void dvi_print_status(void){
     printf(" HSTX clock:%ld\r\n", clock_get_hz(clk_hstx));
     printf(" HSTX stat:%08x\n", hstx_fifo_hw->stat);
     printf(" IRQ count:%08x\n", irq_count);
+    printf(" fb_mode_transfers:%d\n", fb_mode_transfers);
+    dvi_print_modeline(dvi_mode);
 }

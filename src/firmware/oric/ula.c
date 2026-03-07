@@ -100,12 +100,21 @@ const uint8_t ula_rgb332_palette[8] = {
     0xFF        //White
 };
 
-dvi_mode_t ula_dvi_mode = {
+dvi_modeline_t ula_dvi_mode = {
     .pixel_format = dvi_4_rgb332,
     .scale_x = 2,
     .scale_y = 2,
     .offset_x = -36,
-    .offset_y = 2
+    .offset_y = 2,
+    .hstx_div = 2,
+    .h_front_porch = 16,
+    .h_sync_width = 96,
+    .h_back_porch = 48,
+    .h_active_pixels = 640,
+    .v_front_porch = 10,
+    .v_sync_width = 2,
+    .v_back_porch = 33,
+    .v_active_lines = 480
 };
 
 void inline __attribute__((always_inline)) ula_dvi_fb_update(uint8_t ink, uint8_t paper, uint8_t data, uint8_t fb_x, uint8_t fb_y){
@@ -696,7 +705,7 @@ void ula_init(void){
     gpio_put(MUX_PIN, false);
     gpio_put(WREN_PIN, false);
     
-    dvi_set_mode(&ula_dvi_mode);
+    dvi_set_modeline(&ula_dvi_mode);
     
     multicore_launch_core1(core1_loop);
 }

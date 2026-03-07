@@ -30,7 +30,7 @@ static const char filename[] = "CONFIG.SYS";
 static uint32_t cfg_phi2_khz;
 static uint8_t cfg_caps;
 static uint8_t cfg_splash = 1;
-static uint8_t cfg_dvi_display = 0;
+static uint8_t cfg_dvi_mode = 0;
 static uint8_t cfg_mode = 1;
 
 // Optional string can replace boot string
@@ -75,7 +75,7 @@ static void cfg_save_with_boot_opt(char *opt_str)
                                cfg_phi2_khz,
                                cfg_caps,
                                cfg_splash,
-                               cfg_dvi_display,
+                               cfg_dvi_mode,
                                cfg_mode,
                                opt_str);
         if (lfsresult < 0)
@@ -125,7 +125,7 @@ static void cfg_load_with_boot_opt(bool boot_only)
                 cfg_splash = val;
                 break;
             case 'D':
-                cfg_dvi_display = val;
+                cfg_dvi_mode = val;
                 break;
             case 'M':
                 cfg_mode = val;
@@ -208,13 +208,10 @@ uint8_t cfg_get_splash(void)
     return cfg_splash;
 }
 
-bool cfg_set_dvi(uint8_t disp)
+bool cfg_set_dvi(uint8_t mode)
 {
-    if(disp > 2)
-        return false;
-    if(cfg_dvi_display != disp){
-        cfg_dvi_display = disp;
-        dvi_set_display(cfg_dvi_display);
+    if(cfg_dvi_mode != mode){
+        cfg_dvi_mode = mode;
         cfg_save_with_boot_opt(NULL);
     }
     return true;
@@ -222,7 +219,7 @@ bool cfg_set_dvi(uint8_t disp)
 
 uint8_t cfg_get_dvi(void)
 {
-    return cfg_dvi_display;
+    return cfg_dvi_mode;
 }
 
 bool cfg_set_mode(uint8_t mode){

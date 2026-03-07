@@ -92,5 +92,6 @@ void vic_init(void);
 void vic_task(void);
 
 void vic_print_status(void);
+void vic_print_dvi_modes(void);
  
 #endif /* _VIC_H_ */
