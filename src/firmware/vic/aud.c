@@ -34,7 +34,7 @@ volatile aud_union_t aud_sr;
 void aud_calc_voice(uint8_t idx, uint8_t reg){
     uint8_t enable = reg >> 7;  //Keep enable bit in LSB
     uint8_t next_bit = aud_sr.ch[idx] & 0x01;
-    aud_val[idx] = (enable ? (next_bit ? 1 : 0) : 0);  //High=1 ,half=0, low=0
+    aud_val[idx] = (enable ? (next_bit ? 3 : 0) : 1);  //High=3 ,half=1, low=0
 }
 
 void aud_step_noise(uint8_t reg){
@@ -49,13 +49,13 @@ void aud_step_noise(uint8_t reg){
     if(next_lfsr_bit == 1 && old_lfsr_bit == 0){
         uint8_t next_sr_bit = (~prev >> 7) & enable;    //Shift register MSB & register enable bit
         aud_noise_sr = (prev << 1) | next_sr_bit;
-        aud_val[3] = (enable ? (next_sr_bit ? 1 : 0) : 0);    //High=1, half=0, low=0. TODO - confirm enable is used to gate the noise channel
+        aud_val[3] = (enable ? (next_sr_bit ? 3 : 0) : 1);    //High=3, half=1, low=0. TODO - confirm enable is used to gate the noise channel
     }
 }
 
 void aud_update_pwm(uint8_t vol_reg){
     int16_t pwm_value_signed = ( aud_val[0] + aud_val[1] + aud_val[2] + aud_val[3] ) * (vol_reg & 0x0F);
-    pwm_set_chan_level(AUDIO_PWM_SLICE, AUDIO_PWM_CH, (uint8_t)(pwm_value_signed + 64));    //DC offset required for bias of mainboard audio circuit
+    pwm_set_chan_level(AUDIO_PWM_SLICE, AUDIO_PWM_CH, (uint8_t)(pwm_value_signed + 32));    //DC offset required for bias of mainboard audio circuit
 }
 
 void aud_init(void){
