@@ -7,6 +7,8 @@
  #ifndef _ULA_H_
  #define _ULA_H_
 
+ #include "oric/ula_dvi.h"
+
  void ula_init(void);
  void ula_task(void);
 

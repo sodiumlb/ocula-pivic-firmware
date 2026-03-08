@@ -136,7 +136,7 @@ static void set_print_dvi(void)
     vic_print_dvi_modes();
 #endif
 #ifdef OCULA
-    //ula_print_dvi_modes();
+    ula_print_dvi_modes();
 #endif 
 }
 

@@ -7,6 +7,8 @@
 #ifndef _VIC_H_
 #define _VIC_H_
 
+#include "vic/vic_dvi.h"
+
 #define VIC_MODE_COUNT 8
 #define VIC_MODE_NTSC 0
 #define VIC_MODE_PAL 1
