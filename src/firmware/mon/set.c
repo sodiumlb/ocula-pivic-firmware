@@ -7,7 +7,14 @@
 #include "str.h"
 #include "sys/cfg.h"
 //#include "sys/cpu.h"
+#include "sys/dvi.h"
 #include "sys/lfs.h"
+#ifdef PIVIC
+#include "vic/vic.h"
+#endif
+#ifdef OCULA
+#include "oric/ula.h"
+#endif
 
 static void set_print_phi2(void)
 {
@@ -123,8 +130,14 @@ static void set_splash(const char *args, size_t len)
 
 static void set_print_dvi(void)
 {
-    const char *const dvi_labels[] = {"0 - 640x480 @ 60Hz", "1 - 720x480 @ 60Hz", "2 - 720x576 @ 50Hz"};
-    printf("DVI   : %s\n", dvi_labels[cfg_get_dvi()]);
+    uint8_t mode = cfg_get_dvi();
+    printf("DVI mode %d\n", mode);
+#ifdef PIVIC
+    vic_print_dvi_modes();
+#endif
+#ifdef OCULA
+    ula_print_dvi_modes();
+#endif 
 }
 
 static void set_dvi(const char *args, size_t len)

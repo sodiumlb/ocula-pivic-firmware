@@ -11,7 +11,6 @@
 #include "vic/char_rom.h"
 #include "sys/cfg.h"
 #include "sys/dvi.h"
-#include "sys/dvi.h"
 #include "sys/mem.h"
 #include "sys/rev.h"
 #include "vic.pio.h"
@@ -44,21 +43,6 @@
 
 volatile uint32_t overruns = 0;
 
-dvi_mode_t vic_pal_mode = {
-    .pixel_format = dvi_4_rgb332,
-    .scale_x = 3,
-    .scale_y = 2,
-    .offset_x = 8,
-    .offset_y = 80
-};
-
-dvi_mode_t vic_ntsc_mode = {
-    .pixel_format = dvi_4_rgb332,
-    .scale_x = 3,
-    .scale_y = 2,
-    .offset_x = -7,
-    .offset_y = 40
-};
 
 
 void vic_pio_init(void) {
@@ -201,17 +185,18 @@ void vic_init(void) {
     // Initialisation.
     vic_pio_init();
     vic_memory_init();
+    uint8_t dvi_mode = cfg_get_dvi();
     if(cfg_get_splash())
         vic_splash_init();
     switch(cfg_get_mode()){
         case(VIC_MODE_PAL):
         case(VIC_MODE_PAL_SVIDEO):
-            dvi_set_mode(&vic_pal_mode);
+            vic_dvi_init_pal();
             multicore_launch_core1(vic_core1_loop_pal);
             break;
         case(VIC_MODE_NTSC):
         case(VIC_MODE_NTSC_SVIDEO):
-            dvi_set_mode(&vic_ntsc_mode);
+            vic_dvi_init_ntsc();
             multicore_launch_core1(vic_core1_loop_ntsc);
             break;
         default:    //Ignore test modes
@@ -245,3 +230,4 @@ void vic_print_status(void){
         printf(" CRE %02x %d Vol CA:%d\n", vic_cre, vic_cre & 0x0F, (vic_cre >> 4));
         printf(" CRF %02x CB:%d R:%d CE:%d\n", vic_crf, (vic_crf >> 4), (vic_crf >> 3) & 1u, (vic_crf & 0x7));
 }
+

@@ -7,6 +7,8 @@
 #ifndef _VIC_H_
 #define _VIC_H_
 
+#include "vic/vic_dvi.h"
+
 #define VIC_MODE_COUNT 8
 #define VIC_MODE_NTSC 0
 #define VIC_MODE_PAL 1
@@ -92,5 +94,6 @@ void vic_init(void);
 void vic_task(void);
 
 void vic_print_status(void);
+void vic_print_dvi_modes(void);
  
 #endif /* _VIC_H_ */

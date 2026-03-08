@@ -11,50 +11,51 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// Display type
-typedef enum
-{
-    dvi_vga,   // 640x480 60Hz default
-    dvi_480p,  // 720x480 60Hz 
-    dvi_576p,  // 720x576 50Hz
-} dvi_display_t;
-
-// Canvas size.
-typedef enum
-{
-    dvi_console,
-    dvi_240_244,    //Oric standard resolution
-} dvi_canvas_t;
-
 // Bit depth & pixels per word
 typedef enum
 {
     dvi_6_rgb111,   //Oric standard bit depth
-    dvi_4_rgb332,
+    dvi_4_rgb332,   //Currently the only supported DVI buffert type
     dvi_2_rgb565,
     dvi_1_rgb888,
 } dvi_pixel_format_t;
 
+typedef enum
+{
+    vneg_hneg,
+    vneg_hpos,
+    vpos_hneg,
+    vpos_hpos,
+} dvi_sync_polarity_t;
+
 typedef struct
 {
     dvi_pixel_format_t pixel_format;    //Only RGB332 supported for now
-    uint8_t scale_x;                    //Only 2 or 3 supported for now
-    uint8_t scale_y;                    //Only 2 supported for now
+    uint8_t scale_x;                    //Only 2,3 or 4 supported for now
+    uint8_t scale_y;                    //Only 1 or 2 supported for now
     int8_t offset_x;                   
     int8_t offset_y;
-} dvi_mode_t;
+    uint8_t hstx_div;
+    uint8_t h_front_porch;
+    uint8_t h_sync_width;
+    uint8_t h_back_porch;
+    uint16_t h_active_pixels;
+    uint8_t v_front_porch;
+    uint8_t v_sync_width;
+    uint8_t v_back_porch;
+    uint16_t v_active_lines;
+    dvi_sync_polarity_t sync_polarity;
+} dvi_modeline_t;
 
 //TODO Make DVI mode dynamic
 //Framebuffer size works when 8bpp and 2x/3x scaling used
-#define DVI_ACTIVE_WIDTH_MAX 480
 #define DVI_FB_WIDTH 320
 #define DVI_FB_HEIGHT 312
 extern volatile uint8_t dvi_framebuf[DVI_FB_HEIGHT][DVI_FB_WIDTH];
 
-void dvi_set_display(dvi_display_t display);
-void dvi_set_mode(dvi_mode_t *mode);
-bool dvi_xreg_canvas(uint16_t *xregs);
-int16_t dvi_canvas_height(void);
+//Modes and modelines are defined and set from the primary display systems (e.g. VIC or ULA)
+void dvi_set_modeline(dvi_modeline_t *ml);
+void dvi_print_modeline(dvi_modeline_t *ml);
 void dvi_init(void);
 void dvi_task(void);
 

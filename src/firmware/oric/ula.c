@@ -7,6 +7,7 @@
 #include "main.h"
 //#include "sys/ria.h"
 #include "oric/ula.h"
+#include "oric/ula_dvi.h"
 #include "oric/oric_font.h"
 #include "sys/cfg.h"
 #include "sys/dvi.h"
@@ -100,13 +101,6 @@ const uint8_t ula_rgb332_palette[8] = {
     0xFF        //White
 };
 
-dvi_mode_t ula_dvi_mode = {
-    .pixel_format = dvi_4_rgb332,
-    .scale_x = 2,
-    .scale_y = 2,
-    .offset_x = -36,
-    .offset_y = 2
-};
 
 void inline __attribute__((always_inline)) ula_dvi_fb_update(uint8_t ink, uint8_t paper, uint8_t data, uint8_t fb_x, uint8_t fb_y){
     if(data & ULA_INVERT){
@@ -696,7 +690,7 @@ void ula_init(void){
     gpio_put(MUX_PIN, false);
     gpio_put(WREN_PIN, false);
     
-    dvi_set_mode(&ula_dvi_mode);
+    ula_dvi_init();
     
     multicore_launch_core1(core1_loop);
 }
