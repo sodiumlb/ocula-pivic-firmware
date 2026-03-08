@@ -169,7 +169,7 @@ void dvi_build_hstx_lists(dvi_modeline_t *mode){
     *p++ = HSTX_CMD_RAW_REPEAT | mode->h_back_porch;
     *p++ = sync_vof_hof;
     *p++ = HSTX_CMD_TMDS_REPEAT| mode->h_active_pixels;
-    *p++ = 0xFFFFFFFF; //white boarder
+    *p++ = 0x00000000; //black border
 };
 
 // ----------------------------------------------------------------------------
@@ -246,7 +246,7 @@ static void dma_irq_handler() {
 }
 
 void dvi_fb_clear(void){
-    memset((void*)dvi_framebuf, 0xC0, sizeof(dvi_framebuf));
+    memset((void*)dvi_framebuf, 0x00, sizeof(dvi_framebuf));
 }
 
 void dvi_init(void){
