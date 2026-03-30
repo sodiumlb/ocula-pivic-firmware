@@ -49,7 +49,6 @@ dvi_modeline_t default_mode = {
 dvi_modeline_t *dvi_mode = &default_mode;
 int32_t fb_mode_offset;
 uint32_t fb_mode_transfers;
-uint8_t fb_mode_vshift;
 
 // ----------------------------------------------------------------------------
 // DVI constants
@@ -199,6 +198,7 @@ static uint mode_v_sync_end;
 static uint mode_v_blank_end;
 static uint mode_v_border_top_end;
 static uint mode_v_fb_end;
+static uintptr_t mode_fb_start;
 
 static void dma_irq_handler() {
 
@@ -207,6 +207,8 @@ static void dma_irq_handler() {
     // dma_pong indicates the channel that just finished, which is the one
     // we're about to reload.
     uint ch_num = dma_pong ? DMACH_PONG : DMACH_PING;
+    static uintptr_t fb_ptr = (uintptr_t)&dvi_framebuf;
+    static uint repeat = 0;
     dma_channel_hw_t *ch = &dma_hw->ch[ch_num];
     dma_hw->intr = 1u << ch_num;
     dma_pong = !dma_pong;
@@ -234,14 +236,19 @@ static void dma_irq_handler() {
         vactive_cmdlist_posted = true;
     } else {
         hw_clear_bits(&ch->al1_ctrl, 0x3 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);   //DMA_SIZE_8
-        ch->read_addr = (uintptr_t)&(dvi_framebuf[(v_scanline + fb_mode_offset)>>fb_mode_vshift]) + dvi_mode->offset_x;
+        ch->read_addr = fb_ptr;
         ch->transfer_count = fb_mode_transfers;
         vactive_cmdlist_posted = false;
+        if(++repeat >= dvi_mode->scale_y){
+            fb_ptr += DVI_FB_WIDTH;
+            repeat = 0;
+        }
     }
 
     if (!vactive_cmdlist_posted) {
         if(++v_scanline >= mode_v_total_lines){
             v_scanline = 0;
+            fb_ptr = mode_fb_start;
         }
     }
 }
@@ -377,21 +384,17 @@ void dvi_set_modeline(dvi_modeline_t *ml){
         case(4):
             fb_mode_transfers = dvi_mode->h_active_pixels / 4;
             break;
+        case(5):
+            fb_mode_transfers = (dvi_mode->h_active_pixels + 4) / 5;
+            break;
+        case(6):
+            fb_mode_transfers = (dvi_mode->h_active_pixels + 6) / 6;
+            break;
         default:
             printf("DVI mode scale X = %d not supported\n", dvi_mode->scale_x);
             break;
     }
-    switch(dvi_mode->scale_y){
-        case(1):
-            fb_mode_vshift = 0;
-            break;
-        case(2):
-            fb_mode_vshift = 1;
-            break;
-        default:
-            printf("DVI mode scale Y = %d not supported\n", dvi_mode->scale_y);
-            break;
-    }
+
     fb_mode_offset = (dvi_mode->offset_y - (mode_v_total_lines - dvi_mode->v_active_lines));
 
     mode_v_sync_end = 
@@ -399,8 +402,13 @@ void dvi_set_modeline(dvi_modeline_t *ml){
         dvi_mode->v_sync_width;
 
     mode_v_blank_end = mode_v_total_lines - dvi_mode->v_active_lines;
-    mode_v_border_top_end = (dvi_mode->offset_y > 0) ? 0 : (mode_v_blank_end - dvi_mode->offset_y + 1);
+    mode_v_border_top_end = (dvi_mode->offset_y > 0) ? 0 : (mode_v_blank_end - (dvi_mode->offset_y * dvi_mode->scale_y));
     mode_v_fb_end = mode_v_blank_end + (DVI_FB_HEIGHT * dvi_mode->scale_y) - dvi_mode->offset_y;
+    mode_fb_start = (uintptr_t)&(dvi_framebuf[(dvi_mode->offset_y > 0 ) ? dvi_mode->offset_y : 0][dvi_mode->offset_x]);
+    if(dvi_mode->offset_x < 0){
+        mode_v_border_top_end += 1;
+        mode_fb_start += DVI_FB_WIDTH;
+    }
 }
 
 void dvi_print_modeline(dvi_modeline_t *ml){
