@@ -173,7 +173,7 @@ dvi_modeline_t vic_dvi_pal_modes[] = {
     .v_front_porch = 3,
     .v_sync_width = 6,
     .v_back_porch = 29,
-    .v_active_lines = 756,
+    .v_active_lines = 768,
     .sync_polarity = vpos_hneg,
 },
 
@@ -339,7 +339,7 @@ dvi_modeline_t vic_dvi_ntsc_modes[] = {
     .v_front_porch = 3,
     .v_sync_width = 6,
     .v_back_porch = 29,
-    .v_active_lines = 756,
+    .v_active_lines = 768,
     .sync_polarity = vpos_hneg,
 },
 
