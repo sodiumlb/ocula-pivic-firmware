@@ -15,11 +15,12 @@ static const char __in_flash("helptext") hlp_text_help[] =
     "HELP ABOUT|SYSTEM   - About includes credits. System for general usage.\n"
     "STATUS              - Show hardware status and USB devices.\n"
     "SET (attr) (value)  - Change or show settings.\n"
-    "REBOOT              - Cold start. Load and start selected boot ROM.\n"
-    "RESET               - Start 6502 at current reset vector ($FFFC).\n"
+    "REBOOT              - Cold start.\n"
+//    "RESET               - Start 6502 at current reset vector ($FFFC).\n"
     "UPLOAD file         - Write file. Binary chunks follow.\n"
     "BINARY addr len crc - Write memory. Binary data follows.\n"
-    "0000 (00 00 ...)    - Read or write memory.";
+    "0000 (00 00 ...)    - Read or write memory.\n"
+    "MODELINE ()()()..   - Test alternative DVI modes.";
 
 static const char __in_flash("helptext") hlp_text_set[] =
     "Settings:\n"
@@ -136,6 +137,22 @@ static const char __in_flash("helptext") hlp_text_boot[] =
     "the argument will have the system boot into the monitor you are using now.\n"
     "Setting is saved on the RIA flash.";
 
+static const char __in_flash("helptext") hlp_text_modeline[] =
+    "MODELINE is a DVI debug feature to help find working DVI display formats.\n"
+    "The display timing of the current DVI mode is altered lived, usually to test\n"
+    "alternative mode timings to find good formats that can be included in the \n"
+    "standard list of modes. It is not a robust feature - reboot if the signal\n"
+    "is lost. DVI mode settings like centering, scale, and most importantly\n"
+    "the DVI dotclock divider, are taken from the current active mode.\n"
+    "Values follow classic modeline horizontal and vertial timing format,\n"
+    "excluding the dotclock.\n"
+    "HSync and Vsync polarity is given as a single sign tupple --/-+/+-/++\n"
+    "\n"
+    "  modeline <hactive> <hsync_start> <hsync_end> <htotal> <vactive>\n"
+    "<vsync_start> <vsync_end> <vtotal> <hpolarity><vpolarity>\n" 
+    ;
+
+
 static const char __in_flash("helptext") hlp_text_splash[] =
     "SET SPLASH enables or disables splash screen shown before the computer\n"
     "clears the screen memory at boot\n"
@@ -221,6 +238,7 @@ static struct
     {5, "reset", hlp_text_reset},
     {6, "upload", hlp_text_upload},
     {6, "binary", hlp_text_binary},
+    {8, "modeline", hlp_text_modeline},
 #ifdef PIVIC
     {6, "colour", hlp_text_colour},
     {5, "color", hlp_text_colour},

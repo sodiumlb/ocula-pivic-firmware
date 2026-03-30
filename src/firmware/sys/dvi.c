@@ -11,6 +11,7 @@
 */
 
 #include "main.h"
+#include "str.h"
 #include "sys/dvi.h"
 #include "sys/mem.h"
 #include "hardware/clocks.h"
@@ -420,4 +421,90 @@ void dvi_print_status(void){
     printf(" IRQ count:%08x\n", irq_count);
     printf(" fb_mode_transfers:%d\n", fb_mode_transfers);
     dvi_print_modeline(dvi_mode);
+}
+
+bool parse_polarity(const char **args, size_t *len, dvi_sync_polarity_t *polarity)
+{
+    size_t i;
+    for (i = 0; i < *len; i++)
+    {
+        if ((*args)[i] != ' ')
+            break;
+    }
+    if (i == *len)
+        return false;
+
+    if((*args)[i]=='-' && (*args)[i+1]=='-'){
+        *polarity = vneg_hneg;
+    }else if((*args)[i]=='-' && (*args)[i+1]=='+'){
+        *polarity = vpos_hneg;
+    }else if((*args)[i]=='+' && (*args)[i+1]=='-'){
+        *polarity = vneg_hpos;
+    }else if((*args)[i]=='+' && (*args)[i+1]=='+'){
+        *polarity = vpos_hpos;
+    }else{
+        return false;
+    }
+    i+=2;
+    *len -= i;
+    *args += i;
+    return true;
+}
+
+void dvi_mon_modeline(const char *args, size_t len){
+   uint32_t hactive;
+   uint32_t hsync_start;
+   uint32_t hsync_end;
+   uint32_t htotal;
+   uint32_t vactive;
+   uint32_t vsync_start;
+   uint32_t vsync_end;
+   uint32_t vtotal;
+   dvi_sync_polarity_t hvpolarity;
+
+   if (len) {
+       if (
+            parse_uint32(&args, &len, &hactive) &&
+            parse_uint32(&args, &len, &hsync_start) &&
+            parse_uint32(&args, &len, &hsync_end) &&
+            parse_uint32(&args, &len, &htotal) &&
+            parse_uint32(&args, &len, &vactive) &&
+            parse_uint32(&args, &len, &vsync_start) &&
+            parse_uint32(&args, &len, &vsync_end) &&
+            parse_uint32(&args, &len, &vtotal) &&
+            parse_polarity(&args, &len, &hvpolarity) &&
+            parse_end(args, len))
+       {
+            dvi_mode->h_active_pixels = hactive;
+            dvi_mode->v_active_lines = vactive;
+
+            dvi_mode->h_front_porch = hsync_start - hactive;
+            dvi_mode->h_sync_width = hsync_end - hsync_start;
+            dvi_mode->h_back_porch = htotal - hsync_end;
+
+            dvi_mode->v_front_porch = vsync_start - vactive;
+            dvi_mode->v_sync_width = vsync_end - vsync_start;
+            dvi_mode->v_back_porch = vtotal - vsync_end;
+
+            dvi_mode->sync_polarity = hvpolarity;
+            dvi_print_modeline(dvi_mode);
+            dvi_set_modeline(dvi_mode);
+        }else{
+            printf("?invalid argument\n");
+            return;
+        }
+    }else{
+        printf("modeline %d %d %d %d %d %d %d %d %c%c\n",
+            dvi_mode->h_active_pixels,
+            dvi_mode->h_active_pixels + dvi_mode->h_front_porch,
+            dvi_mode->h_active_pixels + dvi_mode->h_front_porch + dvi_mode->h_sync_width,
+            dvi_mode->h_active_pixels + dvi_mode->h_front_porch + dvi_mode->h_sync_width + dvi_mode->h_back_porch,
+            dvi_mode->v_active_lines,
+            dvi_mode->v_active_lines + dvi_mode->v_front_porch,
+            dvi_mode->v_active_lines + dvi_mode->v_front_porch + dvi_mode->v_sync_width,
+            dvi_mode->v_active_lines + dvi_mode->v_front_porch + dvi_mode->v_sync_width + dvi_mode->v_back_porch,
+            (dvi_mode->sync_polarity == vneg_hneg || dvi_mode->sync_polarity == vpos_hneg) ? '-' : '+',
+            (dvi_mode->sync_polarity == vneg_hneg || dvi_mode->sync_polarity == vneg_hpos) ? '-' : '+'
+        );
+    }
 }

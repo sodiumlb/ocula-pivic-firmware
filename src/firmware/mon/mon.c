@@ -11,6 +11,7 @@
 #include "mon/ram.h"
 #include "mon/set.h"
 #include "sys/com.h"
+#include "sys/dvi.h"
 #include "sys/mem.h"
 #include "sys/sys.h"
 #include "sys/vga.h"
@@ -36,6 +37,7 @@ static struct
     {6, "reboot", sys_mon_reboot},
     {5, "reset", sys_mon_reset},
     {6, "binary", ram_mon_binary},
+    {8, "modeline", dvi_mon_modeline},
 #ifdef PIVIC
     {4, "tune", cvbs_mon_tune},
     {6, "colour", cvbs_mon_colour},

@@ -9,6 +9,7 @@
 #define _DVI_H_
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 // Bit depth & pixels per word
@@ -60,5 +61,8 @@ void dvi_init(void);
 void dvi_task(void);
 
 void dvi_print_status(void);
+
+void dvi_mon_modeline(const char *args, size_t len);
+
 
 #endif /* _DVI_H_ */
