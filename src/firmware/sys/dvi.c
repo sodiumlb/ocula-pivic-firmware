@@ -8,11 +8,13 @@
 
 /*
     Using dvi_out_hstx_encoder from pico-examples as starting point, fitted in an RP6502 like display system 
+    Integrating extensions from filliperama86
 */
 
 #include "main.h"
 #include "str.h"
 #include "sys/dvi.h"
+#include "sys/dvi_audio.h"
 #include "sys/mem.h"
 #include "hardware/clocks.h"
 #include "hardware/dma.h"
@@ -24,13 +26,14 @@
 #include "hardware/structs/sio.h"
 #include "pico/multicore.h"
 #include "pico/sem.h"
+#include "pico_hdmi/hstx_packet.h"
 #include <stdio.h>
 #include <string.h>
 
 volatile uint8_t dvi_framebuf[DVI_FB_HEIGHT][DVI_FB_WIDTH];
 
 //System specific configs are defined in their respective display subsystems
-dvi_modeline_t default_mode = {
+dvi_modeline_t local_mode = {
     .pixel_format = dvi_4_rgb332,
     .scale_x = 3,
     .scale_y = 2,
@@ -46,7 +49,10 @@ dvi_modeline_t default_mode = {
     .v_active_lines = 480,
     .sync_polarity = vneg_hneg,
 };
-dvi_modeline_t *dvi_mode = &default_mode;
+dvi_modeline_t *dvi_mode = &local_mode;
+dvi_modeline_t *next_dvi_mode;
+static bool switch_dvi_mode = false;
+
 int32_t fb_mode_offset;
 uint32_t fb_mode_transfers;
 
@@ -62,6 +68,12 @@ uint32_t fb_mode_transfers;
 #define SYNC_V0_H1 (TMDS_CTRL_01 | (TMDS_CTRL_00 << 10) | (TMDS_CTRL_00 << 20))
 #define SYNC_V1_H0 (TMDS_CTRL_10 | (TMDS_CTRL_00 << 10) | (TMDS_CTRL_00 << 20))
 #define SYNC_V1_H1 (TMDS_CTRL_11 | (TMDS_CTRL_00 << 10) | (TMDS_CTRL_00 << 20))
+
+#define PREAMBLE ((TMDS_CTRL_01 << 10) | (TMDS_CTRL_01 << 20))
+
+#define VIDEO_PREAMBLE ((TMDS_CTRL_01 << 10) | (TMDS_CTRL_00 << 20))
+
+#define VIDEO_GUARD_BAND (0x2CCu | (0x133u << 10) | (0x2CCu << 20))
 
 // #define MODE_H_SYNC_POLARITY 0
 // #define MODE_H_FRONT_PORCH   16
@@ -90,6 +102,9 @@ uint32_t fb_mode_transfers;
 #define HSTX_CMD_TMDS_REPEAT (0x3u << 12)
 #define HSTX_CMD_NOP         (0xfu << 12)
 
+#define W_VIDEO_PREAMBLE 8
+#define W_VIDEO_GUARD_BAND 2
+
 // ----------------------------------------------------------------------------
 // HSTX command lists
 
@@ -97,12 +112,28 @@ uint32_t fb_mode_transfers;
 // pingponging and tripping up the IRQs.
 
 static uint32_t vblank_line_vsync_off[7];
+static uint32_t vblank_line_vsync_off_audio[46];
 static uint32_t vblank_line_vsync_on[7];
+static uint32_t vblank_line_vsync_on_audio_info[46];
+static uint32_t vblank_line_vsync_on_avi_info[46];
+static uint32_t vblank_line_vsync_on_acr_info[46];
+static uint32_t vblank_line_vsync_off_acr_info[46];
 static uint32_t vactive_line[9];
+static uint32_t vactive_line_audio[50];
 static uint32_t vborder_line[10];
+static uint32_t vborder_line_audio[51];
+static uint32_t *audio_di_active;
+static uint32_t *audio_di_border;
+static uint32_t *audio_di_blank;
+static uint32_t *acr_di_active;
+static uint32_t acr_line_incr;
+static uint32_t acr_cts;
+
+#define HSTX_SET_LANE0(lane21, lane0) ((lane21 & 0x3FFFFC00) | (lane0 & 0x000003FF))
 
 void dvi_build_hstx_lists(dvi_modeline_t *mode){
-    uint32_t* p;
+    uint32_t *p;
+    uint32_t *di_words;
     uint32_t sync_von_hon, sync_von_hof, sync_vof_hon, sync_vof_hof;
     switch(mode->sync_polarity){
         case(vneg_hneg):
@@ -139,6 +170,22 @@ void dvi_build_hstx_lists(dvi_modeline_t *mode){
     *p++ = sync_vof_hof;
     *p++ = HSTX_CMD_NOP;
 
+    p = &vblank_line_vsync_off_audio[0];
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
+    *p++ = sync_vof_hof;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_sync_width;
+    *p++ = sync_vof_hon;
+    *p++ = HSTX_CMD_RAW_REPEAT | W_PREAMBLE;
+    *p++ = HSTX_SET_LANE0(PREAMBLE, sync_vof_hof);
+    //*p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW | W_DATA_ISLAND;
+    audio_di_blank = p;
+    dvi_audio_pop_di(p);
+    p += W_DATA_ISLAND;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_back_porch + mode->h_active_pixels - W_PREAMBLE - W_DATA_ISLAND;
+    *p++ = sync_vof_hof;
+    *p++ = HSTX_CMD_NOP;
+
     p = &vblank_line_vsync_on[0];
     *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
     *p++ = sync_von_hof;
@@ -146,6 +193,75 @@ void dvi_build_hstx_lists(dvi_modeline_t *mode){
     *p++ = sync_von_hon;
     *p++ = HSTX_CMD_RAW_REPEAT | (mode->h_back_porch + mode->h_active_pixels);
     *p++ = sync_von_hof;
+    *p++ = HSTX_CMD_NOP;
+
+    hstx_packet_t infoframe;
+    hstx_packet_set_audio_infoframe(&infoframe, 32000, 2, 16);
+    p = &vblank_line_vsync_on_audio_info[0];
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
+    *p++ = sync_von_hof;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_sync_width;
+    *p++ = sync_von_hon;
+    *p++ = HSTX_CMD_RAW_REPEAT | W_PREAMBLE;
+    *p++ = HSTX_SET_LANE0(PREAMBLE, sync_von_hof);
+    //*p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW | W_DATA_ISLAND;
+    hstx_encode_data_island((hstx_data_island_t*)p, &infoframe, true, false);
+    p += W_DATA_ISLAND;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_back_porch + mode->h_active_pixels - W_PREAMBLE - W_DATA_ISLAND;
+    *p++ = sync_von_hof;
+    *p++ = HSTX_CMD_NOP;
+
+    hstx_packet_set_avi_infoframe(&infoframe, 1, 0);
+    p = &vblank_line_vsync_on_avi_info[0];
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
+    *p++ = sync_von_hof;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_sync_width;
+    *p++ = sync_von_hon;
+    *p++ = HSTX_CMD_RAW_REPEAT | W_PREAMBLE;
+    *p++ = HSTX_SET_LANE0(PREAMBLE, sync_von_hof);
+    //*p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW | W_DATA_ISLAND;
+    hstx_encode_data_island((hstx_data_island_t*)p, &infoframe, true, false);
+    p += W_DATA_ISLAND;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_back_porch + mode->h_active_pixels - W_PREAMBLE - W_DATA_ISLAND;
+    *p++ = sync_von_hof;
+    *p++ = HSTX_CMD_NOP;
+
+    uint32_t pixel_clk = clock_get_hz(clk_sys) / ( 5 * mode->hstx_div );
+    acr_cts = (uint32_t)(((uint64_t)pixel_clk * 4096) / (128ULL * 32000)); //N=4096 for 32kHz
+    acr_line_incr = pixel_clk / ((mode->h_active_pixels + mode->h_front_porch + mode->h_sync_width + mode->h_back_porch) * ((128*32000)/4096));
+
+    hstx_packet_set_acr(&infoframe, 4096, acr_cts);
+    p = &vblank_line_vsync_on_acr_info[0];
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
+    *p++ = sync_von_hof;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_sync_width;
+    *p++ = sync_von_hon;
+    *p++ = HSTX_CMD_RAW_REPEAT | W_PREAMBLE;
+    *p++ = HSTX_SET_LANE0(PREAMBLE, sync_von_hof);
+    //*p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW | W_DATA_ISLAND;
+    hstx_encode_data_island((hstx_data_island_t*)p, &infoframe, true, false);
+    p += W_DATA_ISLAND;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_back_porch + mode->h_active_pixels - W_PREAMBLE - W_DATA_ISLAND;
+    *p++ = sync_von_hof;
+    *p++ = HSTX_CMD_NOP;
+
+    p = &vblank_line_vsync_off_acr_info[0];
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
+    *p++ = sync_vof_hof;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_sync_width;
+    *p++ = sync_vof_hon;
+    *p++ = HSTX_CMD_RAW_REPEAT | W_PREAMBLE;
+    *p++ = HSTX_SET_LANE0(PREAMBLE, sync_vof_hof);
+    //*p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW | W_DATA_ISLAND;
+    hstx_encode_data_island((hstx_data_island_t*)p, &infoframe, false, false);
+    acr_di_active = p;
+    p += W_DATA_ISLAND;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_back_porch + mode->h_active_pixels - W_PREAMBLE - W_DATA_ISLAND;
+    *p++ = sync_vof_hof;
     *p++ = HSTX_CMD_NOP;
 
     p = &vactive_line[0];
@@ -159,6 +275,29 @@ void dvi_build_hstx_lists(dvi_modeline_t *mode){
     *p++ = sync_vof_hof;
     *p++ = HSTX_CMD_TMDS       | mode->h_active_pixels;
 
+    p = &vactive_line_audio[0];
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
+    *p++ = sync_vof_hof;
+    //*p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_sync_width;
+    *p++ = sync_vof_hon;
+    //*p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW_REPEAT | W_PREAMBLE;
+    *p++ = HSTX_SET_LANE0(PREAMBLE, sync_vof_hof);
+    //*p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW | W_DATA_ISLAND;
+    audio_di_active = p;
+    dvi_audio_pop_di(p);
+    p += W_DATA_ISLAND;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_back_porch - W_PREAMBLE - W_DATA_ISLAND - W_VIDEO_PREAMBLE - W_VIDEO_GUARD_BAND;
+    *p++ = sync_vof_hof;
+    *p++ = HSTX_CMD_RAW_REPEAT | W_VIDEO_PREAMBLE;
+    *p++ = HSTX_SET_LANE0(VIDEO_PREAMBLE, sync_vof_hof);
+    //*p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW_REPEAT | W_VIDEO_GUARD_BAND;
+    *p++ = VIDEO_GUARD_BAND;
+    *p++ = HSTX_CMD_TMDS       | mode->h_active_pixels;
+
     p = &vborder_line[0];
     *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
     *p++ = sync_vof_hof;
@@ -170,12 +309,39 @@ void dvi_build_hstx_lists(dvi_modeline_t *mode){
     *p++ = sync_vof_hof;
     *p++ = HSTX_CMD_TMDS_REPEAT| mode->h_active_pixels;
     *p++ = 0x00000000; //black border
+
+    p = &vborder_line_audio[0];
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
+    *p++ = sync_vof_hof;
+    //*p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_sync_width;
+    *p++ = sync_vof_hon;
+    //*p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW_REPEAT | W_PREAMBLE;
+    *p++ = HSTX_SET_LANE0(PREAMBLE, sync_vof_hof);
+    //*p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW | W_DATA_ISLAND;
+    audio_di_border = p;
+    dvi_audio_pop_di(p);
+    p += W_DATA_ISLAND;
+    *p++ = HSTX_CMD_RAW_REPEAT | mode->h_back_porch - W_PREAMBLE - W_DATA_ISLAND - W_VIDEO_PREAMBLE - W_VIDEO_GUARD_BAND;
+    *p++ = sync_vof_hof;
+    *p++ = HSTX_CMD_RAW_REPEAT | W_VIDEO_PREAMBLE;
+    *p++ = HSTX_SET_LANE0(VIDEO_PREAMBLE, sync_vof_hof);
+    //*p++ = HSTX_CMD_NOP;
+    *p++ = HSTX_CMD_RAW_REPEAT | W_VIDEO_GUARD_BAND;
+    *p++ = VIDEO_GUARD_BAND;
+    *p++ = HSTX_CMD_TMDS_REPEAT| mode->h_active_pixels;
+    *p++ = 0x00000000; //black border
 };
 
 // ----------------------------------------------------------------------------
 // DMA logic
 
 volatile uint32_t irq_count = 0;
+volatile uint32_t audio_count = 0;
+volatile uint32_t frame_count = 0;
+volatile uint32_t acr_count = 0;
 
 // First we ping. Then we pong. Then... we ping again.
 static bool dma_pong = false;
@@ -209,30 +375,86 @@ static void dma_irq_handler() {
     uint ch_num = dma_pong ? DMACH_PONG : DMACH_PING;
     static uintptr_t fb_ptr = (uintptr_t)&dvi_framebuf;
     static uint repeat = 0;
+    static bool send_avi = true;
+    static bool send_acr = true;
+    static bool send_aud = true;
+    static uint32_t line_count = 0;
+    static uint32_t next_acr_line = 0;
+
     dma_channel_hw_t *ch = &dma_hw->ch[ch_num];
     dma_hw->intr = 1u << ch_num;
     dma_pong = !dma_pong;
 
+    if(line_count >= next_acr_line){
+        send_acr = true;
+        next_acr_line = line_count + acr_line_incr;
+    }
+
     if (v_scanline < dvi_mode->v_front_porch) {
         hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
-        ch->read_addr = (uintptr_t)vblank_line_vsync_off;
-        ch->transfer_count = count_of(vblank_line_vsync_off);
+        if(false){
+            ch->read_addr = (uintptr_t)vblank_line_vsync_off_acr_info;
+            ch->transfer_count = count_of(vblank_line_vsync_off_acr_info);
+            send_acr = false;
+            acr_count++;
+        }else{
+            ch->read_addr = (uintptr_t)vblank_line_vsync_off;
+            ch->transfer_count = count_of(vblank_line_vsync_off);
+        }
     } else if (v_scanline < mode_v_sync_end) {
-       hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
-        ch->read_addr = (uintptr_t)vblank_line_vsync_on;
-        ch->transfer_count = count_of(vblank_line_vsync_on);
+        hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);
+        if(v_scanline == dvi_mode->v_front_porch){
+            ch->read_addr = (uintptr_t)vblank_line_vsync_on_acr_info;
+            ch->transfer_count = count_of(vblank_line_vsync_on_acr_info);
+            send_acr = false;
+            acr_count++;
+        }else if(send_avi){
+            ch->read_addr = (uintptr_t)vblank_line_vsync_on_avi_info;
+            ch->transfer_count = count_of(vblank_line_vsync_on_avi_info);
+            send_avi = false;
+        }else if(send_aud && frame_count % 2){        
+            ch->read_addr = (uintptr_t)vblank_line_vsync_on_audio_info;
+            ch->transfer_count = count_of(vblank_line_vsync_on_audio_info);
+            send_aud = false;
+        }else{
+            ch->read_addr = (uintptr_t)vblank_line_vsync_on;
+            ch->transfer_count = count_of(vblank_line_vsync_on);
+        }
     } else if (v_scanline < mode_v_blank_end) {
-        hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
-        ch->read_addr = (uintptr_t)vblank_line_vsync_off;
-        ch->transfer_count = count_of(vblank_line_vsync_off);
+        hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);
+        if(v_scanline % 4 == 0){
+            ch->read_addr = (uintptr_t)vblank_line_vsync_off_acr_info;
+            ch->transfer_count = count_of(vblank_line_vsync_off_acr_info);
+            send_acr = false;
+            acr_count++;
+        }else{
+            ch->read_addr = (uintptr_t)vblank_line_vsync_off;
+            ch->transfer_count = count_of(vblank_line_vsync_off);
+        }
     } else if (v_scanline < mode_v_border_top_end || v_scanline >= mode_v_fb_end) {
-        hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
-        ch->read_addr = (uintptr_t)vborder_line;
-        ch->transfer_count = count_of(vborder_line);
+        hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);
+        if(false){
+            memcpy((void*)audio_di_border, (void*)acr_di_active, sizeof(hstx_data_island_t));
+            send_acr = false;
+            acr_count++;
+        }else{
+            if(dvi_audio_pop_di(audio_di_border))
+                audio_count++;    
+        }   
+        ch->read_addr = (uintptr_t)vborder_line_audio;
+        ch->transfer_count = count_of(vborder_line_audio);
     } else if (!vactive_cmdlist_posted) {
-        hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
-        ch->read_addr = (uintptr_t)vactive_line;
-        ch->transfer_count = count_of(vactive_line);
+        hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);  
+        if(false){
+            memcpy((void*)audio_di_active, (void*)acr_di_active, sizeof(hstx_data_island_t));
+            send_acr = false;
+            acr_count++;
+        }else{
+            if(dvi_audio_pop_di(audio_di_active))
+                audio_count++;      
+        }
+        ch->read_addr = (uintptr_t)vactive_line_audio;
+        ch->transfer_count = count_of(vactive_line_audio);
         vactive_cmdlist_posted = true;
     } else {
         hw_clear_bits(&ch->al1_ctrl, 0x3 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);   //DMA_SIZE_8
@@ -246,9 +468,17 @@ static void dma_irq_handler() {
     }
 
     if (!vactive_cmdlist_posted) {
+        line_count++;
         if(++v_scanline >= mode_v_total_lines){
             v_scanline = 0;
             fb_ptr = mode_fb_start;
+            send_avi = true;
+            send_aud = true;
+            frame_count++;
+            if(switch_dvi_mode){
+                dvi_set_modeline(next_dvi_mode);
+                switch_dvi_mode = false;
+            }
         }
     }
 }
@@ -428,6 +658,9 @@ void dvi_print_status(void){
     printf(" HSTX stat:%08x\n", hstx_fifo_hw->stat);
     printf(" IRQ count:%08x\n", irq_count);
     printf(" fb_mode_transfers:%d\n", fb_mode_transfers);
+    printf(" audio_count_per_frame:%d / %d = %d \n", audio_count, frame_count, audio_count/frame_count);
+    printf(" acr_count_per_frame:%d / %d = %d \n", acr_count, frame_count, acr_count/frame_count);
+    printf(" audio acr:%d %d\n", acr_cts, acr_line_incr);
     dvi_print_modeline(dvi_mode);
 }
 
@@ -483,20 +716,30 @@ void dvi_mon_modeline(const char *args, size_t len){
             parse_polarity(&args, &len, &hvpolarity) &&
             parse_end(args, len))
        {
-            dvi_mode->h_active_pixels = hactive;
-            dvi_mode->v_active_lines = vactive;
+            local_mode.h_active_pixels = hactive;
+            local_mode.v_active_lines = vactive;
 
-            dvi_mode->h_front_porch = hsync_start - hactive;
-            dvi_mode->h_sync_width = hsync_end - hsync_start;
-            dvi_mode->h_back_porch = htotal - hsync_end;
+            local_mode.h_front_porch = hsync_start - hactive;
+            local_mode.h_sync_width = hsync_end - hsync_start;
+            local_mode.h_back_porch = htotal - hsync_end;
 
-            dvi_mode->v_front_porch = vsync_start - vactive;
-            dvi_mode->v_sync_width = vsync_end - vsync_start;
-            dvi_mode->v_back_porch = vtotal - vsync_end;
+            local_mode.v_front_porch = vsync_start - vactive;
+            local_mode.v_sync_width = vsync_end - vsync_start;
+            local_mode.v_back_porch = vtotal - vsync_end;
 
-            dvi_mode->sync_polarity = hvpolarity;
-            dvi_print_modeline(dvi_mode);
-            dvi_set_modeline(dvi_mode);
+            local_mode.sync_polarity = hvpolarity;
+
+            //Take non modeline parameters from current active mode
+            //TODO auto calculate?
+            local_mode.hstx_div = dvi_mode->hstx_div;
+            local_mode.offset_x = dvi_mode->offset_x;
+            local_mode.offset_y = dvi_mode->offset_y;
+            local_mode.scale_x = dvi_mode->scale_x;
+            local_mode.scale_y = dvi_mode->scale_y;
+
+            dvi_print_modeline(&local_mode);
+            next_dvi_mode = &local_mode;
+            switch_dvi_mode = true;
         }else{
             printf("?invalid argument\n");
             return;

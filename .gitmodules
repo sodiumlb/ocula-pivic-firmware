@@ -10,3 +10,6 @@
 [submodule "src/tinyusb"]
 	path = src/tinyusb
 	url = https://github.com/hathach/tinyusb.git
+[submodule "src/pico_hdmi"]
+	path = src/pico_hdmi
+	url = https://github.com/fliperama86/pico_hdmi

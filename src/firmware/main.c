@@ -16,6 +16,7 @@
 #include "sys/clk.h"
 #include "sys/cpu.h"
 #include "sys/dvi.h"
+#include "sys/dvi_audio.h"
 #include "sys/lfs.h"
 #include "sys/rev.h"
 #include "sys/sys.h"
@@ -75,6 +76,7 @@ static void init(void)
     ula_init();
 #endif
     dvi_init();
+    dvi_audio_init();
 }
 
 static void task(void)
@@ -99,6 +101,7 @@ static void task(void)
     com_task();
     mon_task();
     //ram_task();
+    dvi_audio_task();
 }
 
 void main_flush(void)
