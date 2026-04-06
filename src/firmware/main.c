@@ -29,6 +29,7 @@
 #include "tusb.h"
 
 #ifdef OCULA
+#include "oric/aud.h"
 #include "oric/rst.h"
 #include "oric/ula.h"
 #endif
@@ -73,6 +74,7 @@ static void init(void)
     pot_init();
 #endif
 #ifdef OCULA
+    aud_init();
     ula_init();
 #endif
     dvi_init();
@@ -92,6 +94,7 @@ static void task(void)
 #endif
 #ifdef OCULA
     ula_task();
+    aud_task();
 #endif 
     //vga_task();
     //term_task();

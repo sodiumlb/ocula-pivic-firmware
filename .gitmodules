@@ -13,3 +13,6 @@
 [submodule "src/pico_hdmi"]
 	path = src/pico_hdmi
 	url = https://github.com/fliperama86/pico_hdmi
+[submodule "src/emu2149"]
+	path = src/emu2149
+	url = https://github.com/digital-sound-antiques/emu2149

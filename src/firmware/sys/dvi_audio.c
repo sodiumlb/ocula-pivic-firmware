@@ -43,6 +43,10 @@ static uint8_t di_tail_idx = 0;
 
 static volatile audio_sample_t *source_sample = 0;
 
+bool dvi_audio_buf_is_full(void){
+    return (((dma_sample_chan->write_addr >> 2) % (DVI_AUDIO_BUF_LEN)) + 1) % (DVI_AUDIO_BUF_LEN-1) == tail_idx;
+}
+
 uint8_t dvi_audio_get_buflen(void){
    return (((dma_sample_chan->write_addr >> 2) % (DVI_AUDIO_BUF_LEN)) - tail_idx) % (DVI_AUDIO_BUF_LEN-1);
 }

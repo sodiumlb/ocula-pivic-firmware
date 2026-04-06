@@ -28,6 +28,7 @@ target_include_directories(ocula PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/tinyusb/src
     ${CMAKE_CURRENT_LIST_DIR}/pico_hdmi/include
+    ${CMAKE_CURRENT_LIST_DIR}/emu2149
     firmware
 )
 
@@ -44,6 +45,7 @@ target_sources(ocula PRIVATE
     firmware/mon/ram.c
     firmware/mon/set.c
     firmware/mon/vip.c
+    firmware/oric/aud.c
     firmware/oric/rst.c
     firmware/oric/ula.c
     firmware/oric/ula_dvi.c
@@ -66,6 +68,7 @@ target_sources(ocula PRIVATE
     littlefs/lfs.c
     littlefs/lfs_util.c
     pico_hdmi/src/hstx_packet.c
+    emu2149/emu2149.c
 )
 
 target_link_libraries(ocula PRIVATE

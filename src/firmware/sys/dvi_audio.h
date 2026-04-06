@@ -27,6 +27,7 @@ void dvi_audio_task(void);
 //at the DVI audio frequency for digital output.
 //Must be set before dvi_audio_init() is called
 void dvi_audio_set_sample_source(volatile audio_sample_t *src_ptr);
+bool dvi_audio_buf_is_full(void);
 bool dvi_audio_pop_di(uint32_t *di);
 
 void dvi_audio_print_status(void);
