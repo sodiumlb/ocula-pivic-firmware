@@ -56,15 +56,15 @@ void aud_step_noise(uint8_t reg){
     }
 }
 
+volatile audio_sample_t pwm_sample;
+//volatile audio_sample_t dvi_sample;
 
-volatile uint16_t pwm_sample;
-volatile uint16_t dvi_sample;
-
-uint8_t aud_update_pwm(uint8_t vol_reg){
-    int16_t pwm_value_signed = ( aud_val[0] + aud_val[1] + aud_val[2] + aud_val[3] ) * (vol_reg & 0x0F);
-    pwm_set_chan_level(AUDIO_PWM_SLICE, AUDIO_PWM_CH, (uint8_t)(pwm_value_signed + 32));    //DC offset required for bias of mainboard audio circuit
-    pwm_sample = pwm_value_signed;
-    return (uint8_t)(pwm_value_signed + 32);
+void aud_update_pwm(void){
+    int16_t pwm_value_signed = ( aud_val[0] + aud_val[1] + aud_val[2] + aud_val[3] ) * (VIC_CRE & 0x0F);
+    uint8_t sample = (uint8_t)(pwm_value_signed + 32);  //DC offset required for bias of mainboard audio circuit
+    pwm_set_chan_level(AUDIO_PWM_SLICE, AUDIO_PWM_CH, sample);    
+    pwm_sample.left = sample << 5;
+    pwm_sample.right = sample << 5;
 }
 
 void aud_init(void){
@@ -77,29 +77,6 @@ void aud_init(void){
     pwm_init(AUDIO_PWM_SLICE, &config, true);
     pwm_set_chan_level(AUDIO_PWM_SLICE, AUDIO_PWM_CH, 0);
     pwm_set_enabled(AUDIO_PWM_SLICE, true);
-
-    config = pwm_get_default_config();
-    pwm_config_set_wrap(&config, clock_get_hz(clk_sys)/32000);   //Make 32kHz clock
-    pwm_init(AUDIO_SAMPLE_PWM_SLICE, &config, true);
-    pwm_set_enabled(AUDIO_SAMPLE_PWM_SLICE, true);
-
-    int sample_chan = dma_claim_unused_channel(true);
-
-    dma_channel_config sample_dma = dma_channel_get_default_config(sample_chan);
-    // int sample_timer = dma_claim_unused_timer(true);
-    // dma_timer_set_fraction(sample_timer, clock_get_hz(clk_sys)/32000, 0);
-    // channel_config_set_dreq(&sample_dma, dma_get_timer_dreq(sample_timer));
-    channel_config_set_dreq(&sample_dma, pwm_get_dreq(AUDIO_SAMPLE_PWM_SLICE));
-    channel_config_set_read_increment(&sample_dma, false);
-    channel_config_set_write_increment(&sample_dma, false);
-    channel_config_set_transfer_data_size(&sample_dma, DMA_SIZE_16);
-    dma_channel_configure(
-        sample_chan,
-        &sample_dma,
-        &dvi_sample,                      // dst exactly timed sample for DVI output
-        &pwm_sample,                      // src Latest sample value from PWM
-        0xFF000000,                       // Single transfer 
-        true);
 
     // Init the three voices to zero
     for(int i=0; i < 3; i++){
@@ -124,32 +101,23 @@ void aud_init(void){
     VIC_CRC = 0x00;
     VIC_CRD = 0x00;
     VIC_CRE = 0xF;
+
+    dvi_audio_set_sample_source(&pwm_sample);
 }
 
 static int64_t last_sample_time_diff;
 static uint32_t lost_samples = 0;
 //TODO Is calculating and updating audio in normal task good enough?
+//
 void aud_task(void){
-    aud_calc_voice(0, aud_regs.ch[0]);
-    aud_calc_voice(1, aud_regs.ch[1]);
-    aud_calc_voice(2, aud_regs.ch[2]);
-    // if(multicore_doorbell_is_set_current_core(3)){
-    //     multicore_doorbell_clear_current_core(3);
     while(multicore_fifo_rvalid()){
         uint32_t upd = sio_hw->fifo_rd;
+        aud_calc_voice(0, aud_regs.ch[0]);
+        aud_calc_voice(1, aud_regs.ch[1]);
+        aud_calc_voice(2, aud_regs.ch[2]);
         if(upd & 0x08)
-        aud_step_noise(upd >> 24);
-    }
-    uint8_t sample = aud_update_pwm(VIC_CRE);
-    static absolute_time_t time_of_last_sample;
-    //SW interrupt monitoring of 32kHz clock to not disturb DVI interrupt system
-    if(pwm_hw->intr & (1u << AUDIO_SAMPLE_PWM_SLICE)){
-        pwm_clear_irq(AUDIO_SAMPLE_PWM_SLICE);
-        if(!dvi_audio_push_sample(dvi_sample)){
-            lost_samples++;
-        }
-        last_sample_time_diff = absolute_time_diff_us(time_of_last_sample, get_absolute_time());
-        time_of_last_sample = get_absolute_time();
+            aud_step_noise(upd >> 24);
+        aud_update_pwm();
     }
 }
 
@@ -161,6 +129,6 @@ void aud_print_status(void){
         );
     printf("    tck:%08x cnt:%08x upd:%01x\n", aud_ticks.all, aud_counters.all, sio_hw->doorbell_in_set);
     printf("    pwm intr:%08x\n", pwm_hw->intr);
-    printf("    last_sample_periode_us: %lld\n", last_sample_time_diff);
-    printf("    DVI lost samples: %d\n", lost_samples);
+    // printf("    last_sample_periode_us: %lld\n", last_sample_time_diff);
+    // printf("    DVI lost samples: %d\n", lost_samples);
 }

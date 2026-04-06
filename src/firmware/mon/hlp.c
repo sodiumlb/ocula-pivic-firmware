@@ -28,9 +28,10 @@ static const char __in_flash("helptext") hlp_text_set[] =
     // "SET CAPS (0|1|2)    - Invert or force caps while 6502 is running.\n"
     // "SET PHI2 (kHz)      - Query or set PHI2 speed. This is the 6502 clock.\n"
     // "SET BOOT (rom|-)    - Select ROM to boot from cold start. \"-\" for none.\n"
-    "SET SPLASH (0|1)    - Disable or enable splash screen.\n"
-    "SET DVI (0|1|2)     - Query or set display type for DVI output.\n"
-    "SET MODE (0|1|2|3)  - Query or set main operational mode.";
+    "SET SPLASH (0|1)    - Query or set  splash screen disable or enable.\n"
+    "SET DVI (0|1|2|..)  - Query or set display type for DVI output.\n"
+    "SET AUDIO (0|1)     - Query or set DVI audio disable or enable.\n"
+    "SET MODE (0|1|2|..) - Query or set main operational mode.";
 
 static const char __in_flash("helptext") hlp_text_about[] =
     "    OCULA & PIVIC - Copyright (c) 2025 Sodiumlightbaby & Dreamseal\n"
@@ -164,7 +165,13 @@ static const char __in_flash("helptext") hlp_text_dvi[] =
     "DVI modes available depends on emulation mode.\n"
     "Use SET DVI without argument for list of DVI modes";
 
-static const char __in_flash("helptext") hlp_text_mode[] =
+static const char __in_flash("helptext") hlp_text_dvi_audio[] =
+    "SET AUDIO disables or enables DVI digital audio.\n"
+    "Some monitors need DVI audio disabled to accept the display stream.\n"
+    " 0 - disable DVI audio\n"
+    " 1 - enable DVI audio";
+
+    static const char __in_flash("helptext") hlp_text_mode[] =
 #ifdef PIVIC
     "SET MODE selects the type of VIC emulation\n"
     "  0 - VIC 6560 NTSC/60 CVBS on Luma\n"
@@ -261,6 +268,7 @@ static struct
     {4, "boot", hlp_text_boot},
     {6, "splash", hlp_text_splash},
     {3, "dvi", hlp_text_dvi},
+    {5, "audio", hlp_text_dvi_audio},
     {4, "mode", hlp_text_mode},
 };
 static const size_t SETTINGS_COUNT = sizeof SETTINGS / sizeof *SETTINGS;
@@ -273,7 +281,7 @@ static uint32_t hlp_roms_list(uint32_t width)
     uint32_t col = 0;
     lfs_dir_t lfs_dir;
     struct lfs_info lfs_info;
-    int result = lfs_dir_open(&lfs_volume, &lfs_dir, "");
+    int result = lfs_dir_open(&lfs_volume, &lfs_dir, "/");
     if (result < 0)
     {
         printf("?Unable to open ROMs directory (%d)\n", result);

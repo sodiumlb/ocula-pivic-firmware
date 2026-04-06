@@ -57,6 +57,7 @@ extern volatile uint8_t dvi_framebuf[DVI_FB_HEIGHT][DVI_FB_WIDTH];
 //Modes and modelines are defined and set from the primary display systems (e.g. VIC or ULA)
 void dvi_set_modeline(dvi_modeline_t *ml);
 void dvi_print_modeline(dvi_modeline_t *ml);
+void dvi_get_modeline_polarity(bool *vsync, bool *hsync);
 void dvi_init(void);
 void dvi_task(void);
 
