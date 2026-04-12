@@ -22,6 +22,7 @@
 // +S1         | Splash screen enable
 // +D0         | DVI display type
 // +M0         | Mode (e.g. VIC PAL/NTSC for PIVIC)
+// +U0         | Core voltage override
 // BASIC       | Boot ROM - Must be last
 
 #define CFG_VERSION 1
@@ -32,6 +33,7 @@ static uint8_t cfg_caps;
 static uint8_t cfg_splash = 1;
 static uint8_t cfg_dvi_mode = 0;
 static uint8_t cfg_mode = 1;
+static uint8_t cfg_volt = 0;
 
 // Optional string can replace boot string
 static void cfg_save_with_boot_opt(char *opt_str)
@@ -70,6 +72,7 @@ static void cfg_save_with_boot_opt(char *opt_str)
                                "+S%d\n"
                                "+D%d\n"
                                "+M%d\n"
+                               "+U%d\n"
                                "%s",
                                CFG_VERSION,
                                cfg_phi2_khz,
@@ -77,6 +80,7 @@ static void cfg_save_with_boot_opt(char *opt_str)
                                cfg_splash,
                                cfg_dvi_mode,
                                cfg_mode,
+                               cfg_volt,
                                opt_str);
         if (lfsresult < 0)
             printf("?Unable to write %s contents (%d)\n", filename, lfsresult);
@@ -129,6 +133,9 @@ static void cfg_load_with_boot_opt(bool boot_only)
                 break;
             case 'M':
                 cfg_mode = val;
+                break;
+            case 'U':
+                cfg_volt = val;
             default:
                 break;
             }
@@ -246,4 +253,28 @@ bool cfg_set_mode(uint8_t mode){
 
 uint8_t cfg_get_mode(void){
     return cfg_mode;
+}
+
+bool cfg_set_volt(uint8_t volt)
+{
+#ifdef PIVIC
+    if(volt > 2){
+        return false;
+    }
+#endif
+#ifdef OCULA
+    if(volt > 4){
+        return false;
+    }
+#endif
+    if(cfg_volt != volt){
+        cfg_volt = volt;
+        cfg_save_with_boot_opt(NULL);
+    }
+    return true;
+}
+
+uint8_t cfg_get_volt(void)
+{
+    return cfg_volt;
 }

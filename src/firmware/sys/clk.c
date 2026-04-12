@@ -29,7 +29,7 @@ void clk_set_qmi_clkdiv(uint8_t div){
 
 void clk_init(void){
 #ifdef PIVIC
-    vreg_set_voltage(VREG_VOLTAGE_1_20);
+    vreg_set_voltage(VREG_VOLTAGE_1_20 + cfg_get_volt());
     switch(cfg_get_mode()){
         case(VIC_MODE_NTSC):
         case(VIC_MODE_TEST_NTSC):
@@ -51,6 +51,7 @@ void clk_init(void){
     }
 #endif
 #ifdef OCULA
+    vreg_set_voltage(VREG_VOLTAGE_1_10 + cfg_get_volt());
     clk_set_qmi_clkdiv(4);
     set_sys_clock_khz(276000, true);
     //clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 276000000, 276000000/2);

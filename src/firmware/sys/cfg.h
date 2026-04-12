@@ -30,5 +30,7 @@ bool cfg_set_dvi(uint8_t disp);
 uint8_t cfg_get_dvi(void);
 bool cfg_set_mode(uint8_t mode);
 uint8_t cfg_get_mode(void);
+bool cfg_set_volt(uint8_t volt);
+uint8_t cfg_get_volt(void);
 
 #endif /* _CFG_H_ */

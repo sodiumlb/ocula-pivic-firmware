@@ -196,6 +196,42 @@ static void set_mode(const char *args, size_t len)
     set_print_mode();
 }
 
+static void set_print_volt()
+{
+    const char *const volt_labels[] = {
+#ifdef PIVIC
+        "0 - 1.20V",
+        "1 - 1.25V",
+        "2 - 1.30V",
+#endif
+#ifdef OCULA
+        "0 - 1.10V",
+        "1 - 1.15V",
+        "2 - 1.20V",
+        "3 - 1.25V",
+        "4 - 1.30V",
+#endif
+    };
+    printf("VOLT  : %s\n", volt_labels[cfg_get_volt()]);
+}
+
+
+static void set_volt(const char *args, size_t len)
+{
+    uint32_t val;
+    if (len)
+    {
+        if (!parse_uint32(&args, &len, &val) ||
+            !parse_end(args, len) ||
+            !cfg_set_volt(val))
+        {
+            printf("?invalid argument\n");
+            return;
+        }
+    }
+    set_print_volt();
+}
+
 
 typedef void (*set_function)(const char *, size_t);
 static struct
@@ -209,7 +245,9 @@ static struct
     {4, "boot", set_boot},
     {6, "splash", set_splash},
     {3, "dvi", set_dvi},
-    {4, "mode", set_mode}
+    {5, "audio", set_dvi_audio},
+    {4, "mode", set_mode},
+    {4, "volt", set_volt}
 };
 static const size_t SETTERS_COUNT = sizeof SETTERS / sizeof *SETTERS;
 
@@ -221,6 +259,7 @@ static void set_print_all(void)
     set_print_splash();
     set_print_dvi();
     set_print_mode();
+    set_print_volt();
 }
 
 void set_mon_set(const char *args, size_t len)
