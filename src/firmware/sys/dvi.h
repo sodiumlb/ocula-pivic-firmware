@@ -34,16 +34,16 @@ typedef struct
     dvi_pixel_format_t pixel_format;    //Only RGB332 supported for now
     uint8_t scale_x;                    //Only 2,3 or 4 supported for now
     uint8_t scale_y;                    //Only 1 or 2 supported for now
-    int8_t offset_x;                   
-    int8_t offset_y;
+    int16_t offset_x;                   
+    int16_t offset_y;
     uint8_t hstx_div;
-    uint8_t h_front_porch;
-    uint8_t h_sync_width;
-    uint8_t h_back_porch;
+    uint16_t h_front_porch;
+    uint16_t h_sync_width;
+    uint16_t h_back_porch;
     uint16_t h_active_pixels;
-    uint8_t v_front_porch;
-    uint8_t v_sync_width;
-    uint8_t v_back_porch;
+    uint16_t v_front_porch;
+    uint16_t v_sync_width;
+    uint16_t v_back_porch;
     uint16_t v_active_lines;
     dvi_sync_polarity_t sync_polarity;
 } dvi_modeline_t;
@@ -57,6 +57,7 @@ extern volatile uint8_t dvi_framebuf[DVI_FB_HEIGHT][DVI_FB_WIDTH];
 //Modes and modelines are defined and set from the primary display systems (e.g. VIC or ULA)
 void dvi_set_modeline(dvi_modeline_t *ml);
 void dvi_print_modeline(dvi_modeline_t *ml);
+void dvi_get_modeline_polarity(bool *vsync, bool *hsync);
 void dvi_init(void);
 void dvi_task(void);
 

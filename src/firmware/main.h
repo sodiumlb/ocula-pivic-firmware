@@ -84,6 +84,8 @@ bool main_prog(uint16_t *xregs);
 #define AUDIO_PWM_PIN 2
 #define AUDIO_PWM_SLICE 1
 #define AUDIO_PWM_CH  PWM_CHAN_A
+#define AUDIO_SAMPLE_PWM_SLICE 2
+#define AUIDO_SAMPLE_PWM_CH PWM_CHAN_A
 
 #define DATA_PIN_BASE 20
 #define DATA_PIN_COUNT 8

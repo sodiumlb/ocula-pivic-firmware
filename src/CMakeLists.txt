@@ -27,6 +27,8 @@ pico_set_linker_script(ocula ${CMAKE_CURRENT_LIST_DIR}/memmap_xram_rp2350.ld)
 target_include_directories(ocula PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/tinyusb/src
+    ${CMAKE_CURRENT_LIST_DIR}/pico_hdmi/include
+    ${CMAKE_CURRENT_LIST_DIR}/emu2149
     firmware
 )
 
@@ -43,6 +45,7 @@ target_sources(ocula PRIVATE
     firmware/mon/ram.c
     firmware/mon/set.c
     firmware/mon/vip.c
+    firmware/oric/aud.c
     firmware/oric/rst.c
     firmware/oric/ula.c
     firmware/oric/ula_dvi.c
@@ -51,6 +54,7 @@ target_sources(ocula PRIVATE
     firmware/sys/com.c
     firmware/sys/cpu.c
     firmware/sys/dvi.c
+    firmware/sys/dvi_audio.c
     firmware/sys/lfs.c
     firmware/sys/mem.c
     firmware/sys/sys.c
@@ -63,6 +67,8 @@ target_sources(ocula PRIVATE
     firmware/usb/serno.c
     littlefs/lfs.c
     littlefs/lfs_util.c
+    pico_hdmi/src/hstx_packet.c
+    emu2149/emu2149.c
 )
 
 target_link_libraries(ocula PRIVATE
@@ -107,6 +113,7 @@ pico_set_linker_script(pivic ${CMAKE_CURRENT_LIST_DIR}/memmap_xram_rp2350.ld)
 target_include_directories(pivic PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/tinyusb/src
+    ${CMAKE_CURRENT_LIST_DIR}/pico_hdmi/include
     firmware
 )
 
@@ -136,6 +143,7 @@ target_sources(pivic PRIVATE
     firmware/sys/com.c
     firmware/sys/cpu.c
     firmware/sys/dvi.c
+    firmware/sys/dvi_audio.c
     firmware/sys/lfs.c
     firmware/sys/mem.c
     firmware/sys/rev.c
@@ -151,6 +159,7 @@ target_sources(pivic PRIVATE
     littlefs/lfs_util.c
     #Testing PIVIC parts
     firmware/vic/cvbs.c
+    pico_hdmi/src/hstx_packet.c
 )
 
 target_link_libraries(pivic PRIVATE

@@ -16,6 +16,7 @@
 #include "sys/clk.h"
 #include "sys/cpu.h"
 #include "sys/dvi.h"
+#include "sys/dvi_audio.h"
 #include "sys/lfs.h"
 #include "sys/rev.h"
 #include "sys/sys.h"
@@ -28,6 +29,7 @@
 #include "tusb.h"
 
 #ifdef OCULA
+#include "oric/aud.h"
 #include "oric/rst.h"
 #include "oric/ula.h"
 #endif
@@ -72,9 +74,11 @@ static void init(void)
     pot_init();
 #endif
 #ifdef OCULA
+    aud_init();
     ula_init();
 #endif
     dvi_init();
+    dvi_audio_init();
 }
 
 static void task(void)
@@ -90,6 +94,7 @@ static void task(void)
 #endif
 #ifdef OCULA
     ula_task();
+    aud_task();
 #endif 
     //vga_task();
     //term_task();
@@ -99,6 +104,7 @@ static void task(void)
     com_task();
     mon_task();
     //ram_task();
+    dvi_audio_task();
 }
 
 void main_flush(void)
