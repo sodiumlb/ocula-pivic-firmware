@@ -20,7 +20,8 @@
 // +P8000      | PHI2
 // +C0         | Caps
 // +S1         | Splash screen enable
-// +D0         | DVI display type
+// +D0         | DVI display mode
+// +A1         | DVI audio enable
 // +M0         | Mode (e.g. VIC PAL/NTSC for PIVIC)
 // +U0         | Core voltage override
 // BASIC       | Boot ROM - Must be last
@@ -32,6 +33,7 @@ static uint32_t cfg_phi2_khz;
 static uint8_t cfg_caps;
 static uint8_t cfg_splash = 1;
 static uint8_t cfg_dvi_mode = 0;
+static uint8_t cfg_dvi_audio = 1;
 static uint8_t cfg_mode = 1;
 static uint8_t cfg_volt = 0;
 
@@ -71,6 +73,7 @@ static void cfg_save_with_boot_opt(char *opt_str)
                                "+C%d\n"
                                "+S%d\n"
                                "+D%d\n"
+                               "+A%d\n"
                                "+M%d\n"
                                "+U%d\n"
                                "%s",
@@ -79,6 +82,7 @@ static void cfg_save_with_boot_opt(char *opt_str)
                                cfg_caps,
                                cfg_splash,
                                cfg_dvi_mode,
+                               cfg_dvi_audio,
                                cfg_mode,
                                cfg_volt,
                                opt_str);
@@ -130,6 +134,9 @@ static void cfg_load_with_boot_opt(bool boot_only)
                 break;
             case 'D':
                 cfg_dvi_mode = val;
+                break;
+            case 'A':
+                cfg_dvi_audio = val;
                 break;
             case 'M':
                 cfg_mode = val;
@@ -227,6 +234,20 @@ bool cfg_set_dvi(uint8_t mode)
 uint8_t cfg_get_dvi(void)
 {
     return cfg_dvi_mode;
+}
+
+bool cfg_set_dvi_audio(uint8_t enable)
+{
+    if(cfg_dvi_audio != enable){
+        cfg_dvi_audio = enable;
+        cfg_save_with_boot_opt(NULL);
+    }
+    return true;
+}
+
+uint8_t cfg_get_dvi_audio(void)
+{
+    return cfg_dvi_audio;
 }
 
 bool cfg_set_mode(uint8_t mode){

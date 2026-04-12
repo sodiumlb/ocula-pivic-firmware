@@ -7,9 +7,12 @@
 
 #include "main.h"
 #include "vic/aud.h"
+#include "sys/dvi_audio.h"
 #include "sys/mem.h"
+#include "hardware/dma.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
+#include "hardware/clocks.h"
 #include "pico/multicore.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -53,9 +56,15 @@ void aud_step_noise(uint8_t reg){
     }
 }
 
-void aud_update_pwm(uint8_t vol_reg){
-    int16_t pwm_value_signed = ( aud_val[0] + aud_val[1] + aud_val[2] + aud_val[3] ) * (vol_reg & 0x0F);
-    pwm_set_chan_level(AUDIO_PWM_SLICE, AUDIO_PWM_CH, (uint8_t)(pwm_value_signed + 32));    //DC offset required for bias of mainboard audio circuit
+volatile audio_sample_t pwm_sample;
+//volatile audio_sample_t dvi_sample;
+
+void aud_update_pwm(void){
+    int16_t pwm_value_signed = ( aud_val[0] + aud_val[1] + aud_val[2] + aud_val[3] ) * (VIC_CRE & 0x0F);
+    uint8_t sample = (uint8_t)(pwm_value_signed + 32);  //DC offset required for bias of mainboard audio circuit
+    pwm_set_chan_level(AUDIO_PWM_SLICE, AUDIO_PWM_CH, sample);    
+    pwm_sample.left = sample << 5;
+    pwm_sample.right = sample << 5;
 }
 
 void aud_init(void){
@@ -92,21 +101,25 @@ void aud_init(void){
     VIC_CRC = 0x00;
     VIC_CRD = 0x00;
     VIC_CRE = 0xF;
+
+    dvi_audio_set_sample_source(&pwm_sample);
 }
 
+static int64_t last_sample_time_diff;
+static uint32_t lost_samples = 0;
 //TODO Is calculating and updating audio in normal task good enough?
+//
 void aud_task(void){
-    aud_calc_voice(0, aud_regs.ch[0]);
-    aud_calc_voice(1, aud_regs.ch[1]);
-    aud_calc_voice(2, aud_regs.ch[2]);
-    // if(multicore_doorbell_is_set_current_core(3)){
-    //     multicore_doorbell_clear_current_core(3);
     while(multicore_fifo_rvalid()){
         uint32_t upd = sio_hw->fifo_rd;
+        aud_calc_voice(0, aud_regs.ch[0]);
+        aud_calc_voice(1, aud_regs.ch[1]);
+        aud_calc_voice(2, aud_regs.ch[2]);
         if(upd & 0x08)
-        aud_step_noise(upd >> 24);
+            aud_step_noise(upd >> 24);
+        if(dvi_audio_fs_tick())
+            aud_update_pwm();
     }
-    aud_update_pwm(VIC_CRE);
 }
 
 void aud_print_status(void){
@@ -116,4 +129,7 @@ void aud_print_status(void){
             aud_lfsr
         );
     printf("    tck:%08x cnt:%08x upd:%01x\n", aud_ticks.all, aud_counters.all, sio_hw->doorbell_in_set);
+    printf("    pwm intr:%08x\n", pwm_hw->intr);
+    // printf("    last_sample_periode_us: %lld\n", last_sample_time_diff);
+    // printf("    DVI lost samples: %d\n", lost_samples);
 }

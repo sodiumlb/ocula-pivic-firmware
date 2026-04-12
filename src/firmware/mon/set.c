@@ -109,7 +109,7 @@ static void set_caps(const char *args, size_t len)
 
 static void set_print_splash()
 {
-    printf("SPLASH: %d\n", cfg_get_splash() ? "1 - On" : "0 - Off");
+    printf("SPLASH: %s\n", cfg_get_splash() ? "1 - On" : "0 - Off");
 }
 
 static void set_splash(const char *args, size_t len)
@@ -131,7 +131,7 @@ static void set_splash(const char *args, size_t len)
 static void set_print_dvi(void)
 {
     uint8_t mode = cfg_get_dvi();
-    printf("DVI mode %d\n", mode);
+    printf("DVI   : %d\n", mode);
 #ifdef PIVIC
     vic_print_dvi_modes();
 #endif
@@ -157,6 +157,31 @@ static void set_dvi(const char *args, size_t len)
         }
     }
     set_print_dvi();
+}
+
+static void set_print_dvi_audio(void)
+{
+    uint8_t enable = cfg_get_dvi_audio();
+    printf("AUDIO : %s\n", enable ? "1 - enabled" : "0 - disabled");
+}
+
+static void set_dvi_audio(const char *args, size_t len)
+{
+    uint32_t val;
+    if (len)
+    {
+        if (parse_uint32(&args, &len, &val) &&
+            parse_end(args, len))
+        {
+            cfg_set_dvi_audio(val);
+        }
+        else
+        {
+            printf("?invalid argument\n");
+            return;
+        }
+    }
+    set_print_dvi_audio();
 }
 
 static void set_print_mode()
@@ -258,6 +283,7 @@ static void set_print_all(void)
     // set_print_boot();
     set_print_splash();
     set_print_dvi();
+    set_print_dvi_audio();
     set_print_mode();
     set_print_volt();
 }
