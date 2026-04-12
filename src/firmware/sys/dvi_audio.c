@@ -16,7 +16,7 @@
 
 //Buffer size must be power of 2 and max 128 
 //Alignment for direct DMA use
-#define DVI_AUDIO_BUF_LEN_BITS 5
+#define DVI_AUDIO_BUF_LEN_BITS 7
 #define DVI_AUDIO_BUF_LEN (1<<DVI_AUDIO_BUF_LEN_BITS)
 #define DVI_AUDIO_BUF_SIZE_BITS (DVI_AUDIO_BUF_LEN_BITS+2)
 
@@ -116,7 +116,7 @@ void dvi_audio_init(void){
         &sample_dma,
         audio_buf,                        // dst exactly timed sample for DVI output
         source_sample,                    // src Latest sample value from source 
-        0x10000004,                       // Self triggering, report every 4 transfers
+        0x10000001,                       // Self triggering, report every transfers
         true);
 
     dma_chan_idx = dma_claim_unused_channel(true);
@@ -134,6 +134,14 @@ void dvi_audio_init(void){
         false);
 
     dvi_get_modeline_polarity(&vsync_polarity, &hsync_polarity);
+}
+
+bool dvi_audio_fs_tick(void){
+    bool tick = !!(dma_hw->intr & 1u << dvi_audio_dma_sample_chan_idx);
+    if(tick){
+        dma_hw->intr = 1u << dvi_audio_dma_sample_chan_idx;
+    }
+    return tick;
 }
 
 uint32_t dvi_audio_count=0;

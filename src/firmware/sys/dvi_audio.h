@@ -17,11 +17,8 @@
 #define DVI_AUDIO_FS 48000
 #define DVI_AUDIO_ACR_N 6144
 
-extern int dvi_audio_dma_sample_chan_idx;
-
 void dvi_audio_init(void);
 void dvi_audio_task(void);
-
 
 //Sample source is a fixed location that is sampled
 //at the DVI audio frequency for digital output.
@@ -29,6 +26,8 @@ void dvi_audio_task(void);
 void dvi_audio_set_sample_source(volatile audio_sample_t *src_ptr);
 bool dvi_audio_buf_is_full(void);
 bool dvi_audio_pop_di(uint32_t *di);
+
+bool dvi_audio_fs_tick(void);
 
 void dvi_audio_print_status(void);
 

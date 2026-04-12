@@ -119,7 +119,7 @@ static uint32_t vblank_line_vsync_on_audio_info[46];
 static uint32_t vblank_line_vsync_on_avi_info[46];
 static uint32_t vblank_line_vsync_on_acr_info[46];
 static uint32_t vblank_line_vsync_off_acr_info[46];
-static uint32_t vactive_line[9];
+static uint32_t vactive_line[10];
 static uint32_t vactive_line_audio[50];
 static uint32_t vborder_line[10];
 static uint32_t vborder_line_audio[51];
@@ -233,6 +233,7 @@ void dvi_build_hstx_lists(dvi_modeline_t *mode){
 
     uint32_t pixel_clk = clock_get_hz(clk_sys) / ( 5 * mode->hstx_div );
     acr_cts = (uint32_t)((uint64_t)pixel_clk * DVI_AUDIO_ACR_N / (128ULL * DVI_AUDIO_FS));
+    acr_line_incr = acr_cts / (mode->h_active_pixels + mode->h_front_porch + mode->h_sync_width + mode->h_back_porch);
     
     hstx_packet_set_acr(&infoframe, DVI_AUDIO_ACR_N, acr_cts);
     p = &vblank_line_vsync_on_acr_info[0];
@@ -275,6 +276,7 @@ void dvi_build_hstx_lists(dvi_modeline_t *mode){
     *p++ = HSTX_CMD_NOP;
     *p++ = HSTX_CMD_RAW_REPEAT | mode->h_back_porch;
     *p++ = sync_vof_hof;
+    *p++ = HSTX_CMD_NOP;
     *p++ = HSTX_CMD_TMDS       | mode->h_active_pixels;
 
     p = &vactive_line_audio[0];
@@ -385,7 +387,16 @@ static void dma_irq_handler() {
     dma_hw->intr = 1u << ch_num;
     dma_pong = !dma_pong;
 
-    if (v_scanline < dvi_mode->v_front_porch) {
+    if (vactive_cmdlist_posted){
+        hw_clear_bits(&ch->al1_ctrl, 0x3 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);   //DMA_SIZE_8
+        ch->read_addr = fb_ptr;
+        ch->transfer_count = fb_mode_transfers;
+        vactive_cmdlist_posted = false;
+        if(++repeat >= dvi_mode->scale_y){
+            fb_ptr += DVI_FB_WIDTH;
+            repeat = 0;
+        }
+    } else if (v_scanline < dvi_mode->v_front_porch) {
         hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
         ch->read_addr = (uintptr_t)vblank_line_vsync_off;
         ch->transfer_count = count_of(vblank_line_vsync_off);
@@ -401,20 +412,11 @@ static void dma_irq_handler() {
         hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);
         ch->read_addr = (uintptr_t)vborder_line;
         ch->transfer_count = count_of(vborder_line);
-    } else if (!vactive_cmdlist_posted) {
+    } else {
         hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);  
         ch->read_addr = (uintptr_t)vactive_line;
         ch->transfer_count = count_of(vactive_line);
         vactive_cmdlist_posted = true;
-    } else {
-        hw_clear_bits(&ch->al1_ctrl, 0x3 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);   //DMA_SIZE_8
-        ch->read_addr = fb_ptr;
-        ch->transfer_count = fb_mode_transfers;
-        vactive_cmdlist_posted = false;
-        if(++repeat >= dvi_mode->scale_y){
-            fb_ptr += DVI_FB_WIDTH;
-            repeat = 0;
-        }
     }
 
     if (!vactive_cmdlist_posted) {
@@ -447,7 +449,16 @@ static void __scratch_y("") dma_irq_handler_audio() {
     dma_hw->intr = 1u << ch_num;
     dma_pong = !dma_pong;
 
-    if (v_scanline < mode_v_front_porch) {
+    if (vactive_cmdlist_posted){
+        hw_clear_bits(&ch->al1_ctrl, 0x3 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);   //DMA_SIZE_8
+        ch->read_addr = fb_ptr;
+        ch->transfer_count = fb_mode_transfers;
+        vactive_cmdlist_posted = false;
+        if(++repeat >= dvi_mode->scale_y){
+            fb_ptr += DVI_FB_WIDTH;
+            repeat = 0;
+        }
+    } else if (v_scanline < mode_v_front_porch) {
         hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);        
             ch->read_addr = (uintptr_t)vblank_line_vsync_off;
             ch->transfer_count = count_of(vblank_line_vsync_off);
@@ -456,6 +467,7 @@ static void __scratch_y("") dma_irq_handler_audio() {
         if(v_scanline == mode_v_front_porch){
             ch->read_addr = (uintptr_t)vblank_line_vsync_on_acr_info;
             ch->transfer_count = count_of(vblank_line_vsync_on_acr_info);
+            acr_count++;
         }else if(send_avi){
             ch->read_addr = (uintptr_t)vblank_line_vsync_on_avi_info;
             ch->transfer_count = count_of(vblank_line_vsync_on_avi_info);
@@ -470,9 +482,10 @@ static void __scratch_y("") dma_irq_handler_audio() {
         }
     } else if (v_scanline < mode_v_blank_end) {
         hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);
-        if(v_scanline % 4 == 0){
+        if(v_scanline % 2 == 0){
             ch->read_addr = (uintptr_t)vblank_line_vsync_off_acr_info;
             ch->transfer_count = count_of(vblank_line_vsync_off_acr_info);
+            acr_count++;
         }else{
             ch->read_addr = (uintptr_t)vblank_line_vsync_off;
             ch->transfer_count = count_of(vblank_line_vsync_off);
@@ -486,19 +499,10 @@ static void __scratch_y("") dma_irq_handler_audio() {
     } else if (!vactive_cmdlist_posted) {
         hw_set_bits(&ch->al1_ctrl, DMA_SIZE_32 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);  
         if(dvi_audio_pop_di(audio_di_active))
-            audio_count++;      
+            audio_count++;
         ch->read_addr = (uintptr_t)vactive_line_audio;
         ch->transfer_count = count_of(vactive_line_audio);
         vactive_cmdlist_posted = true;
-    } else {
-        hw_clear_bits(&ch->al1_ctrl, 0x3 << DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB);   //DMA_SIZE_8
-        ch->read_addr = fb_ptr;
-        ch->transfer_count = fb_mode_transfers;
-        vactive_cmdlist_posted = false;
-        if(++repeat >= dvi_mode->scale_y){
-            fb_ptr += DVI_FB_WIDTH;
-            repeat = 0;
-        }
     }
 
     if (!vactive_cmdlist_posted) {

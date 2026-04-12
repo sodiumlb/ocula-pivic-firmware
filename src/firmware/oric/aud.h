@@ -10,6 +10,8 @@
 void aud_init(void);
 void aud_task(void);
 
+void aud_tick(void);
+
 void aud_print_status(void);
  
 #endif /* _AUD_H_ */

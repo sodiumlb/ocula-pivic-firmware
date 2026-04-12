@@ -6,6 +6,7 @@
 
 #include "main.h"
 //#include "sys/ria.h"
+#include "oric/aud.h"
 #include "oric/ula.h"
 #include "oric/ula_dvi.h"
 #include "oric/oric_font.h"
@@ -361,6 +362,7 @@ void core1_loop(void){
                 }   
             }
         }
+    aud_tick();
     }
 }
 

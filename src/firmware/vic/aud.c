@@ -117,7 +117,8 @@ void aud_task(void){
         aud_calc_voice(2, aud_regs.ch[2]);
         if(upd & 0x08)
             aud_step_noise(upd >> 24);
-        aud_update_pwm();
+        if(dvi_audio_fs_tick())
+            aud_update_pwm();
     }
 }
 
