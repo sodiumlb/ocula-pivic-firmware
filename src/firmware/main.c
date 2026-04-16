@@ -20,6 +20,7 @@
 #include "sys/lfs.h"
 #include "sys/rev.h"
 #include "sys/sys.h"
+#include "sys/tst.h"
 #include "sys/vga.h"
 #include "term/font.h"
 #include "term/term.h"
@@ -79,6 +80,7 @@ static void init(void)
 #endif
     dvi_init();
     dvi_audio_init();
+    tst_init();
 }
 
 static void task(void)
@@ -105,6 +107,7 @@ static void task(void)
     mon_task();
     //ram_task();
     dvi_audio_task();
+    tst_task();
 }
 
 void main_flush(void)
