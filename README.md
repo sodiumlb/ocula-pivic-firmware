@@ -32,6 +32,7 @@ cd build
 cmake ../
 make
 ```
+Note that debug target builds are currently too slow for stable operation. Use Release target builds.
 
 ## Related projects
 * [OCULA documentation project](https://github.com/sodiumlb/ocula-docs/wiki)
