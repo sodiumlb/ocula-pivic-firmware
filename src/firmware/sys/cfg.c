@@ -36,6 +36,7 @@ static uint8_t cfg_dvi_mode = 0;
 static uint8_t cfg_dvi_audio = 1;
 static uint8_t cfg_mode = 1;
 static uint8_t cfg_volt = 0;
+static uint8_t cfg_bias = 48;
 
 // Optional string can replace boot string
 static void cfg_save_with_boot_opt(char *opt_str)
@@ -76,6 +77,7 @@ static void cfg_save_with_boot_opt(char *opt_str)
                                "+A%d\n"
                                "+M%d\n"
                                "+U%d\n"
+                               "+B%d\n"
                                "%s",
                                CFG_VERSION,
                                cfg_phi2_khz,
@@ -85,6 +87,7 @@ static void cfg_save_with_boot_opt(char *opt_str)
                                cfg_dvi_audio,
                                cfg_mode,
                                cfg_volt,
+                               cfg_bias,
                                opt_str);
         if (lfsresult < 0)
             printf("?Unable to write %s contents (%d)\n", filename, lfsresult);
@@ -143,6 +146,9 @@ static void cfg_load_with_boot_opt(bool boot_only)
                 break;
             case 'U':
                 cfg_volt = val;
+                break;
+            case 'B':
+                cfg_bias = val;
             default:
                 break;
             }
@@ -298,4 +304,21 @@ bool cfg_set_volt(uint8_t volt)
 uint8_t cfg_get_volt(void)
 {
     return cfg_volt;
+}
+
+bool cfg_set_bias(uint8_t bias)
+{
+    if(bias > 127){
+        return false;
+    }
+    if(cfg_bias != bias){
+        cfg_bias = bias;
+        cfg_save_with_boot_opt(NULL);
+    }
+    return true;
+}
+
+uint8_t cfg_get_bias(void)
+{
+    return cfg_bias;
 }

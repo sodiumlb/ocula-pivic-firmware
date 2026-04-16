@@ -31,7 +31,11 @@ static const char __in_flash("helptext") hlp_text_set[] =
     "SET SPLASH (0|1)    - Query or set  splash screen disable or enable.\n"
     "SET DVI (0|1|2|..)  - Query or set display type for DVI output.\n"
     "SET AUDIO (0|1)     - Query or set DVI audio disable or enable.\n"
-    "SET MODE (0|1|2|..) - Query or set main operational mode.";
+#ifdef PIVIC
+    "SET BIAS (n)        - Adjust the DC bias on the analogue audio.\n"
+#endif
+    "SET MODE (0|1|2|..) - Query or set main operational mode."
+    ;
 
 static const char __in_flash("helptext") hlp_text_about[] =
     "    OCULA & PIVIC - Copyright (c) 2025 Sodiumlightbaby & Dreamseal\n"
@@ -191,7 +195,12 @@ static const char __in_flash("helptext") hlp_text_dvi_audio[] =
 ;
 
 #ifdef PIVIC
-static const char __in_flash("helptext") hlp_text_colour[] =
+static const char __in_flash("helptext") hlp_text_bias[] =
+    "SET BIAS adjust the DC audio bias on the analogue output.\n"
+    "Audio will drop out if too low and clip if too high\n"
+    "Default is 48. 32 can work for many. 64 is 50% bias\n";
+
+    static const char __in_flash("helptext") hlp_text_colour[] =
     "COLOUR|COLOR selects a single palette entry\n"
     "for tuning with the TUNE command. Use 0-15\n"
     "to select each of the 16 colours, or 16 for\n"
@@ -270,6 +279,9 @@ static struct
     {3, "dvi", hlp_text_dvi},
     {5, "audio", hlp_text_dvi_audio},
     {4, "mode", hlp_text_mode},
+#ifdef PIVIC
+    {4, "bias", hlp_text_bias},
+#endif
 };
 static const size_t SETTINGS_COUNT = sizeof SETTINGS / sizeof *SETTINGS;
 

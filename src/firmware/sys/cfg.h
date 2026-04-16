@@ -34,5 +34,7 @@ bool cfg_set_mode(uint8_t mode);
 uint8_t cfg_get_mode(void);
 bool cfg_set_volt(uint8_t volt);
 uint8_t cfg_get_volt(void);
+bool cfg_set_bias(uint8_t bias);
+uint8_t cfg_get_bias(void);
 
 #endif /* _CFG_H_ */

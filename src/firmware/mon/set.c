@@ -257,6 +257,26 @@ static void set_volt(const char *args, size_t len)
     set_print_volt();
 }
 
+static void set_print_bias()
+{
+    printf("BIAS  : %d\n", cfg_get_bias());
+}
+
+static void set_bias(const char *args, size_t len)
+{
+    uint32_t val;
+    if (len)
+    {
+        if (!parse_uint32(&args, &len, &val) ||
+            !parse_end(args, len) ||
+            !cfg_set_bias(val))
+        {
+            printf("?invalid argument\n");
+            return;
+        }
+    }
+    set_print_bias();
+}
 
 typedef void (*set_function)(const char *, size_t);
 static struct
@@ -272,7 +292,8 @@ static struct
     {3, "dvi", set_dvi},
     {5, "audio", set_dvi_audio},
     {4, "mode", set_mode},
-    {4, "volt", set_volt}
+    {4, "volt", set_volt},
+    {4, "bias", set_bias}
 };
 static const size_t SETTERS_COUNT = sizeof SETTERS / sizeof *SETTERS;
 
@@ -286,6 +307,7 @@ static void set_print_all(void)
     set_print_dvi_audio();
     set_print_mode();
     set_print_volt();
+    set_print_bias();
 }
 
 void set_mon_set(const char *args, size_t len)

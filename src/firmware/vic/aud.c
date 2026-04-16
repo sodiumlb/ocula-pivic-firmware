@@ -7,6 +7,7 @@
 
 #include "main.h"
 #include "vic/aud.h"
+#include "sys/cfg.h"
 #include "sys/dvi_audio.h"
 #include "sys/mem.h"
 #include "hardware/dma.h"
@@ -61,7 +62,7 @@ volatile audio_sample_t pwm_sample;
 
 void aud_update_pwm(void){
     int16_t pwm_value_signed = ( aud_val[0] + aud_val[1] + aud_val[2] + aud_val[3] ) * (VIC_CRE & 0x0F);
-    uint8_t sample = (uint8_t)(pwm_value_signed + 32);  //DC offset required for bias of mainboard audio circuit
+    uint8_t sample = (uint8_t)(pwm_value_signed + cfg_get_bias());  //DC offset required for bias of mainboard audio circuit
     pwm_set_chan_level(AUDIO_PWM_SLICE, AUDIO_PWM_CH, sample);    
     pwm_sample.left = sample << 5;
     pwm_sample.right = sample << 5;
@@ -117,9 +118,9 @@ void aud_task(void){
         aud_calc_voice(2, aud_regs.ch[2]);
         if(upd & 0x08)
             aud_step_noise(upd >> 24);
-        if(dvi_audio_fs_tick())
-            aud_update_pwm();
     }
+    if(dvi_audio_fs_tick())
+        aud_update_pwm();
 }
 
 void aud_print_status(void){
