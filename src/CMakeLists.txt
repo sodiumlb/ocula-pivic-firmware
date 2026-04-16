@@ -58,6 +58,7 @@ target_sources(ocula PRIVATE
     firmware/sys/lfs.c
     firmware/sys/mem.c
     firmware/sys/sys.c
+    firmware/sys/tst.c
 #    firmware/sys/vga.c
     firmware/term/color.c
     firmware/term/font.c
@@ -148,6 +149,7 @@ target_sources(pivic PRIVATE
     firmware/sys/mem.c
     firmware/sys/rev.c
     firmware/sys/sys.c
+    firmware/sys/tst.c
 #    firmware/sys/vga.c
     firmware/term/color.c
     firmware/term/font.c

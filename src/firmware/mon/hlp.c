@@ -20,7 +20,8 @@ static const char __in_flash("helptext") hlp_text_help[] =
     "UPLOAD file         - Write file. Binary chunks follow.\n"
     "BINARY addr len crc - Write memory. Binary data follows.\n"
     "0000 (00 00 ...)    - Read or write memory.\n"
-    "MODELINE ()()()..   - Test alternative DVI modes.";
+    "MODELINE ()()()..   - Test alternative DVI modes.\n"
+    "TEST                - Test input pins on device";
 
 static const char __in_flash("helptext") hlp_text_set[] =
     "Settings:\n"
@@ -153,6 +154,15 @@ static const char __in_flash("helptext") hlp_text_modeline[] =
     "<vsync_start> <vsync_end> <vtotal> <hpolarity><vpolarity>\n" 
     ;
 
+static const char __in_flash("helptext") hlp_text_test[] =
+    "TEST is a testing mode to check inputs on the physical PCB.\n"
+    "Normal operation is not halted but operation glitches may occure.\n"
+    "When called the device will track if an input pin has toggled\n"
+    "indicating the connection between the pin pad on the PCB and \n"
+    "microcontroller is likely good. Out of circuit a probe with serial\n"
+    "resistor temporary connected to the PHI clock output pin can be used to\n"
+    "toggle the input. Use care and only use safe probes and only on input\n"
+    "pins marked with arrow pointing in to the middle of the board figure (> <).";
 
 static const char __in_flash("helptext") hlp_text_splash[] =
     "SET SPLASH enables or disables splash screen shown before the computer\n"
@@ -246,6 +256,7 @@ static struct
     {6, "upload", hlp_text_upload},
     {6, "binary", hlp_text_binary},
     {8, "modeline", hlp_text_modeline},
+    {4, "test", hlp_text_test},
 #ifdef PIVIC
     {6, "colour", hlp_text_colour},
     {5, "color", hlp_text_colour},
