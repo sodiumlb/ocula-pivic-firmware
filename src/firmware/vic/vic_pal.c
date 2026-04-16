@@ -864,7 +864,7 @@ void vic_core1_loop_pal(void) {
                                 // also happens to automatically fetch the foreground colour from the Colour Matrix
                                 // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from 
                                 // colour RAM in to the VIC chip.
-                                colourData = xram[colour_mem_start + videoMatrixCounter];
+                                colourData = xram[0x1400 + (screen_addr & 0x3ff)];
 
                                 // Output the 1st pixel of next character. Note that this is not the character
                                 // that relates to the cell index and colour data fetched above.

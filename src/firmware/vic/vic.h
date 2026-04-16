@@ -76,7 +76,6 @@
 #define char_size_shift          (3 + double_height_mode)
 #define screen_mem_start         (((vic_cr5 & 0xF0) << 6) | ((vic_cr2 & 0x80) << 2))
 #define char_mem_start           ((vic_cr5 & 0x0F) << 10)
-#define colour_mem_start         (0x1400 | ((vic_cr2 & 0x80) << 2))
 
 // Constants for the fetch state of the vic_core1_loop.
 #define FETCH_OUTSIDE_MATRIX  0
