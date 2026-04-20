@@ -47,8 +47,8 @@ void tst_print_status(void){
             poty = POTY_PIN_1_1;
             break;
         case(REV_1_2):
-            potx = POTX_PIN_1_1;
-            poty = POTY_PIN_1_1;
+            potx = POTX_PIN_1_2;
+            poty = POTY_PIN_1_2;
             break;
         default:
             puts("Test print error: !Unknown hardware revision\n");
