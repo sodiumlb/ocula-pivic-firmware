@@ -33,7 +33,7 @@ static uint32_t cfg_phi2_khz;
 static uint8_t cfg_caps;
 static uint8_t cfg_splash = 1;
 static uint8_t cfg_dvi_mode = 0;
-static uint8_t cfg_dvi_audio = 1;
+static uint8_t cfg_dvi_audio = 0;
 static uint8_t cfg_mode = 1;
 static uint8_t cfg_volt = 0;
 static uint8_t cfg_bias = 48;
