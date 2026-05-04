@@ -36,7 +36,7 @@ static uint8_t cfg_dvi_mode = 0;
 static uint8_t cfg_dvi_audio = 0;
 static uint8_t cfg_mode = 1;
 static uint8_t cfg_volt = 0;
-static uint8_t cfg_bias = 48;
+static uint8_t cfg_bias = 80;
 
 // Optional string can replace boot string
 static void cfg_save_with_boot_opt(char *opt_str)
@@ -308,7 +308,7 @@ uint8_t cfg_get_volt(void)
 
 bool cfg_set_bias(uint8_t bias)
 {
-    if(bias > 127){
+    if(bias > 255){
         return false;
     }
     if(cfg_bias != bias){

@@ -20,7 +20,7 @@
 
 //Audio shift registers
 uint8_t aud_noise_sr;    //Ch 0-2 SR are kept in aud_sr
-int8_t aud_val[4];
+uint8_t aud_val[4];
 uint16_t aud_lfsr;
 
 volatile aud_union_t aud_counters;
@@ -38,7 +38,7 @@ volatile aud_union_t aud_sr;
 void aud_calc_voice(uint8_t idx, uint8_t reg){
     uint8_t enable = reg >> 7;  //Keep enable bit in LSB
     uint8_t next_bit = aud_sr.ch[idx] & 0x01;
-    aud_val[idx] = (enable ? (next_bit ? 3 : 0) : 1);  //High=3 ,half=1, low=0
+    aud_val[idx] = (enable ? (next_bit ? 4 : 0) : 1);  //High=4 ,half=1, low=0
 }
 
 void aud_step_noise(uint8_t reg){
@@ -53,19 +53,21 @@ void aud_step_noise(uint8_t reg){
     if(next_lfsr_bit == 1 && old_lfsr_bit == 0){
         uint8_t next_sr_bit = (~prev >> 7) & enable;    //Shift register MSB & register enable bit
         aud_noise_sr = (prev << 1) | next_sr_bit;
-        aud_val[3] = (enable ? (next_sr_bit ? 3 : 0) : 1);    //High=3, half=1, low=0. TODO - confirm enable is used to gate the noise channel
+        aud_val[3] = (enable ? (next_sr_bit ? 4 : 0) : 1);    //High=3, half=1, low=0. TODO - confirm enable is used to gate the noise channel
     }
 }
 
-volatile audio_sample_t pwm_sample;
+audio_sample_t pwm_sample;
 //volatile audio_sample_t dvi_sample;
+#define LPF_ALPHA 15
 
 void aud_update_pwm(void){
-    int16_t pwm_value_signed = ( aud_val[0] + aud_val[1] + aud_val[2] + aud_val[3] ) * (VIC_CRE & 0x0F);
-    uint8_t sample = (uint8_t)(pwm_value_signed + cfg_get_bias());  //DC offset required for bias of mainboard audio circuit
+    uint16_t pwm_value = (uint16_t)( aud_val[0] + aud_val[1] + aud_val[2] + aud_val[3] ) * (VIC_CRE & 0x0F);
+    uint16_t sample = (pwm_value + cfg_get_bias());  //DC offset required for bias of mainboard audio circuit
+    static int16_t lpf_sample;
     pwm_set_chan_level(AUDIO_PWM_SLICE, AUDIO_PWM_CH, sample);    
-    pwm_sample.left = sample << 5;
-    pwm_sample.right = sample << 5;
+    lpf_sample = (LPF_ALPHA * (lpf_sample>>4)) + ((16-LPF_ALPHA) * (pwm_value));
+    pwm_sample.left = pwm_sample.right = (int16_t)((lpf_sample));
 }
 
 void aud_init(void){
@@ -74,7 +76,7 @@ void aud_init(void){
     pwm_config config;
 
     config = pwm_get_default_config();
-    pwm_config_set_wrap(&config, (1u << 7)-1);   //Make PWM precision 7-bit
+    pwm_config_set_wrap(&config, (1u << 8)-2);   //Make PWM precision 8-bit
     pwm_init(AUDIO_PWM_SLICE, &config, true);
     pwm_set_chan_level(AUDIO_PWM_SLICE, AUDIO_PWM_CH, 0);
     pwm_set_enabled(AUDIO_PWM_SLICE, true);
@@ -119,8 +121,7 @@ void aud_task(void){
         if(upd & 0x08)
             aud_step_noise(upd >> 24);
     }
-    if(dvi_audio_fs_tick())
-        aud_update_pwm();
+    aud_update_pwm();
 }
 
 void aud_print_status(void){
@@ -130,7 +131,7 @@ void aud_print_status(void){
             aud_lfsr
         );
     printf("    tck:%08x cnt:%08x upd:%01x\n", aud_ticks.all, aud_counters.all, sio_hw->doorbell_in_set);
-    printf("    pwm intr:%08x\n", pwm_hw->intr);
+    printf("    pwm intr:%08x cc:%d top:%d\n", pwm_hw->intr, pwm_hw->slice[AUDIO_PWM_SLICE].cc, pwm_hw->slice[AUDIO_PWM_SLICE].top);
     // printf("    last_sample_periode_us: %lld\n", last_sample_time_diff);
     // printf("    DVI lost samples: %d\n", lost_samples);
 }

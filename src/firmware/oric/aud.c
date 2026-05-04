@@ -28,7 +28,7 @@ void aud_init(void){
     PSG_setClockDivider(&psg, 0);
     PSG_setRate(&psg, DVI_AUDIO_FS);
     PSG_setVolumeMode(&psg, 2); // AY style
-    PSG_setQuality(&psg, 0);
+    PSG_setQuality(&psg, 1);
     PSG_setMask(&psg, 0x00);
     PSG_reset(&psg);
     dvi_audio_set_sample_source(&psg_sample);
@@ -37,9 +37,8 @@ void aud_init(void){
 void aud_task(void){
     //TODO This is not good buffer filling. Needs rework.
     if(dvi_audio_fs_tick()){
-        uint16_t sample = PSG_calc(&psg);
-        psg_sample.left = sample;
-        psg_sample.right = sample;
+        int16_t sample = PSG_calc(&psg);
+        psg_sample.left = psg_sample.right = sample;
     }
 }
 

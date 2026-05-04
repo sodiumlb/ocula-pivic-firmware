@@ -33,9 +33,8 @@ bool vsync_polarity;
 bool hsync_polarity;
 
 //Running own small DI queue
-#define DI_BUF_LEN_BITS 3
+#define DI_BUF_LEN_BITS 2
 #define DI_BUF_LEN (1<<DI_BUF_LEN_BITS)
-#define DI_BUF_SIZE_BITS (DI_BUF_LEN_BITS+2)
 
 hstx_data_island_t di_buf[DI_BUF_LEN];
 static uint8_t di_head_idx = 0;
@@ -44,11 +43,13 @@ static uint8_t di_tail_idx = 0;
 static volatile audio_sample_t *source_sample = 0;
 
 bool dvi_audio_buf_is_full(void){
-    return (((dma_sample_chan->write_addr >> 2) % (DVI_AUDIO_BUF_LEN)) + 1) % (DVI_AUDIO_BUF_LEN-1) == tail_idx;
+    uint8_t head_idx = (uint8_t)((dma_sample_chan->write_addr >> 2) & (DVI_AUDIO_BUF_LEN-1));
+    return (head_idx + 1) % (DVI_AUDIO_BUF_LEN) == tail_idx;
 }
 
 uint8_t dvi_audio_get_buflen(void){
-   return (((dma_sample_chan->write_addr >> 2) % (DVI_AUDIO_BUF_LEN)) - tail_idx) % (DVI_AUDIO_BUF_LEN-1);
+    uint8_t head_idx = (uint8_t)((dma_sample_chan->write_addr >> 2) & (DVI_AUDIO_BUF_LEN-1));
+    return (head_idx - tail_idx) % (DVI_AUDIO_BUF_LEN);
 }
 
 //Pop just moves the tail index. 
@@ -151,7 +152,7 @@ void dvi_audio_task(void){
 
         hstx_packet_t packet;
         static int audio_frame_cnt = 0;
-        if(dvi_audio_get_buflen() >= 4 && !dvi_audio_di_buf_is_full()){
+        while(dvi_audio_get_buflen() >= 4 && !dvi_audio_di_buf_is_full()){
             //Assuming working on groups of 4 samples means we won't cross ring buffer end
             audio_frame_cnt = hstx_packet_set_audio_samples(&packet,&audio_buf[tail_idx],4,audio_frame_cnt);
             //Assuming audio DI only in non-synch hblank period. TODO: sync polarity needs to be taking into account
