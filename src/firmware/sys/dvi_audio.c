@@ -110,7 +110,8 @@ void dvi_audio_init(void){
     dma_sample_chan = &dma_hw->ch[dma_chan_idx];
     dma_channel_config sample_dma = dma_channel_get_default_config(dma_chan_idx);
     sample_timer = dma_claim_unused_timer(true);
-    dma_timer_set_fraction(sample_timer, 1, clock_get_hz(clk_sys)/DVI_AUDIO_FS);    //Assumes integer divisable sys_clk to fs ratio
+    
+    dma_timer_set_fraction(sample_timer, 2, (2*clock_get_hz(clk_sys))/DVI_AUDIO_FS);    //Assumes integer divisable sys_clk to fs ratio
     channel_config_set_dreq(&sample_dma, dma_get_timer_dreq(sample_timer));
     channel_config_set_read_increment(&sample_dma, false);
     channel_config_set_write_increment(&sample_dma, true);
