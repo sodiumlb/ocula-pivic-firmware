@@ -215,7 +215,7 @@ void dvi_build_hstx_lists(dvi_modeline_t *mode){
     *p++ = sync_von_hof;
     *p++ = HSTX_CMD_NOP;
 
-    hstx_packet_set_avi_infoframe(&infoframe, 1, 0);
+    hstx_packet_set_avi_infoframe(&infoframe, mode->vic, 0);
     p = &vblank_line_vsync_on_avi_info[0];
     *p++ = HSTX_CMD_RAW_REPEAT | mode->h_front_porch;
     *p++ = sync_von_hof;

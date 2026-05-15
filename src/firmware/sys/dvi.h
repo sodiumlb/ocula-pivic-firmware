@@ -46,6 +46,7 @@ typedef struct
     uint16_t v_back_porch;
     uint16_t v_active_lines;
     dvi_sync_polarity_t sync_polarity;
+    uint8_t vic;                        //Video format ID code
 } dvi_modeline_t;
 
 //TODO Make DVI mode dynamic

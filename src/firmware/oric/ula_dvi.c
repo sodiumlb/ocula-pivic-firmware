@@ -30,7 +30,8 @@ dvi_modeline_t ula_dvi_modes[] = {
         .v_sync_width = 2,
         .v_back_porch = 33+7,
         .v_active_lines = 480,
-        .sync_polarity = vneg_hneg
+        .sync_polarity = vneg_hneg,
+        .vic = 1,
     },
     //VGA 640x480p66
     {
@@ -48,7 +49,8 @@ dvi_modeline_t ula_dvi_modes[] = {
         .v_sync_width = 2,
         .v_back_porch = 33,
         .v_active_lines = 480,
-        .sync_polarity = vneg_hneg
+        .sync_polarity = vneg_hneg,
+        .vic = 1,
     },
     //576p 720x576p50
     {
@@ -66,7 +68,8 @@ dvi_modeline_t ula_dvi_modes[] = {
         .v_sync_width = 5,
         .v_back_porch = 39+2,
         .v_active_lines = 576,
-        .sync_polarity = vneg_hneg
+        .sync_polarity = vneg_hneg,
+        .vic = 17,
     },
     //576p 720x576p50
     {
@@ -84,7 +87,8 @@ dvi_modeline_t ula_dvi_modes[] = {
         .v_sync_width = 5,
         .v_back_porch = 39,
         .v_active_lines = 576,
-        .sync_polarity = vneg_hneg
+        .sync_polarity = vneg_hneg,
+        .vic = 17,
     },
     //480p 720x480p60
     {
@@ -102,7 +106,8 @@ dvi_modeline_t ula_dvi_modes[] = {
         .v_sync_width = 6,
         .v_back_porch = 30+4,
         .v_active_lines = 480,
-        .sync_polarity = vneg_hneg
+        .sync_polarity = vneg_hneg,
+        .vic = 2,
     },
     //480p 720x480p61
     {
@@ -120,7 +125,8 @@ dvi_modeline_t ula_dvi_modes[] = {
         .v_sync_width = 6,
         .v_back_porch = 30,
         .v_active_lines = 480,
-        .sync_polarity = vneg_hneg
+        .sync_polarity = vneg_hneg,
+        .vic = 2,
     },
 };
 
