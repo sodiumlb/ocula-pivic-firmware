@@ -7,6 +7,7 @@
 
 #include "main.h"
 #include "vic/aud.h"
+#include "vic/aud_splash.h"
 #include "sys/cfg.h"
 #include "sys/dvi_audio.h"
 #include "sys/mem.h"
@@ -70,6 +71,9 @@ void aud_update_pwm(void){
     pwm_sample.left = pwm_sample.right = (int16_t)((lpf_sample));
 }
 
+void aud_splash_init(void);
+void aud_splash_task(void);
+
 void aud_init(void){
     gpio_set_function(AUDIO_PWM_PIN, GPIO_FUNC_PWM);
 
@@ -106,6 +110,9 @@ void aud_init(void){
     VIC_CRE = 0xF;
 
     dvi_audio_set_sample_source(&pwm_sample);
+    if(cfg_get_splash() == 2){
+        aud_splash_init();
+    }
 }
 
 static int64_t last_sample_time_diff;
@@ -122,6 +129,7 @@ void aud_task(void){
             aud_step_noise(upd >> 24);
     }
     aud_update_pwm();
+    aud_splash_task();
 }
 
 void aud_print_status(void){
@@ -134,4 +142,51 @@ void aud_print_status(void){
     printf("    pwm intr:%08x cc:%d top:%d\n", pwm_hw->intr, pwm_hw->slice[AUDIO_PWM_SLICE].cc, pwm_hw->slice[AUDIO_PWM_SLICE].top);
     // printf("    last_sample_periode_us: %lld\n", last_sample_time_diff);
     // printf("    DVI lost samples: %d\n", lost_samples);
+}
+
+#define AUD_SPLASH_MAGIC 0x42
+#define AUD_SPLASH_BAR_MS 1200
+#define AUD_SPLASH_NOTE_MS (AUD_SPLASH_BAR_MS/6)
+#define AUD_SPLASH_GAP_MS 50
+bool aud_splash_active;
+void aud_splash_init(void){
+    VIC_CRA = AUD_SPLASH_MAGIC;
+    aud_splash_active = true;
+}
+
+void aud_splash_task(void){
+    static absolute_time_t timer = 0;
+    static uint16_t idx = 0;
+    static enum { attack, release } state = attack;
+    if(aud_splash_active){
+        if(absolute_time_diff_us(get_absolute_time(),timer) < 0){
+            if(idx >= sizeof(notes))
+                idx = 0;
+            uint8_t pitch = notes[idx+0];
+            uint8_t length = notes[idx+1];
+            uint8_t effect = notes[idx+2];
+            uint16_t gap = AUD_SPLASH_GAP_MS;
+            if(effect)
+                gap += AUD_SPLASH_GAP_MS * length; 
+            if(pitch)
+                pitch |= 0x80;  //Enable
+            switch(state){
+                default:
+                case(attack):
+                    VIC_CRC = pitch;
+                    timer = delayed_by_ms(get_absolute_time(), (length * AUD_SPLASH_NOTE_MS) - gap);
+                    state = release;
+                    break;
+                case(release):
+                    VIC_CRC = 0;
+                    timer = delayed_by_ms(get_absolute_time(), gap);
+                    idx += 3;
+                    state = attack;
+                    break;
+            }
+            if(VIC_CRA != AUD_SPLASH_MAGIC){
+                aud_splash_active = false;
+            }
+        }
+    }
 }

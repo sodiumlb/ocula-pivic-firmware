@@ -214,7 +214,7 @@ uint8_t cfg_get_caps(void)
 
 bool cfg_set_splash(uint8_t enable)
 {
-    if(enable > 1)
+    if(enable > 2)
         return false;
     if(cfg_splash != enable){ 
         cfg_splash = enable;
