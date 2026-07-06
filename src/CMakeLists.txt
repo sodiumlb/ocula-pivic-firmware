@@ -55,6 +55,7 @@ target_sources(ocula PRIVATE
     firmware/sys/cpu.c
     firmware/sys/dvi.c
     firmware/sys/dvi_audio.c
+    firmware/sys/edid.c
     firmware/sys/lfs.c
     firmware/sys/mem.c
     firmware/sys/sys.c
@@ -78,6 +79,7 @@ target_link_libraries(ocula PRIVATE
     pico_unique_id
     pico_scanvideo_dpi
     pico_rand
+    hardware_i2c
     hardware_interp
     hardware_pio
     hardware_dma
@@ -145,6 +147,7 @@ target_sources(pivic PRIVATE
     firmware/sys/cpu.c
     firmware/sys/dvi.c
     firmware/sys/dvi_audio.c
+    firmware/sys/edid.c
     firmware/sys/lfs.c
     firmware/sys/mem.c
     firmware/sys/rev.c
@@ -170,6 +173,7 @@ target_link_libraries(pivic PRIVATE
     pico_unique_id
     pico_scanvideo_dpi
     pico_rand
+    hardware_i2c
     hardware_interp
     hardware_pio
     hardware_dma
