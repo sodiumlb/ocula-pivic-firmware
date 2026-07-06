@@ -59,6 +59,7 @@ extern volatile uint8_t dvi_framebuf[DVI_FB_HEIGHT][DVI_FB_WIDTH];
 void dvi_set_modeline(dvi_modeline_t *ml);
 void dvi_print_modeline(dvi_modeline_t *ml);
 void dvi_get_modeline_polarity(bool *vsync, bool *hsync);
+uint8_t dvi_get_modeline_vic(void);
 void dvi_init(void);
 void dvi_task(void);
 

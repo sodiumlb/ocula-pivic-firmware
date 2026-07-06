@@ -63,16 +63,24 @@ audio_sample_t pwm_sample;
 #define LPF_ALPHA 15
 
 void aud_update_pwm(void){
-    uint16_t pwm_value = (uint16_t)( aud_val[0] + aud_val[1] + aud_val[2] + aud_val[3] ) * (VIC_CRE & 0x0F);
-    uint16_t sample = (pwm_value + cfg_get_bias());  //DC offset required for bias of mainboard audio circuit
-    static int16_t lpf_sample;
-    pwm_set_chan_level(AUDIO_PWM_SLICE, AUDIO_PWM_CH, sample);    
-    lpf_sample = (LPF_ALPHA * (lpf_sample>>4)) + ((16-LPF_ALPHA) * (pwm_value));
-    pwm_sample.left = pwm_sample.right = (int16_t)((lpf_sample));
+    uint8_t vol = VIC_CRE & 0x0F;
+    uint16_t sample = (uint16_t)( aud_val[0] + aud_val[1] + aud_val[2] + aud_val[3] ) * vol;
+    uint16_t pwm_value = (sample + cfg_get_bias());  //DC offset required for bias of mainboard audio circuit
+    pwm_set_chan_level(AUDIO_PWM_SLICE, AUDIO_PWM_CH, pwm_value);    
+    // static int16_t lpf_sample;
+    // lpf_sample = (LPF_ALPHA * (lpf_sample>>4)) + ((16-LPF_ALPHA) * ((sample<<2)-(vol<<4)));   //Low-pass over 16 values. Boost vol <<2. Subtract DC.
+    // //lpf_sample = (lpf_sample - (lpf_sample>>4)) + pwm_value;
+    // pwm_sample.left = pwm_sample.right = (int16_t)((lpf_sample));
+    pwm_sample.left = pwm_sample.right = ((int16_t)(sample<<6)-(vol<<8));
 }
 
 void aud_splash_init(void);
 void aud_splash_task(void);
+
+void aud_dvi_audio_fs_cb(void){
+    aud_update_pwm();
+    aud_splash_task();
+}
 
 void aud_init(void){
     gpio_set_function(AUDIO_PWM_PIN, GPIO_FUNC_PWM);
@@ -97,19 +105,16 @@ void aud_init(void){
 
     //Init tick system
     aud_ticks.all = 0;
-    multicore_doorbell_claim(0, 0b11);
-    multicore_doorbell_claim(1, 0b11);
-    multicore_doorbell_claim(2, 0b11);
-    multicore_doorbell_claim(3, 0b11);
 
     //VIC audio registers reset values. TODO: should be done central in vic.c?
     VIC_CRA = 0x00;
     VIC_CRB = 0x00;
     VIC_CRC = 0x00;
     VIC_CRD = 0x00;
-    VIC_CRE = 0xF;
+    VIC_CRE = 0x8;
 
     dvi_audio_set_sample_source(&pwm_sample);
+    dvi_audio_set_fs_cb(aud_dvi_audio_fs_cb);
     if(cfg_get_splash() == 2){
         aud_splash_init();
     }
@@ -117,8 +122,7 @@ void aud_init(void){
 
 static int64_t last_sample_time_diff;
 static uint32_t lost_samples = 0;
-//TODO Is calculating and updating audio in normal task good enough?
-//
+// Raw update values are calculated here, final output values are calculated in the irq driven dvi_audio_fs_cb 
 void aud_task(void){
     while(multicore_fifo_rvalid()){
         uint32_t upd = sio_hw->fifo_rd;
@@ -128,8 +132,6 @@ void aud_task(void){
         if(upd & 0x08)
             aud_step_noise(upd >> 24);
     }
-    aud_update_pwm();
-    aud_splash_task();
 }
 
 void aud_print_status(void){
