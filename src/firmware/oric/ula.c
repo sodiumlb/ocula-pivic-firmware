@@ -639,7 +639,7 @@ void ula_init(void){
         memcpy((void*)(&xram[ADDR_LORES_STD_CHRSET+(0x20*8)]), (void*)oric_font, sizeof(oric_font));
         memset((void*)&xram[ADDR_LORES_SCR], 0x20, 40*28);
         xram[0xBFDF] = 0x1A;    //50Hz Text mode
-        sprintf((char*)(&xram[ADDR_LORES_SCR]), "Oric OCULA " __VERSION__);
+        sprintf((char*)(&xram[ADDR_LORES_SCR]), "Oric OCULA " RP6502_VERSION "[" __DATE__ " " __TIME__ "]");
         for(uint8_t i=0; i< 40; i++){
             xram[ADDR_LORES_SCR + 40*2 + i] =  0x10 | (i & 0x7);
         }
