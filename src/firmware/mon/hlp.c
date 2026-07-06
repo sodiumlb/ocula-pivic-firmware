@@ -29,7 +29,7 @@ static const char __in_flash("helptext") hlp_text_set[] =
     // "SET CAPS (0|1|2)    - Invert or force caps while 6502 is running.\n"
     // "SET PHI2 (kHz)      - Query or set PHI2 speed. This is the 6502 clock.\n"
     // "SET BOOT (rom|-)    - Select ROM to boot from cold start. \"-\" for none.\n"
-    "SET SPLASH (0|1)    - Query or set  splash screen disable or enable.\n"
+    "SET SPLASH (0|1|2)  - Query or set  splash screen disable or enable and w/sound.\n"
     "SET DVI (0|1|2|..)  - Query or set display type for DVI output.\n"
     "SET AUDIO (0|1)     - Query or set DVI audio disable or enable.\n"
 #ifdef PIVIC
@@ -172,7 +172,8 @@ static const char __in_flash("helptext") hlp_text_splash[] =
     "SET SPLASH enables or disables splash screen shown before the computer\n"
     "clears the screen memory at boot\n"
     " 0 - disable splash screen\n"
-    " 1 - enable spash screen";
+    " 1 - enable spash screen\n"
+    " 2 - enable spash screen w/sound (PIVIC)";
 
 static const char __in_flash("helptext") hlp_text_dvi[] =
     "SET DVI selects the display type for DVI output.\n"

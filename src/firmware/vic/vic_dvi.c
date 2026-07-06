@@ -31,6 +31,7 @@ dvi_modeline_t vic_dvi_pal_modes[] = {
     .v_back_porch = 16,
     .v_active_lines = 480,
     .sync_polarity = vneg_hneg,
+    .vic = 1,
 },
 //dvi_modeline_t vic_pal_mode_640x480p60 = 
 {
@@ -49,6 +50,7 @@ dvi_modeline_t vic_dvi_pal_modes[] = {
     .v_back_porch = 33+52,
     .v_active_lines = 480,
     .sync_polarity = vneg_hneg,
+    .vic = 1,
 },
 //dvi_modeline_t vic_pal_mode_720x480p60x3 = 
 {
@@ -67,6 +69,7 @@ dvi_modeline_t vic_dvi_pal_modes[] = {
     .v_back_porch = 30+20,
     .v_active_lines = 480,
     .sync_polarity = vneg_hneg,
+    .vic = 2,
 },
 //dvi_modeline_t vic_pal_mode_720x480p60x2 = 
 {
@@ -85,6 +88,7 @@ dvi_modeline_t vic_dvi_pal_modes[] = {
     .v_back_porch = 30+20,
     .v_active_lines = 480,
     .sync_polarity = vneg_hneg,
+    .vic = 2
 },
 //dvi_modeline_t vic_pal_mode_720x576p50 = 
 {
@@ -103,6 +107,7 @@ dvi_modeline_t vic_dvi_pal_modes[] = {
     .v_back_porch = 39+22+1,
     .v_active_lines = 576,
     .sync_polarity = vneg_hneg,
+    .vic = 17,
 },
 //dvi_modeline_t vic_pal_mode_856x576p50 = 
 {
@@ -121,6 +126,7 @@ dvi_modeline_t vic_dvi_pal_modes[] = {
     .v_back_porch = 10,
     .v_active_lines = 576,
     .sync_polarity = vpos_hneg,
+    .vic = 0,
 },
 //dvi_modeline_t vic_pal_mode_800x600p54 = 
 {
@@ -139,6 +145,7 @@ dvi_modeline_t vic_dvi_pal_modes[] = {
     .v_back_porch = 11,
     .v_active_lines = 600,
     .sync_polarity = vneg_hpos,
+    .vic = 0
 },
 //dvi_modeline_t vic_pal_mode_1280x720p50 = 
 {
@@ -157,6 +164,7 @@ dvi_modeline_t vic_dvi_pal_modes[] = {
     .v_back_porch = 16+5+1,
     .v_active_lines = 720,
     .sync_polarity = vpos_hneg,
+    .vic = 19,
 },
 //dvi_modeline_t vic_pal_mode_1024x768p60 = 
 {
@@ -175,6 +183,7 @@ dvi_modeline_t vic_dvi_pal_modes[] = {
     .v_back_porch = 29,
     .v_active_lines = 768,
     .sync_polarity = vneg_hneg,
+    .vic = 0,
 },
 
 };
@@ -197,6 +206,7 @@ dvi_modeline_t vic_dvi_ntsc_modes[] = {
     .v_back_porch = 16,
     .v_active_lines = 480,
     .sync_polarity = vneg_hneg,
+    .vic = 1,
 },
 //dvi_modeline_t vic_ntsc_mode_640x480p60 = 
 {
@@ -215,6 +225,7 @@ dvi_modeline_t vic_dvi_ntsc_modes[] = {
     .v_back_porch = 33,
     .v_active_lines = 480,
     .sync_polarity = vneg_hneg,
+    .vic = 1,
 },
 //dvi_modeline_t vic_ntsc_mode_720x480p60x3 = 
 {
@@ -233,6 +244,7 @@ dvi_modeline_t vic_dvi_ntsc_modes[] = {
     .v_back_porch = 30+20,
     .v_active_lines = 480,
     .sync_polarity = vneg_hneg,
+    .vic = 2,
 },
 //dvi_modeline_t vic_ntsc_mode_720x480p60px2 = 
 {
@@ -251,6 +263,7 @@ dvi_modeline_t vic_dvi_ntsc_modes[] = {
     .v_back_porch = 30+20,
     .v_active_lines = 480,
     .sync_polarity = vneg_hneg,
+    .vic = 2,
 },
 //dvi_modeline_t vic_ntsc_mode_720x524p60 = 
 {
@@ -269,6 +282,7 @@ dvi_modeline_t vic_dvi_ntsc_modes[] = {
     .v_back_porch = 8+4,
     .v_active_lines = 524,
     .sync_polarity = vpos_hneg,
+    .vic = 0,
 },
 //dvi_modeline_t vic_ntsc_mode_720x576p60 = 
 {
@@ -287,6 +301,7 @@ dvi_modeline_t vic_dvi_ntsc_modes[] = {
     .v_back_porch = 7+1+3,
     .v_active_lines = 576,
     .sync_polarity = vneg_hpos,
+    .vic = 17,
 },
 //dvi_modeline_t vic_ntsc_mode_800x600p54 = 
 {
@@ -305,6 +320,7 @@ dvi_modeline_t vic_dvi_ntsc_modes[] = {
     .v_back_porch = 11,
     .v_active_lines = 600,
     .sync_polarity = vneg_hpos,
+    .vic = 0,
 },
 //dvi_modeline_t vic_ntsc_mode_1280x720p60 = 
 {
@@ -323,6 +339,7 @@ dvi_modeline_t vic_dvi_ntsc_modes[] = {
     .v_back_porch = 13,
     .v_active_lines = 720,
     .sync_polarity = vneg_hpos,
+    .vic = 4,
 },
 //dvi_modeline_t vic_ntsc_mode_1024x768p60 = 
 {
@@ -341,6 +358,7 @@ dvi_modeline_t vic_dvi_ntsc_modes[] = {
     .v_back_porch = 29,
     .v_active_lines = 768,
     .sync_polarity = vneg_hneg,
+    .vic = 0,
 },
 
 

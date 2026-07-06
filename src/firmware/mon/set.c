@@ -109,7 +109,12 @@ static void set_caps(const char *args, size_t len)
 
 static void set_print_splash()
 {
-    printf("SPLASH: %s\n", cfg_get_splash() ? "1 - On" : "0 - Off");
+    const char *const splash_labels[] = {
+        "0 - Off",
+        "1 - On",
+        "2 - On w/sound (PIVIC)"
+    };
+    printf("SPLASH: %s\n", splash_labels[cfg_get_splash()]);
 }
 
 static void set_splash(const char *args, size_t len)

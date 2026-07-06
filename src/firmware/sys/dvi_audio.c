@@ -27,7 +27,7 @@ dma_channel_hw_t *dma_sample_chan;
 dma_channel_hw_t *dma_di_chan;
 int sample_timer;
 int dvi_audio_dma_sample_chan_idx;
-static uint8_t tail_idx = 0;
+static uint16_t tail_idx = 0;
 
 bool vsync_polarity;
 bool hsync_polarity;
@@ -43,34 +43,38 @@ static uint8_t di_tail_idx = 0;
 static volatile audio_sample_t *source_sample = 0;
 
 bool dvi_audio_buf_is_full(void){
-    uint8_t head_idx = (uint8_t)((dma_sample_chan->write_addr >> 2) & (DVI_AUDIO_BUF_LEN-1));
-    return (head_idx + 1) % (DVI_AUDIO_BUF_LEN) == tail_idx;
+    uint16_t head_idx = (uint16_t)((dma_sample_chan->write_addr >> 2) & (DVI_AUDIO_BUF_LEN-1));
+    return (head_idx + 1) & (DVI_AUDIO_BUF_LEN-1) == tail_idx;
 }
 
-uint8_t dvi_audio_get_buflen(void){
-    uint8_t head_idx = (uint8_t)((dma_sample_chan->write_addr >> 2) & (DVI_AUDIO_BUF_LEN-1));
-    return (head_idx - tail_idx) % (DVI_AUDIO_BUF_LEN);
+uint16_t dvi_audio_get_buflen(void){
+    uint16_t head_idx = (uint16_t)((dma_sample_chan->write_addr >> 2) & (DVI_AUDIO_BUF_LEN-1));
+    return (head_idx - tail_idx) & (DVI_AUDIO_BUF_LEN-1);
 }
 
 //Pop just moves the tail index. 
-bool dvi_audio_pop_samples(uint8_t count){
-    tail_idx = (tail_idx + count) % (DVI_AUDIO_BUF_LEN);
+bool dvi_audio_pop_samples(uint16_t count){
+    tail_idx = (tail_idx + count) & (DVI_AUDIO_BUF_LEN-1);
     return true;    
 }
 
 bool dvi_audio_di_buf_is_full(void){
-    return (di_head_idx + 1) % (DI_BUF_LEN) == di_tail_idx;
+    return (di_head_idx + 1) & (DI_BUF_LEN-1) == di_tail_idx;
+}
+
+bool dvi_audio_di_buf_is_empty(void){
+    return di_head_idx == di_tail_idx;
 }
 
 //NULL pointer will skip copy. For use with direct allocation.
 bool dvi_audio_push_di(hstx_data_island_t *di){
-    if((di_head_idx + 1) % (DI_BUF_LEN) == di_tail_idx){
+    if((di_head_idx + 1) & (DI_BUF_LEN-1) == di_tail_idx){
         return false;
     }
     if(di){
         memcpy((void*)&di_buf[di_head_idx], (void*)di, sizeof(hstx_data_island_t));
     }
-    di_head_idx = (di_head_idx + 1) % (DI_BUF_LEN);
+    di_head_idx = (di_head_idx + 1) & (DI_BUF_LEN-1);
     return true;
 }
 
@@ -84,7 +88,7 @@ bool dvi_audio_pop_di(uint32_t *di){
         uint32_t *tail_di = (uint32_t*)&di_buf[di_tail_idx];
         dma_di_chan->read_addr = (uint32_t)tail_di;
         dma_di_chan->al2_write_addr_trig = (uint32_t)di;
-        di_tail_idx = (di_tail_idx + 1) % (DI_BUF_LEN);
+        di_tail_idx = (di_tail_idx + 1) & (DI_BUF_LEN-1);
         return true;
     }
 }
@@ -106,7 +110,8 @@ void dvi_audio_init(void){
     dma_sample_chan = &dma_hw->ch[dma_chan_idx];
     dma_channel_config sample_dma = dma_channel_get_default_config(dma_chan_idx);
     sample_timer = dma_claim_unused_timer(true);
-    dma_timer_set_fraction(sample_timer, 1, clock_get_hz(clk_sys)/DVI_AUDIO_FS);    //Assumes integer divisable sys_clk to fs ratio
+    
+    dma_timer_set_fraction(sample_timer, 2, (2*clock_get_hz(clk_sys))/DVI_AUDIO_FS);    //Assumes integer divisable sys_clk to fs ratio
     channel_config_set_dreq(&sample_dma, dma_get_timer_dreq(sample_timer));
     channel_config_set_read_increment(&sample_dma, false);
     channel_config_set_write_increment(&sample_dma, true);
