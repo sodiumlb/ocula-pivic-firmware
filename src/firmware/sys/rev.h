@@ -9,7 +9,7 @@
 
 #include <stddef.h>
 
-typedef enum { REV_UNDEF, REV_1_1, REV_1_2 } rev_t;
+typedef enum { REV_UNDEF, REV_1_1, REV_1_2, REV_1_3 } rev_t;
 void rev_init(void);
 rev_t rev_get(void);
 void rev_print(void);
