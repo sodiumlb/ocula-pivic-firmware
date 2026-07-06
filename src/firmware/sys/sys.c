@@ -8,6 +8,7 @@
 #include "sys/clk.h"
 #include "sys/sys.h"
 #include "sys/dvi.h"
+#include "sys/edid.h"
 #include "sys/lfs.h"
 #ifdef PIVIC
 #include "vic/aud.h"
@@ -61,6 +62,7 @@ void sys_mon_status(const char *args, size_t len)
     aud_print_status();
     pot_print_status();
     pen_print_status();
+    edid_print_status();
 #endif
 #ifdef OCULA
     ula_print_status();

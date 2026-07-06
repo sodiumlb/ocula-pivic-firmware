@@ -113,6 +113,11 @@ bool main_prog(uint16_t *xregs);
 #define PEN_PWM_CH PWM_CHAN_B
 #define PEN_COUNTER_PWM_SLICE 10
 
+//EDID I2C supported from Rev 1.3 HW
+#define EDID_I2C i2c1
+#define EDID_SDA_PIN 10
+#define EDID_SCL_PIN 11
+
 #endif
 
 #ifdef OCULA

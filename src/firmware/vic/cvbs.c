@@ -160,7 +160,7 @@ void cvbs_pio_mode_init(void){
          entry = cvbs_pal_offset_entry;
          break;
    }
-   if(is_svideo && rev_get() == REV_1_2){
+   if(is_svideo && rev_get() >= REV_1_2){
       for(uint32_t i = 0; i < CVBS_SVIDEO_PIN_COUNT; i++){
          pio_gpio_init(CVBS_PIO, CVBS_SVIDEO_PIN_BASE+i);
          //gpio_set_drive_strength(CVBS_SVIDEO_PIN_BASE+i,GPIO_DRIVE_STRENGTH_2MA);

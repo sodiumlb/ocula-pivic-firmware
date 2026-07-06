@@ -23,6 +23,11 @@
 PSG psg;
 volatile audio_sample_t psg_sample;
 
+void aud_update(){
+    int16_t sample = PSG_calc(&psg);
+    psg_sample.left = psg_sample.right = sample;
+}
+
 void aud_init(void){
     PSG_setClock(&psg, 1000000);
     PSG_setClockDivider(&psg, 0);
@@ -32,14 +37,10 @@ void aud_init(void){
     PSG_setMask(&psg, 0x00);
     PSG_reset(&psg);
     dvi_audio_set_sample_source(&psg_sample);
+    dvi_audio_set_fs_cb(&aud_update);
 }
 
 void aud_task(void){
-    //TODO This is not good buffer filling. Needs rework.
-    if(dvi_audio_fs_tick()){
-        int16_t sample = PSG_calc(&psg);
-        psg_sample.left = psg_sample.right = sample;
-    }
 }
 
 void aud_tick(void){

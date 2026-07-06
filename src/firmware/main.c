@@ -17,6 +17,7 @@
 #include "sys/cpu.h"
 #include "sys/dvi.h"
 #include "sys/dvi_audio.h"
+#include "sys/edid.h"
 #include "sys/lfs.h"
 #include "sys/rev.h"
 #include "sys/sys.h"
@@ -73,6 +74,7 @@ static void init(void)
     aud_init();
     pen_init();
     pot_init();
+    edid_init();
 #endif
 #ifdef OCULA
     aud_init();
@@ -93,11 +95,13 @@ static void task(void)
     mem_task();
     aud_task();
     pot_task();
+    edid_task();
 #endif
 #ifdef OCULA
     ula_task();
     aud_task();
 #endif 
+    dvi_audio_task();
     //vga_task();
     //term_task();
     tud_task();
