@@ -6,6 +6,7 @@
 
 #include "tusb.h"
 //#include "sys/std.h"
+#include "mon/mon.h"
 #include "usb/cdc.h"
 #include "pico/stdio/driver.h"
 
@@ -86,13 +87,32 @@ static int cdc_stdio_in_chars(char *buf, int length)
 
 void cdc_init(void)
 {
+    tud_cdc_configure_fifo_t cfg;
+    cfg.rx_persistent = 0;
+    cfg.tx_persistent = 0;
+    tud_cdc_configure_fifo(&cfg);
     stdio_set_driver_enabled(&cdc_stdio_app, true);
 }
 
 
 void cdc_task(void)
 {
-    cdc_stdio_out_flush();
+    static bool state_connected = false;
+
+    if(tud_cdc_connected()){
+        if(!state_connected){
+//            tud_cdc_read_flush();
+            mon_reset();
+            state_connected = true;
+        }
+        tud_cdc_write_flush();
+    }
+    else{
+        if(state_connected){
+            state_connected = false;
+        }
+//        tud_cdc_write_clear();
+    }
     /*
 
     if (is_breaking && absolute_time_diff_us(get_absolute_time(), break_timer) < 0)
