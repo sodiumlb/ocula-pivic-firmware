@@ -15,7 +15,7 @@
 .out 8 right auto 8
 .wrap_target
     mov isr x           ; Base address to fetch from in the system
-    wait 0 irq 0   [24] ; sample address after phi1 falling edge 
+    wait 0 irq 0   [29] ; sample address after phi1 falling edge 
     in pins 14          ; Pull in rest of address from 6502
     out pins 8          ; Blocking till data returns. pindirs set elsewhere
 .wrap
@@ -40,7 +40,7 @@ start:
     mov isr y           ; BLK4 write, use data from y
     jmp push_data
 not_blk4:
-    wait 1 pin 26  [25] ; Wait for RnW rising edge before capturing not BLK4 data
+    wait 1 pin 26  [29] ; Wait for RnW rising edge before capturing not BLK4 data
     mov isr pins        ; Assume not BLK4, capture new data in isr
 push_data:
     push noblock        ; Send data to FIFO
@@ -57,9 +57,9 @@ push_data:
 .out 8 right
 .wrap_target
 start:
-    wait 0 irq 1   [29] ; Wait for phi1 rising edge + ca 200ns for data hold
+    wait 0 irq 1   [31] ; Wait for phi1 rising edge + ca 200ns for data hold
     mov pindirs null    ; Disable data pins output
-    wait 0 irq 0   [29] ; Wait for phi1 falling edge + ca 200ns for address hold
+    wait 0 irq 0   [31] ; Wait for phi1 falling edge + ca 200ns for address hold
     jmp pin isread      ; Sample RnW pin skip next if read
     irq set 3           ; Signal xwrite program
 isread:
@@ -95,7 +95,7 @@ isread:
 ; Used by xread and xwrite DMA chain to make VIC register space wrapping work
 ; Same program used for both xread and xwrite as the data sent by xwrite will never
 ; match and pass unchanged through
-; Matching address set in x (A31-A15=xram, A14-A8=0x10)
+; Matching address set in x (A31-A14=xram, A13-A8=0x10)
 ; If so, strip A7-A4 
 .program mask_address
 .in 1 left auto 32
