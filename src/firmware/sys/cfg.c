@@ -26,17 +26,24 @@
 // +U0         | Core voltage override
 // BASIC       | Boot ROM - Must be last
 
+#define CFG_DEFAULT_SPLASH 1
+#define CFG_DEFAULT_DVI_MODE 0
+#define CFG_DEFAULT_DVI_AUDIO 0
+#define CFG_DEFAULT_MODE 1
+#define CFG_DEFAULT_VOLT 0
+#define CFG_DEFAULT_BIAS 80
+
 #define CFG_VERSION 1
 static const char filename[] = "CONFIG.SYS";
 
 static uint32_t cfg_phi2_khz;
 static uint8_t cfg_caps;
-static uint8_t cfg_splash = 1;
-static uint8_t cfg_dvi_mode = 0;
-static uint8_t cfg_dvi_audio = 0;
-static uint8_t cfg_mode = 1;
-static uint8_t cfg_volt = 0;
-static uint8_t cfg_bias = 80;
+static uint8_t cfg_splash = CFG_DEFAULT_SPLASH;
+static uint8_t cfg_dvi_mode = CFG_DEFAULT_DVI_MODE;
+static uint8_t cfg_dvi_audio = CFG_DEFAULT_DVI_AUDIO;
+static uint8_t cfg_mode = CFG_DEFAULT_MODE;
+static uint8_t cfg_volt = CFG_DEFAULT_VOLT;
+static uint8_t cfg_bias = CFG_DEFAULT_BIAS;
 
 // Optional string can replace boot string
 static void cfg_save_with_boot_opt(char *opt_str)
@@ -156,6 +163,21 @@ static void cfg_load_with_boot_opt(bool boot_only)
     lfsresult = lfs_file_close(&lfs_volume, &lfs_file);
     if (lfsresult < 0)
         printf("?Unable to lfs_file_close %s (%d)\n", filename, lfsresult);
+}
+
+bool cfg_set_defaults(uint8_t doit){
+    if(doit==1){
+        cfg_splash = CFG_DEFAULT_SPLASH;
+        cfg_dvi_mode = CFG_DEFAULT_DVI_MODE;
+        cfg_dvi_audio = CFG_DEFAULT_DVI_AUDIO;
+        cfg_mode = CFG_DEFAULT_MODE;
+        cfg_volt = CFG_DEFAULT_VOLT;
+        cfg_bias = CFG_DEFAULT_BIAS;
+        cfg_save_with_boot_opt(NULL);
+        return true;
+    }else{
+        return false;
+    }
 }
 
 void cfg_init(void)

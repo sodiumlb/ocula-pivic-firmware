@@ -16,6 +16,8 @@
 #include "oric/ula.h"
 #endif
 
+static void set_print_all(void);
+
 static void set_print_phi2(void)
 {
     uint32_t phi2_khz = cfg_get_phi2_khz();
@@ -283,6 +285,19 @@ static void set_bias(const char *args, size_t len)
     set_print_bias();
 }
 
+static void set_defaults(const char *args, size_t len)
+{
+    uint32_t val;
+    if (!parse_uint32(&args, &len, &val) ||
+        !parse_end(args, len) ||
+        !cfg_set_defaults(val))
+    {
+        printf("?invalid argument\n");
+        return;
+    }
+    set_print_all();
+}
+
 typedef void (*set_function)(const char *, size_t);
 static struct
 {
@@ -298,7 +313,8 @@ static struct
     {5, "audio", set_dvi_audio},
     {4, "mode", set_mode},
     {4, "volt", set_volt},
-    {4, "bias", set_bias}
+    {4, "bias", set_bias},
+    {8, "defaults", set_defaults}
 };
 static const size_t SETTERS_COUNT = sizeof SETTERS / sizeof *SETTERS;
 

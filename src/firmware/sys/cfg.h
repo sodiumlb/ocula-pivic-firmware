@@ -37,4 +37,7 @@ uint8_t cfg_get_volt(void);
 bool cfg_set_bias(uint8_t bias);
 uint8_t cfg_get_bias(void);
 
+// Updates all variables to defaults and saves config file when doit==1
+bool cfg_set_defaults(uint8_t doit);
+
 #endif /* _CFG_H_ */

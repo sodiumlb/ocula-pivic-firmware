@@ -35,7 +35,8 @@ static const char __in_flash("helptext") hlp_text_set[] =
 #ifdef PIVIC
     "SET BIAS (n)        - Adjust the DC bias on the analogue audio.\n"
 #endif
-    "SET MODE (0|1|2|..) - Query or set main operational mode."
+    "SET MODE (0|1|2|..) - Query or set main operational mode.\n"
+    "SET DEFAULTS 1      - Set all parameters to default value."
     ;
 
 static const char __in_flash("helptext") hlp_text_about[] =
@@ -186,7 +187,7 @@ static const char __in_flash("helptext") hlp_text_dvi_audio[] =
     " 0 - disable DVI audio\n"
     " 1 - enable DVI audio";
 
-    static const char __in_flash("helptext") hlp_text_mode[] =
+static const char __in_flash("helptext") hlp_text_mode[] =
 #ifdef PIVIC
     "SET MODE selects the type of VIC emulation\n"
     "  0 - VIC 6560 NTSC/60 CVBS on Luma\n"
@@ -205,13 +206,19 @@ static const char __in_flash("helptext") hlp_text_dvi_audio[] =
 #endif
 ;
 
+static const char __in_flash("helptext") hlp_text_defaults[] =
+    "SET DEFAULTS loads default values to all the SET parameters\n"
+    "and to the persistant configuration. Reboot required. \n"
+    "An argument value of '1' is required to confirm the operation\n" 
+    " 1 - Reset all SET parameters to their default values";
+
 #ifdef PIVIC
 static const char __in_flash("helptext") hlp_text_bias[] =
     "SET BIAS adjust the DC audio bias on the analogue output.\n"
     "Audio will drop out if too low and clip if too high\n"
-    "Default is 48. 32 can work for many. 64 is 50% bias\n";
+    "Default is 80. 64 can work for many. 128 is 50% bias\n";
 
-    static const char __in_flash("helptext") hlp_text_colour[] =
+static const char __in_flash("helptext") hlp_text_colour[] =
     "COLOUR|COLOR selects a single palette entry\n"
     "for tuning with the TUNE command. Use 0-15\n"
     "to select each of the 16 colours, or 16 for\n"
@@ -291,6 +298,7 @@ static struct
     {3, "dvi", hlp_text_dvi},
     {5, "audio", hlp_text_dvi_audio},
     {4, "mode", hlp_text_mode},
+    {8, "defaults", hlp_text_defaults},
 #ifdef PIVIC
     {4, "bias", hlp_text_bias},
 #endif
