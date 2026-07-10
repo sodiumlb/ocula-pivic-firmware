@@ -36,6 +36,6 @@ Note that debug target builds are currently too slow for stable operation. Use R
 
 ## Related projects
 * [OCULA documentation project](https://github.com/sodiumlb/ocula-docs/wiki)
-* OCULA hardware project
+* [OCULA hardware project](https://github.com/sodiumlb/ocula-hardware)
 * [PIVIC documentation project](https://github.com/sodiumlb/pivic-docs/wiki)
-* PIVIC hardware project
+* [PIVIC hardware project](https://github.com/sodiumlb/pivic-hardware)
