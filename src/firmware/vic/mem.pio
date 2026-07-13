@@ -26,7 +26,7 @@
 ; A14 = '1' for non BLK4 writes - data in following VIC period
 .program xwrite
 .clock_div 2.0
-.in 32 left
+.in 32 left auto 14
 .out 32 right
 .wrap_target
 start:
@@ -34,8 +34,8 @@ start:
     wait 1 irq 3        ; Wait for write detect in xdir program
     mov osr pins        ; Capture D[7:0],D[11:8],A[13:0],RnW
     out y 12            ; Keep D[11:0] in y (in case BLK4)
-    in osr 14           ; shift in bottom address
-    push noblock        ; Send address to FIFO
+    in osr 14           ; shift in bottom address autopush
+    ;push noblock        ; Send address to FIFO
     jmp pin not_blk4    ; If A13=='1', this write is not for BLK4
     mov isr y           ; BLK4 write, use data from y
     jmp push_data
@@ -53,7 +53,7 @@ push_data:
 
 .program xdir
 .clock_div 2.0
-.in 7 left
+.in 6 left
 .out 8 right
 .wrap_target
 start:
@@ -63,9 +63,15 @@ start:
     jmp pin isread      ; Sample RnW pin skip next if read
     irq set 3           ; Signal xwrite program
 isread:
-    mov y pins          ; Get A[13:8],RnW
+    mov osr pins        ; Get A[13:8] in OSR
+    out null 4          ; Spool out A[11:8]
+    out y 2             ; Move A[13:12] to y
+    jmp !y isrom        ; Enable reading if character ROM when A[13:12]==0
+notrom:
+    mov y pins          ; Get A[13:8] in y
     jmp x!=y start      ; If not reading of registers, goto start 
-    irq set 2           ; Signal trace
+    ;irq set 2           ; Signal trace
+isrom:
     mov pindirs ~null   ; Set data pins to output
 .wrap
 
