@@ -154,11 +154,7 @@ static void irq_handler(void){
 bool dvi_audio_enabled = false;
 
 void dvi_audio_init(void){
-    if(source_sample == NULL || cfg_get_dvi_audio() == 0)
-        return;
-
-    dvi_audio_enabled = true;
-    
+    // Audio sources may use the audio_fs_cb which requires this DMA and IRQ setup regardless dvi_audio is enabled or not.
     dma_sample_chan_idx = dma_claim_unused_channel(true);
     dma_sample_chan = &dma_hw->ch[dma_sample_chan_idx];
     dma_channel_config sample_dma = dma_channel_get_default_config(dma_sample_chan_idx);
@@ -185,6 +181,11 @@ void dvi_audio_init(void){
     irq_add_shared_handler(DMA_IRQ_2, irq_handler, PICO_SHARED_IRQ_HANDLER_HIGHEST_ORDER_PRIORITY);
     irq_set_enabled(DMA_IRQ_2, true);
     
+    if(source_sample == NULL || cfg_get_dvi_audio() == 0)
+        return;
+
+    dvi_audio_enabled = true;
+
     int dma_chan_idx = dma_claim_unused_channel(true);
     dma_di_chan = &dma_hw->ch[dma_chan_idx];
     dma_channel_config di_dma = dma_channel_get_default_config(dma_chan_idx);
