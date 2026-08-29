@@ -9,6 +9,7 @@
 #include "mon/mon.h"
 #include "usb/cdc.h"
 #include "pico/stdio/driver.h"
+#include "pico/bootrom.h"
 
 static absolute_time_t break_timer;
 static absolute_time_t faux_break_timer;
@@ -35,8 +36,15 @@ void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const *p_line_coding)
     // strict requirements of sending a full byte of zeros within 100ms
     // of changing the baud rate to 1200. e.g.
     // stty -F /dev/ttyACM1 1200 && echo -ne '\0' > /dev/ttyACM1
-    if (p_line_coding->bit_rate == 1200)
-        faux_break_timer = make_timeout_time_ms(100);
+    // if (p_line_coding->bit_rate == 1200)
+    //     faux_break_timer = make_timeout_time_ms(100);
+
+    // 1200-baud touch: a host opening the port at 1200 bps reboots the Pico into
+    // BOOTSEL (USB mass-storage) so new firmware can be flashed without pressing
+    // the physical button. Standard Arduino/Pico convention.
+    if( p_line_coding->bit_rate == 1200 ){
+        reset_usb_boot(0, 0);
+    }
 }
 
 void cdc_stdio_out_chars(const char *buf, int length);
