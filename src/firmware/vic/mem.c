@@ -30,7 +30,7 @@ void xread_pio_init(void){
     }
     for(uint32_t i = 0; i < ADDR_PIN_COUNT; i++){
         gpio_init(ADDR_PIN_BASE+i);
-        gpio_set_pulls(ADDR_PIN_BASE+i, false, false);   //E9 work-around
+        gpio_set_pulls(ADDR_PIN_BASE+i, true, true);   //Enable bus-hold (only active A0-A8)
         pio_gpio_init(XREAD_PIO, ADDR_PIN_BASE+i);
         gpio_set_input_enabled(ADDR_PIN_BASE+i, true);
     }
