@@ -56,7 +56,8 @@ void xread_pio_init(void){
     offset = pio_add_program(XREAD_MASK_PIO, &mask_address_program);
     pio_sm_config config2 = mask_address_program_get_default_config(offset);
     pio_sm_init(XREAD_MASK_PIO, XREAD_MASK_SM, offset, &config2);
-    pio_sm_put_blocking(XREAD_MASK_PIO, XREAD_MASK_SM, ((uintptr_t)xram >> 8) | 0x10);
+    // pio_sm_put_blocking(XREAD_MASK_PIO, XREAD_MASK_SM, ((uintptr_t)xram >> 8) | 0x10);
+    pio_sm_put_blocking(XREAD_MASK_PIO, XREAD_MASK_SM, -1);
     pio_sm_exec_wait_blocking(XREAD_MASK_PIO, XREAD_MASK_SM, pio_encode_pull(false, true));
     pio_sm_exec_wait_blocking(XREAD_MASK_PIO, XREAD_MASK_SM, pio_encode_out(pio_x, 32));
     //Autopull/autopush enabled. Clear the FIFOs before use
@@ -137,7 +138,8 @@ void xwrite_pio_init(void){
     offset = pio_add_program(XWRITE_MASK_PIO, &mask_address_program);
     pio_sm_config config2 = mask_address_program_get_default_config(offset);
     pio_sm_init(XWRITE_MASK_PIO, XWRITE_MASK_SM, offset, &config2);
-    pio_sm_put_blocking(XWRITE_MASK_PIO, XWRITE_MASK_SM, ((uintptr_t)xram >> 8) | 0x10);
+    // pio_sm_put_blocking(XWRITE_MASK_PIO, XWRITE_MASK_SM, ((uintptr_t)xram >> 8) | 0x10);
+    pio_sm_put_blocking(XWRITE_MASK_PIO, XWRITE_MASK_SM, -1);
     pio_sm_exec_wait_blocking(XWRITE_MASK_PIO, XWRITE_MASK_SM, pio_encode_pull(false, true));
     pio_sm_exec_wait_blocking(XWRITE_MASK_PIO, XWRITE_MASK_SM, pio_encode_out(pio_x, 32));
     //Autopull/autopush enabled. Clear the FIFOs before use
