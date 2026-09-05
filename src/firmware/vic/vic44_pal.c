@@ -569,7 +569,8 @@ void vic44_core1_loop_pal(void) {
                                 pio_sm_put(CVBS_PIO, CVBS_SM, pal_palette[multiColourTable[pixel1]]);
                                 
                                 fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_END);
-                          
+                                __attribute__((fallthrough));
+                                
                             case FETCH_CHAR_DATA:
                             case FETCH_MATRIX_END:
                                 // Look up latest background, border and auxiliary colours.
@@ -833,7 +834,8 @@ void vic44_core1_loop_pal(void) {
 
                                 // Toggle fetch state. Close matrix if HCC hits zero.
                                 fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_END);
-                                
+                                __attribute__((fallthrough));
+
                             case FETCH_CHAR_DATA:
                             case FETCH_MATRIX_END:
 
