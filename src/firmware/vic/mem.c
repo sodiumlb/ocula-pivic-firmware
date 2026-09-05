@@ -59,7 +59,8 @@ void xread_pio_init(void){
     pio_sm_put_blocking(XREAD_MASK_PIO, XREAD_MASK_SM, ((uintptr_t)xram >> 8) | 0x10);
     pio_sm_exec_wait_blocking(XREAD_MASK_PIO, XREAD_MASK_SM, pio_encode_pull(false, true));
     pio_sm_exec_wait_blocking(XREAD_MASK_PIO, XREAD_MASK_SM, pio_encode_out(pio_x, 32));
-    
+    //Autopull/autopush enabled. Clear the FIFOs before use
+    pio_sm_clear_fifos(XREAD_MASK_PIO, XREAD_MASK_SM);
 
     // Set up two DMA channels for fetching address then data
     int addr_chan = dma_claim_unused_channel(true);
@@ -139,6 +140,8 @@ void xwrite_pio_init(void){
     pio_sm_put_blocking(XWRITE_MASK_PIO, XWRITE_MASK_SM, ((uintptr_t)xram >> 8) | 0x10);
     pio_sm_exec_wait_blocking(XWRITE_MASK_PIO, XWRITE_MASK_SM, pio_encode_pull(false, true));
     pio_sm_exec_wait_blocking(XWRITE_MASK_PIO, XWRITE_MASK_SM, pio_encode_out(pio_x, 32));
+    //Autopull/autopush enabled. Clear the FIFOs before use
+    pio_sm_clear_fifos(XWRITE_MASK_PIO, XWRITE_MASK_SM);
 
     // Set up two DMA channels for fetching address then data
     int addr_chan = dma_claim_unused_channel(true);
