@@ -36,6 +36,8 @@ bool cfg_set_volt(uint8_t volt);
 uint8_t cfg_get_volt(void);
 bool cfg_set_bias(uint8_t bias);
 uint8_t cfg_get_bias(void);
+bool cfg_set_wdelay(uint8_t delay);
+uint8_t cfg_get_wdelay(void);
 
 // Updates all variables to defaults and saves config file when doit==1
 bool cfg_set_defaults(uint8_t doit);

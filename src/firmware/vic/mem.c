@@ -7,6 +7,7 @@
 
 #include "main.h"
 #include "vic/mem.h"
+#include "sys/cfg.h"
 #include "sys/mem.h"
 #include "mem.pio.h"
 #include "pico/stdlib.h"
@@ -122,9 +123,11 @@ void xread_pio_init(void){
 uint8_t xwrite_dma_addr_chan;
 uint8_t xwrite_dma_data_chan;
 uint8_t xwrite_dma_mask_chan;
+uint xwrite_prg_offset;
 void xwrite_pio_init(void){
     pio_set_gpio_base (XWRITE_PIO, XWRITE_PIN_OFFS);
     uint offset = pio_add_program(XWRITE_PIO, &xwrite_program);
+    xwrite_prg_offset = offset;
     pio_sm_config config = xwrite_program_get_default_config(offset);
     sm_config_set_in_pin_base(&config, DATA_PIN_BASE); 
     sm_config_set_jmp_pin(&config, ADDR_PIN_BASE+13);   //BLK4 detection 
@@ -199,6 +202,13 @@ void xwrite_pio_init(void){
         true);  
 }
 
+void xwrite_set_delay(uint8_t delay){
+    XWRITE_PIO->instr_mem[xwrite_prg_offset+xwrite_offset_delay_adjust] = (pio_encode_nop() | pio_encode_delay(delay & 0x1F));
+    if(delay & 0x80){
+        cfg_set_wdelay(delay & 0x1F);   //Save delay value if MSB is set
+    }
+}
+
 #define TRACE_BUF &xram[0x10000]
 int trace_dma_chan;
 void trace_pio_init(void){
@@ -270,5 +280,20 @@ void mem_init(void){
     pio_set_sm_mask_enabled(XREAD_PIO, (1u << XREAD_SM) | (1u << XDIR_SM) | (1u << XWRITE_SM) | (1u << XUNCON_SM) /*| (1u << TRACE_SM)*/, true);
 }
 
+#define WATCH_ADDR 0x1048
+
 void mem_task(void){
+    static bool delay_valid = false;
+    static uint8_t delay;
+    if(delay_valid){
+        uint8_t tmp = xram[WATCH_ADDR];
+        if(tmp != delay){
+            delay = tmp;
+            xwrite_set_delay(delay);
+        }
+    }else{
+        delay = cfg_get_wdelay();
+        xram[WATCH_ADDR] = delay;
+        delay_valid = true;
+    }
 }

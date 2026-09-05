@@ -32,6 +32,7 @@
 #define CFG_DEFAULT_MODE 1
 #define CFG_DEFAULT_VOLT 0
 #define CFG_DEFAULT_BIAS 80
+#define CFG_DEFAULT_WDELAY 10
 
 #define CFG_VERSION 1
 static const char filename[] = "CONFIG.SYS";
@@ -44,6 +45,7 @@ static uint8_t cfg_dvi_audio = CFG_DEFAULT_DVI_AUDIO;
 static uint8_t cfg_mode = CFG_DEFAULT_MODE;
 static uint8_t cfg_volt = CFG_DEFAULT_VOLT;
 static uint8_t cfg_bias = CFG_DEFAULT_BIAS;
+static uint8_t cfg_wdelay = CFG_DEFAULT_WDELAY;
 
 // Optional string can replace boot string
 static void cfg_save_with_boot_opt(char *opt_str)
@@ -85,6 +87,7 @@ static void cfg_save_with_boot_opt(char *opt_str)
                                "+M%d\n"
                                "+U%d\n"
                                "+B%d\n"
+                               "+W%d\n"
                                "%s",
                                CFG_VERSION,
                                cfg_phi2_khz,
@@ -95,6 +98,7 @@ static void cfg_save_with_boot_opt(char *opt_str)
                                cfg_mode,
                                cfg_volt,
                                cfg_bias,
+                               cfg_wdelay,
                                opt_str);
         if (lfsresult < 0)
             printf("?Unable to write %s contents (%d)\n", filename, lfsresult);
@@ -156,6 +160,10 @@ static void cfg_load_with_boot_opt(bool boot_only)
                 break;
             case 'B':
                 cfg_bias = val;
+                break;
+            case 'W':
+                cfg_wdelay = val;
+                break;
             default:
                 break;
             }
@@ -173,6 +181,7 @@ bool cfg_set_defaults(uint8_t doit){
         cfg_mode = CFG_DEFAULT_MODE;
         cfg_volt = CFG_DEFAULT_VOLT;
         cfg_bias = CFG_DEFAULT_BIAS;
+        cfg_wdelay = CFG_DEFAULT_WDELAY;
         cfg_save_with_boot_opt(NULL);
         return true;
     }else{
@@ -343,4 +352,21 @@ bool cfg_set_bias(uint8_t bias)
 uint8_t cfg_get_bias(void)
 {
     return cfg_bias;
+}
+
+bool cfg_set_wdelay(uint8_t delay)
+{
+    if(delay > 31){
+        return false;
+    }
+    if(cfg_wdelay != delay){
+        cfg_wdelay = delay;
+        cfg_save_with_boot_opt(NULL);
+    }
+    return true;
+}
+
+uint8_t cfg_get_wdelay(void)
+{
+    return cfg_wdelay;
 }

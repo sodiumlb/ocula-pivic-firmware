@@ -40,7 +40,9 @@ start:
     mov isr y           ; BLK4 write, use data from y
     jmp push_data
 not_blk4:
-    wait 0 irq 1   [20] ; Wait for phi rising edge + ca 150ns for data hold
+    wait 0 irq 1   [10] ; Wait for phi rising edge + ca 80ns minimum delay
+public delay_adjust:
+    nop            [10] ; Delay instruction configured as wdelay
     mov isr pins        ; Assume not BLK4, capture new data in isr
 push_data:
     push noblock        ; Send data to FIFO
