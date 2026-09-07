@@ -34,6 +34,7 @@ static const char __in_flash("helptext") hlp_text_set[] =
     "SET AUDIO (0|1)     - Query or set DVI audio disable or enable.\n"
 #ifdef PIVIC
     "SET BIAS (n)        - Adjust the DC bias on the analogue audio.\n"
+    "SET WDELAY (n)      - Adjust the write snoop sampling delay\n"
 #endif
     "SET MODE (0|1|2|..) - Query or set main operational mode.\n"
     "SET DEFAULTS 1      - Set all parameters to default value."
@@ -218,6 +219,15 @@ static const char __in_flash("helptext") hlp_text_bias[] =
     "Audio will drop out if too low and clip if too high\n"
     "Default is 80. 64 can work for many. 128 is 50% bias\n";
 
+static const char __in_flash("helptext") hlp_text_wdelay[] =
+    "SET WDELAY adjusts the delay for write snoop sampling.\n"
+    "Writes outside the directly addressed space (BLK4 on VIC-20)\n"
+    "are snooped during the VIC phase of the clock.\n"
+    "This setting adjusts the delay between the PHI clock output\n"
+    "and the sample being taken. Adjusting this may help machines\n"
+    "that experience screen data corruption.\n"
+    "Default is 15. Range is 0-31.\n";
+
 static const char __in_flash("helptext") hlp_text_colour[] =
     "COLOUR|COLOR selects a single palette entry\n"
     "for tuning with the TUNE command. Use 0-15\n"
@@ -301,6 +311,7 @@ static struct
     {8, "defaults", hlp_text_defaults},
 #ifdef PIVIC
     {4, "bias", hlp_text_bias},
+    {6, "wdelay", hlp_text_wdelay},
 #endif
 };
 static const size_t SETTINGS_COUNT = sizeof SETTINGS / sizeof *SETTINGS;

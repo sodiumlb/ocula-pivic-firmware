@@ -7,6 +7,10 @@
 #ifndef _VIC_MEM_H_
 #define _VIC_MEM_H_
 
+#include <stddef.h>
+
+void mem_set_wdelay(uint8_t delay);
+
 void mem_init(void);
 void mem_task(void);
 

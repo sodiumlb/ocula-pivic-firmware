@@ -264,6 +264,7 @@ static void set_volt(const char *args, size_t len)
     set_print_volt();
 }
 
+#ifdef PIVIC
 static void set_print_bias()
 {
     printf("BIAS  : %d\n", cfg_get_bias());
@@ -284,6 +285,28 @@ static void set_bias(const char *args, size_t len)
     }
     set_print_bias();
 }
+
+static void set_print_wdelay()
+{
+    printf("WDELAY: %d\n", cfg_get_wdelay());
+}
+
+static void set_wdelay(const char *args, size_t len)
+{
+    uint32_t val;
+    if (len)
+    {
+        if (!parse_uint32(&args, &len, &val) ||
+            !parse_end(args, len) ||
+            !cfg_set_wdelay(val))
+        {
+            printf("?invalid argument\n");
+            return;
+        }
+    }
+    set_print_wdelay();
+}
+#endif
 
 static void set_defaults(const char *args, size_t len)
 {
@@ -313,7 +336,10 @@ static struct
     {5, "audio", set_dvi_audio},
     {4, "mode", set_mode},
     {4, "volt", set_volt},
+#ifdef PIVIC
     {4, "bias", set_bias},
+    {6, "wdelay", set_wdelay},
+#endif
     {8, "defaults", set_defaults}
 };
 static const size_t SETTERS_COUNT = sizeof SETTERS / sizeof *SETTERS;
@@ -328,7 +354,10 @@ static void set_print_all(void)
     set_print_dvi_audio();
     set_print_mode();
     set_print_volt();
+#ifdef PIVIC
     set_print_bias();
+    set_print_wdelay();
+#endif
 }
 
 void set_mon_set(const char *args, size_t len)

@@ -13,6 +13,7 @@
 #include "sys/dvi.h"
 #ifdef PIVIC
 #include "sys/rev.h"
+#include "vic/mem.h"
 #include "vic/vic.h"
 #endif
 // Configuration is a plain ASCII file on the LFS. e.g.
@@ -24,6 +25,8 @@
 // +A1         | DVI audio enable
 // +M0         | Mode (e.g. VIC PAL/NTSC for PIVIC)
 // +U0         | Core voltage override
+// +B80        | PIVIC analogue audio bias level
+// +W15        | PIVIC write snoop sampling delay
 // BASIC       | Boot ROM - Must be last
 
 #define CFG_DEFAULT_SPLASH 1
@@ -32,7 +35,7 @@
 #define CFG_DEFAULT_MODE 1
 #define CFG_DEFAULT_VOLT 0
 #define CFG_DEFAULT_BIAS 80
-#define CFG_DEFAULT_WDELAY 10
+#define CFG_DEFAULT_WDELAY 15
 
 #define CFG_VERSION 1
 static const char filename[] = "CONFIG.SYS";
@@ -362,6 +365,7 @@ bool cfg_set_wdelay(uint8_t delay)
     if(cfg_wdelay != delay){
         cfg_wdelay = delay;
         cfg_save_with_boot_opt(NULL);
+        mem_set_wdelay(delay);
     }
     return true;
 }
