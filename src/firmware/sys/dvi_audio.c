@@ -148,7 +148,8 @@ void dvi_audio_set_fs_cb(irq_handler_t fn){
 static absolute_time_t irq_time_stamp;
 static void irq_handler(void){
     dma_hw->ints2 = dma_hw->ints2;
-    audio_fs_cb();
+    if(audio_fs_cb != NULL)
+        audio_fs_cb();
 }
 
 bool dvi_audio_enabled = false;
