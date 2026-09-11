@@ -229,7 +229,7 @@ void cvbs_pio_mode_init(void){
    }
 
    sm_config_set_out_shift(&config, true, true, 32); 
-   sm_config_set_fifo_join(&config, PIO_FIFO_JOIN_TX);
+   //sm_config_set_fifo_join(&config, PIO_FIFO_JOIN_TX);
    pio_sm_init(CVBS_PIO, CVBS_SM, offset, &config);
    //cvbs_push_cmd(0x84210FFF);    
    pio_sm_exec_wait_blocking(CVBS_PIO, CVBS_SM, pio_encode_jmp(entry));
