@@ -132,6 +132,47 @@ uint32_t ntsc_test_blanking_line_even[] = {
    NTSC_BLANKING,
 };
 
+#define CVBS_FIFO_LEN_BITS 5
+#define CVBS_FIFO_LEN (1<<CVBS_FIFO_LEN_BITS)
+#define CVBS_FIFO_SIZE_BITS (CVBS_FIFO_LEN_BITS+2)
+#define CVBS_FIFO_SIZE (1<<CVBS_FIFO_SIZE_BITS)
+static uint32_t cvbs_fifo[CVBS_FIFO_LEN] __attribute__ ((aligned(CVBS_FIFO_SIZE)));
+static volatile uint32_t cvbs_fifo_idx = 0;
+
+void cvbs_push_cmd(uint32_t cmd){
+   cvbs_fifo[cvbs_fifo_idx] = cmd;
+   cvbs_fifo_idx = (cvbs_fifo_idx + 1) & (CVBS_FIFO_LEN-1);
+}
+
+static dma_channel_hw_t *cvbs_dma_chan;
+void cvbs_fifo_init(void){
+   //Init FIFO with valid commands 
+   for(int i=0; i<CVBS_FIFO_LEN; i++){
+      cvbs_push_cmd(CVBS_CMD_PAL_DC_RUN(9,4));
+   }
+
+   int dma_chan_idx = dma_claim_unused_channel(true);
+   cvbs_dma_chan = &dma_hw->ch[dma_chan_idx];
+   dma_channel_config config = dma_channel_get_default_config(dma_chan_idx);
+   channel_config_set_dreq(&config, pio_get_dreq(CVBS_PIO, CVBS_SM, true));
+   channel_config_set_read_increment(&config, true);
+   channel_config_set_write_increment(&config, false);
+   channel_config_set_ring(&config, false, CVBS_FIFO_SIZE_BITS);
+   channel_config_set_transfer_data_size(&config, DMA_SIZE_32);
+   dma_channel_configure(
+      dma_chan_idx,
+      &config,
+      &CVBS_PIO->txf[CVBS_SM],          // dst CVBS PIO FIFO
+      &cvbs_fifo[0],                    // src SW FIFO ring buffer 
+      //0x10000001,                       // Self triggering, report every transfers (FS)
+      0x10000000 + CVBS_FIFO_LEN,       // Self triggering, report every ring loop 
+      false);
+}
+
+void cvbs_fifo_enable(void){
+   cvbs_dma_chan->ctrl_trig = cvbs_dma_chan->al1_ctrl;
+}
+
 void cvbs_pio_mode_init(void){ 
    pio_set_gpio_base (CVBS_PIO, CVBS_PIN_OFFS);
    uint offset, entry;
@@ -197,7 +238,7 @@ void cvbs_pio_mode_init(void){
    sm_config_set_out_shift(&config, true, true, 32); 
    sm_config_set_fifo_join(&config, PIO_FIFO_JOIN_TX);
    pio_sm_init(CVBS_PIO, CVBS_SM, offset, &config);
-   //pio_sm_put(CVBS_PIO, CVBS_SM, 0x84210FFF);    
+   //cvbs_push_cmd(0x84210FFF);    
    pio_sm_exec_wait_blocking(CVBS_PIO, CVBS_SM, pio_encode_jmp(entry));
    pio_sm_set_enabled(CVBS_PIO, CVBS_SM, true);   
    printf("CVBS mode init done\n");
@@ -208,13 +249,13 @@ void cvbs_test_img_pal(void){
    static uint32_t j = 0;
    static uint32_t lines = 0;
    while(!pio_sm_is_tx_fifo_full(CVBS_PIO,CVBS_SM)){
-      //pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_CMD(i,i,i,i,6,40));
+      //cvbs_push_cmd(CVBS_CMD(i,i,i,i,6,40));
       if(lines < 285){
          if(i < count_of(pal_test_scanline_odd)){   //Assuming same length  
             if(lines & 1u){
-               pio_sm_put(CVBS_PIO, CVBS_SM, pal_test_scanline_odd[i++]);
+               cvbs_push_cmd(pal_test_scanline_odd[i++]);
             }else{
-               pio_sm_put(CVBS_PIO, CVBS_SM, pal_test_scanline_even[i++]);
+               cvbs_push_cmd(pal_test_scanline_even[i++]);
             }
          }else{
             if(j >= 234){
@@ -223,25 +264,25 @@ void cvbs_test_img_pal(void){
                lines++;
             }else{
                if(lines & 1u){
-                  pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[0][(j>>3)&0xF]);
+                  cvbs_push_cmd(cvbs_palette[0][(j>>3)&0xF]);
                }else{
-                  pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[1][(j>>3)&0xF]);
+                  cvbs_push_cmd(cvbs_palette[1][(j>>3)&0xF]);
                }
                j++;
             }
          }
       }else if(lines < 293){ 
          //8 lines block
-         pio_sm_put(CVBS_PIO, CVBS_SM, pal_test_vsync[i++]);
+         cvbs_push_cmd(pal_test_vsync[i++]);
          if(i >= count_of(pal_test_vsync)){
             i = 0;
             lines+=8;
          }
       }else if(lines < 312){
          if(lines & 1u){
-            pio_sm_put(CVBS_PIO, CVBS_SM, pal_test_blanking_line_odd[i++]);
+            cvbs_push_cmd(pal_test_blanking_line_odd[i++]);
          }else{
-            pio_sm_put(CVBS_PIO, CVBS_SM, pal_test_blanking_line_even[i++]);
+            cvbs_push_cmd(pal_test_blanking_line_even[i++]);
          }
          if(i >= count_of(pal_test_blanking_line_odd)){ //Assuming same length
             i = 0;
@@ -263,13 +304,13 @@ void cvbs_test_img_ntsc(void){
    static uint32_t run_lines = 0;
    
    while(!pio_sm_is_tx_fifo_full(CVBS_PIO,CVBS_SM)){
-      //pio_sm_put(CVBS_PIO, CVBS_SM, CVBS_CMD(i,i,i,i,6,40));
+      //cvbs_push_cmd(CVBS_CMD(i,i,i,i,6,40));
       if(lines < 240){  
          if(i < count_of(ntsc_test_scanline_odd)){  //Assuming same length both odd/even
             if(run_lines & 1u){
-               pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_test_scanline_odd[i++]);
+               cvbs_push_cmd(ntsc_test_scanline_odd[i++]);
             }else{
-               pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_test_scanline_even[i++]);
+               cvbs_push_cmd(ntsc_test_scanline_even[i++]);
             }
          }else{
             if(j >= 200){
@@ -279,16 +320,16 @@ void cvbs_test_img_ntsc(void){
                run_lines++;
             }else{
                if(run_lines & 1u){
-                  pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(j+0+2)&0x7][(j>>3)&0xF]);
+                  cvbs_push_cmd(cvbs_palette[(j+0+2)&0x7][(j>>3)&0xF]);
                }else{
-                  pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(j+4+2)&0x7][(j>>3)&0xF]);
+                  cvbs_push_cmd(cvbs_palette[(j+4+2)&0x7][(j>>3)&0xF]);
                }
                j++;
             }
          }
       }else if(lines < 249){ 
          //9 lines block
-         pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_test_vsync[i++]);
+         cvbs_push_cmd(ntsc_test_vsync[i++]);
          if(i >= count_of(ntsc_test_vsync)){
             i = 0;
             lines+=9;
@@ -296,9 +337,9 @@ void cvbs_test_img_ntsc(void){
          }
       }else if(lines < 261){
          if(run_lines & 1u){
-            pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_test_blanking_line_odd[i++]);
+            cvbs_push_cmd(ntsc_test_blanking_line_odd[i++]);
          }else{
-            pio_sm_put(CVBS_PIO, CVBS_SM, ntsc_test_blanking_line_even[i++]);
+            cvbs_push_cmd(ntsc_test_blanking_line_even[i++]);
          }
          if(i >= count_of(ntsc_test_blanking_line_odd)){ //Assuming same length
             i = 0;
@@ -576,6 +617,7 @@ void cvbs_init(void){
    cvbs_load_palette(cvbs_mode, 0);
    cvbs_calc_palette(cvbs_mode, &cvbs_source_palette);
    cvbs_pio_mode_init();   //Needs to be first
+   cvbs_fifo_init();
    switch(cvbs_mode){
       case(VIC_MODE_TEST_PAL):
       case(VIC_MODE_TEST_PAL_SVIDEO):
@@ -746,6 +788,10 @@ bool active = false;
 void cvbs_print_status(void){
    printf("CVBS FIFO debug:%08x level:%d\n", CVBS_PIO->fdebug, pio_sm_get_tx_fifo_level(CVBS_PIO, (CVBS_SM)));
    CVBS_PIO->fdebug = CVBS_PIO->fdebug;            //Clear FIFO status
+   printf("CVBS DMA FIFO idx:%d ba:%08x ra:%08x\n", cvbs_fifo_idx, &cvbs_fifo[0], cvbs_dma_chan->read_addr);
+   for(int i=0; i<CVBS_FIFO_LEN; i++){
+      printf(" %02d: %08x\n", i, cvbs_fifo[i]);
+   }
 
    printf("Default palettes:\n");
    for(int i=0; i<VIC_MODE_COUNT; i++){

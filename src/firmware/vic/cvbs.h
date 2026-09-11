@@ -11,6 +11,9 @@
 
  void cvbs_init(void);
  void cvbs_task(void);
+
+ void cvbs_push_cmd(uint32_t cmd);
+ void cvbs_fifo_enable(void);
  
  void cvbs_mon_tune(const char *args, size_t len);
  void cvbs_mon_colour(const char *args, size_t len);
@@ -23,7 +26,8 @@
  
  extern uint32_t cvbs_burst_cmd_odd;
  extern uint32_t cvbs_burst_cmd_even;
- extern uint32_t cvbs_palette[8][16];
+ extern uint32_t cvbs_palette[8][16]; 
+
  typedef struct cvbs_colour_struct {
     uint8_t delay;
     uint8_t luma;

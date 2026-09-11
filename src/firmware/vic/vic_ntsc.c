@@ -128,7 +128,7 @@ void vic_core1_loop_ntsc(void) {
     uint8_t borderColourIndex = 0;
 
     //FIFO Back pressure. Experimentaly adjusted
-    pio_sm_put(CVBS_PIO,CVBS_SM,CVBS_CMD_DC_RUN( 9,40)); 
+    cvbs_push_cmd(CVBS_CMD_DC_RUN( 9,40)); 
 
     while (1) {
         // Poll for PIO IRQ 1. This is the rising edge of F1.
@@ -483,27 +483,27 @@ void vic_core1_loop_ntsc(void) {
 
                         if (verticalCounter < NTSC_VSYNC_START) {
                             // Lines 1, 2, 3.
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                            cvbs_push_cmd(NTSC_SHORT_SYNC_L);
+                            cvbs_push_cmd(NTSC_SHORT_SYNC_H);
+                            cvbs_push_cmd(NTSC_SHORT_SYNC_L);
+                            cvbs_push_cmd(NTSC_SHORT_SYNC_H);
                         }
                         else if (verticalCounter <= NTSC_VSYNC_END) {
                             // Vertical sync, lines 4, 5, 6.
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_L);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_H);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_L);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_H);
+                            cvbs_push_cmd(NTSC_LONG_SYNC_L);
+                            cvbs_push_cmd(NTSC_LONG_SYNC_H);
+                            cvbs_push_cmd(NTSC_LONG_SYNC_L);
+                            cvbs_push_cmd(NTSC_LONG_SYNC_H);
 
                             // Vertical sync is what resets the video matrix latch.
                             videoMatrixLatch = videoMatrixCounter = 0;
                         }
                         else {
                             // Lines 7, 8, 9.
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
-                            pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                            cvbs_push_cmd(NTSC_SHORT_SYNC_L);
+                            cvbs_push_cmd(NTSC_SHORT_SYNC_H);
+                            cvbs_push_cmd(NTSC_SHORT_SYNC_L);
+                            cvbs_push_cmd(NTSC_SHORT_SYNC_H);
                         }
                     }
                     else {
@@ -515,19 +515,19 @@ void vic_core1_loop_ntsc(void) {
                 // then we continue horizontal blanking commands instead, including hsync and colour 
                 // burst. It will end at HC=9
                 if (!vblanking) {
-                    pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_FRONTPORCH_2);
-                    pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_HSYNC);
-                    pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BREEZEWAY);
+                    cvbs_push_cmd(NTSC_FRONTPORCH_2);
+                    cvbs_push_cmd(NTSC_HSYNC);
+                    cvbs_push_cmd(NTSC_BREEZEWAY);
                     if (oddLine) {
                         // Odd line. Switch palette starting offset.
                         pIndex = 2;
-                        pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_burst_cmd_odd);
+                        cvbs_push_cmd(cvbs_burst_cmd_odd);
                     } else {
                         // Even line. Switch palette starting offset.
                         pIndex = 6;
-                        pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_burst_cmd_even);
+                        cvbs_push_cmd(cvbs_burst_cmd_even);
                     }
-                    pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_BACKPORCH);
+                    cvbs_push_cmd(NTSC_BACKPORCH);
                 }
                 oddLine = !oddLine;
 
@@ -745,7 +745,7 @@ void vic_core1_loop_ntsc(void) {
                         // of HC=62, where a decision is then made as to whether it will be horizontal
                         // blanking or vertical blanking. This is why there is a part 1 and 2 of the front
                         // porch.
-                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_FRONTPORCH_1);
+                        cvbs_push_cmd(NTSC_FRONTPORCH_1);
                         
                         // Unlike PAL, for NTSC hblank starts 6 cycles before the HC reset, so we increment.
                         prevHorizontalCounter = horizontalCounter++;
@@ -766,10 +766,10 @@ void vic_core1_loop_ntsc(void) {
                                 }
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
                                     borderColourIndex = border_colour_index;
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
@@ -787,8 +787,8 @@ void vic_core1_loop_ntsc(void) {
                                     multiColourTable[1] = border_colour_index;
                                     multiColourTable[3] = auxiliary_colour_index;
                                     
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel6]];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel7]];
                                     
@@ -808,8 +808,8 @@ void vic_core1_loop_ntsc(void) {
                                     charData = charDataLatch = 0x55;
                                     pixel1 = ((charData >> 6) & 0x03);
                                     
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel1]]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel1]]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel8]];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel1]];
                                     
@@ -834,10 +834,10 @@ void vic_core1_loop_ntsc(void) {
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
                                     // Output border pixels.
                                     borderColourIndex = border_colour_index;
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][borderColourIndex]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[borderColourIndex];
@@ -866,8 +866,8 @@ void vic_core1_loop_ntsc(void) {
                                 // Output last 3 pixels of the last character. These had already left 
                                 // the shift register but in the delay path to the colour lookup.
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel6]]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel7]]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel6]];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel7]];
                                 }
@@ -920,7 +920,7 @@ void vic_core1_loop_ntsc(void) {
 
                                 // The 3rd pixel is from the previous character with new reverse mode applied (see above).
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel8]]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel8]];
                                 }
                               
@@ -949,7 +949,7 @@ void vic_core1_loop_ntsc(void) {
                                 // Output the 1st pixel of next character. Note that this is not the character
                                 // that relates to the cell index and colour data fetched above.
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel1]]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel1]]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel1]];
                                 }
 
@@ -966,8 +966,8 @@ void vic_core1_loop_ntsc(void) {
                                 multiColourTable[3] = auxiliary_colour_index;
                                 
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel2]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel2]]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel3]]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel2]];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel3]];
                                 }
@@ -1011,8 +1011,8 @@ void vic_core1_loop_ntsc(void) {
                                 
                                 // Pixels 4 & 5 have to be output after the pixel var calculations above.
                                 if (horizontalCounter >= NTSC_HBLANK_END) {
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel4]]);
-                                    pio_sm_put(CVBS_PIO, CVBS_SM, cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel5]]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel4]]);
+                                    cvbs_push_cmd(cvbs_palette[(pIndex++ & 0x7)][multiColourTable[pixel5]]);
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel4]];
                                     dvi_line[pixelCounter++] = ntsc_palette_rgb332[multiColourTable[pixel5]];
                                 }
@@ -1078,17 +1078,17 @@ void vic_core1_loop_ntsc(void) {
 
                     //Delayed FIFO put to avoid overrun
                     if(do_vblank == DO_VBLANK_LONG){
-                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_H);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_LONG_SYNC_H);
+                        cvbs_push_cmd(NTSC_LONG_SYNC_L);
+                        cvbs_push_cmd(NTSC_LONG_SYNC_H);
+                        cvbs_push_cmd(NTSC_LONG_SYNC_L);
+                        cvbs_push_cmd(NTSC_LONG_SYNC_H);
                         do_vblank = 0;
                     }
                     if(do_vblank == DO_VBLANK_SHORT){
-                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_L);
-                        pio_sm_put(CVBS_PIO, CVBS_SM, NTSC_SHORT_SYNC_H);
+                        cvbs_push_cmd(NTSC_SHORT_SYNC_L);
+                        cvbs_push_cmd(NTSC_SHORT_SYNC_H);
+                        cvbs_push_cmd(NTSC_SHORT_SYNC_L);
+                        cvbs_push_cmd(NTSC_SHORT_SYNC_H);
                         do_vblank = 0;
                     }
     
