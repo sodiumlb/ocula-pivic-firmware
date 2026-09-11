@@ -12,8 +12,18 @@
  void cvbs_init(void);
  void cvbs_task(void);
 
- void cvbs_push_cmd(uint32_t cmd);
- void cvbs_fifo_enable(void);
+#define CVBS_FIFO_LEN_BITS 6
+#define CVBS_FIFO_LEN (1<<CVBS_FIFO_LEN_BITS)
+
+extern uint32_t cvbs_fifo[CVBS_FIFO_LEN];
+extern volatile uint32_t cvbs_fifo_idx;
+
+static inline __attribute__((always_inline)) void cvbs_push_cmd(uint32_t cmd){
+   cvbs_fifo[cvbs_fifo_idx] = cmd;
+   cvbs_fifo_idx = (cvbs_fifo_idx + 1) & (CVBS_FIFO_LEN-1);
+} 
+
+void cvbs_fifo_enable(void);
  
  void cvbs_mon_tune(const char *args, size_t len);
  void cvbs_mon_colour(const char *args, size_t len);

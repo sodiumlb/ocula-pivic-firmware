@@ -132,17 +132,10 @@ uint32_t ntsc_test_blanking_line_even[] = {
    NTSC_BLANKING,
 };
 
-#define CVBS_FIFO_LEN_BITS 5
-#define CVBS_FIFO_LEN (1<<CVBS_FIFO_LEN_BITS)
 #define CVBS_FIFO_SIZE_BITS (CVBS_FIFO_LEN_BITS+2)
 #define CVBS_FIFO_SIZE (1<<CVBS_FIFO_SIZE_BITS)
-static uint32_t cvbs_fifo[CVBS_FIFO_LEN] __attribute__ ((aligned(CVBS_FIFO_SIZE)));
-static volatile uint32_t cvbs_fifo_idx = 0;
-
-void cvbs_push_cmd(uint32_t cmd){
-   cvbs_fifo[cvbs_fifo_idx] = cmd;
-   cvbs_fifo_idx = (cvbs_fifo_idx + 1) & (CVBS_FIFO_LEN-1);
-}
+uint32_t cvbs_fifo[CVBS_FIFO_LEN] __attribute__ ((aligned(CVBS_FIFO_SIZE)));
+volatile uint32_t cvbs_fifo_idx = 0;
 
 static dma_channel_hw_t *cvbs_dma_chan;
 void cvbs_fifo_init(void){
