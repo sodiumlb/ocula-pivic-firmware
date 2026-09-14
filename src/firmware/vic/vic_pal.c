@@ -31,10 +31,10 @@
 
 // Colour command defines in cvbs_pal.h
 // Palette structure loaded in cvbs.c
-uint32_t *pal_palette_o = cvbs_palette[0];
-uint32_t *pal_palette_e = cvbs_palette[1];
-uint32_t *pal_trunc_palette_o = cvbs_palette[2];
-uint32_t *pal_trunc_palette_e = cvbs_palette[3];
+static uint32_t *pal_palette_o = cvbs_palette[0];
+static uint32_t *pal_palette_e = cvbs_palette[1];
+static uint32_t *pal_trunc_palette_o = cvbs_palette[2];
+static uint32_t *pal_trunc_palette_e = cvbs_palette[3];
 
 //For DVI output
 //TODO This is currently using NTSC based colours - needs to be adjusted

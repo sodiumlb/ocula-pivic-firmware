@@ -203,6 +203,7 @@ static void set_print_mode()
         "5 - VIC 6561 PAL/50 CVBS test screen", 
         "6 - VIC 6560 NTSC/60 S-VIDEO test screen",
         "7 - VIC 6561 PAL/50 S-VIDEO test screen", 
+        "8 - VIC44 PAL/50 CVBS on Luma",
 #endif
 #ifdef OCULA
         "0 - DRAM-is-the-RAM",

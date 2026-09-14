@@ -11,6 +11,7 @@
 #include "vic/cvbs.h"
 #include "vic/cvbs_ntsc.h"
 #include "vic/cvbs_pal.h"
+#include "vic/cvbs_vic44_pal.h"
 #include "sys/cfg.h"
 #include "sys/lfs.h"
 #include "sys/mem.h"
@@ -187,6 +188,7 @@ void cvbs_pio_mode_init(void){
          is_svideo = true;
       case(VIC_MODE_PAL):
       case(VIC_MODE_TEST_PAL):
+      case(VIC_MODE_VIC44_PAL):
       default:
          is_pal = true;
          offset = pio_add_program(CVBS_PIO, &cvbs_pal_program);
@@ -402,6 +404,25 @@ uint32_t cvbs_colour_to_pixel_pal(cvbs_colour_t col, bool is_odd, bool is_svideo
    return CVBS_CMD_PAL_PIXEL(L0, delay0, L1, delay1, truncate);
 }
 
+uint32_t cvbs_colour_to_pixel_vic44_pal(cvbs_colour_t col, bool is_odd, bool is_svideo, uint8_t truncate){
+   uint8_t L0;
+   uint8_t L1;
+   uint8_t delay0;
+   uint8_t delay1;
+   if(is_odd || col.delay == 36){
+      delay0 = col.delay;
+      L0 = cvbs_luma_chroma_to_dac(col.luma, +col.chroma, is_svideo);
+      L1 = cvbs_luma_chroma_to_dac(col.luma, -col.chroma, is_svideo);
+   }else{
+      delay0 = 36 - col.delay;
+      L0 = cvbs_luma_chroma_to_dac(col.luma, -col.chroma, is_svideo);
+      L1 = cvbs_luma_chroma_to_dac(col.luma, +col.chroma, is_svideo);
+   }
+   delay1 = 6;    //Special value to not output L0 again. VIC44 mode only ouputs half period pixels
+   return CVBS_CMD_PAL_PIXEL(L0, delay0, L1, delay1, truncate);
+}
+
+
 uint32_t cvbs_colour_to_burst_pal(cvbs_colour_t col, bool is_odd, bool is_svideo){
    uint8_t L0;
    uint8_t L1;
@@ -517,6 +538,15 @@ bool cvbs_calc_palette(uint8_t mode, cvbs_palette_t *src){
          cvbs_burst_cmd_odd  = cvbs_colour_to_burst_pal(src->burst, true, false);
          cvbs_burst_cmd_even = cvbs_colour_to_burst_pal(src->burst, false, false);
          break;
+      case(VIC_MODE_VIC44_PAL):
+         for(int i=0; i<16; i++){
+            col = src->colours[i];
+            cvbs_palette[0][i] = cvbs_colour_to_pixel_vic44_pal(col,true,false,false);
+            cvbs_palette[1][i] = cvbs_colour_to_pixel_vic44_pal(col,false,false,false);
+            cvbs_palette[2][i] = cvbs_colour_to_pixel_vic44_pal(col,true,false,false);    //Wrap-around lookup table
+         }
+         cvbs_burst_cmd_odd  = cvbs_colour_to_burst_pal(src->burst, true, false);
+         cvbs_burst_cmd_even = cvbs_colour_to_burst_pal(src->burst, false, false);
       default:
          return false;
    }
@@ -569,6 +599,7 @@ bool cvbs_load_palette(uint8_t mode, const char *path){
             case(VIC_MODE_TEST_PAL_SVIDEO):
             case(VIC_MODE_PAL):
             case(VIC_MODE_TEST_PAL):
+            case(VIC_MODE_VIC44_PAL):
                memcpy(&cvbs_source_palette, &palette_default_pal, sizeof(cvbs_palette_t));
                break;
          default:

@@ -43,6 +43,7 @@ void clk_init(void){
         case(VIC_MODE_TEST_PAL):
         case(VIC_MODE_PAL_SVIDEO):
         case(VIC_MODE_TEST_PAL_SVIDEO):
+        case(VIC_MODE_VIC44_PAL):
         default:
             clk_set_qmi_clkdiv(6);
             set_sys_clock_khz(319200, true);

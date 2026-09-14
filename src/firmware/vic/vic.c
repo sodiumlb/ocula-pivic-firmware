@@ -8,6 +8,7 @@
 #include "vic/vic.h"
 #include "vic/vic_ntsc.h"
 #include "vic/vic_pal.h"
+#include "vic/vic44_pal.h"
 #include "vic/char_rom.h"
 #include "sys/cfg.h"
 #include "sys/dvi.h"
@@ -82,6 +83,11 @@ void vic_pio_init(void) {
             config = clkgen_pal_program_get_default_config(offset);
             dot_div = 72;
             break;
+        case(VIC_MODE_VIC44_PAL):
+            offset = pio_add_program(VIC_PIO, &clkgen_pal_program);
+            config = clkgen_pal_program_get_default_config(offset);
+            dot_div = 36;
+            break;
         }
     sm_config_set_sideset_pin_base(&config, phi2_pin);
     pio_sm_init(VIC_PIO, VIC_SM, offset, &config);
@@ -110,24 +116,13 @@ void vic_splash_init() {
             break;
         case(VIC_MODE_PAL):
         case(VIC_MODE_PAL_SVIDEO):
+        case(VIC_MODE_VIC44_PAL):
         default:
             xram[0x1000] = 0x0C;    // Screen Origin X = 12 (PAL)
             xram[0x1001] = 0x26;    // Screen Origin Y = 38 (PAL)
             break;
     }
-    switch(cfg_get_mode()){
-        case(VIC_MODE_NTSC):
-        case(VIC_MODE_NTSC_SVIDEO):
-            xram[0x1000] = 0x05;    // Screen Origin X = 5 (NTSC)
-            xram[0x1001] = 0x19;    // Screen Origin Y = 25 (NTSC)
-            break;
-        case(VIC_MODE_PAL):
-        case(VIC_MODE_PAL_SVIDEO):
-        default:
-            xram[0x1000] = 0x0C;    // Screen Origin X = 12 (PAL)
-            xram[0x1001] = 0x26;    // Screen Origin Y = 38 (PAL)
-            break;
-    }
+
     xram[0x1002] = 0x96;    // Number of Columns = 22 (bits 0-6) Video Mem Start (bit 7)
     xram[0x1003] = 0x2E;    // Number of Rows = 23 (bits 1-6)
     xram[0x1005] = 0xF0;    // Video Mem Start = 0x3E00 (bits 4-7), Char Mem Start = 0x0000 (bits 0-3)
@@ -198,6 +193,11 @@ void vic_init(void) {
         case(VIC_MODE_NTSC_SVIDEO):
             vic_dvi_init_ntsc();
             multicore_launch_core1(vic_core1_loop_ntsc);
+            break;
+        case(VIC_MODE_VIC44_PAL):
+            //TODO DVI mode for VIC44
+            vic_dvi_init_pal();
+            multicore_launch_core1(vic44_core1_loop_pal);
             break;
         default:    //Ignore test modes
             break;
