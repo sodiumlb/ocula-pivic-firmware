@@ -395,6 +395,8 @@ void vic_print_dvi_modes(void){
         case(VIC_MODE_TEST_PAL):
         case(VIC_MODE_PAL_SVIDEO):
         case(VIC_MODE_TEST_PAL_SVIDEO):
+        case(VIC_MODE_VIC44_PAL):
+        case(VIC_MODE_TEST_VIC44_PAL):
             modes = vic_dvi_pal_modes;
             count = count_of(vic_dvi_pal_modes);
             break;

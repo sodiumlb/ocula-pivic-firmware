@@ -194,10 +194,12 @@ static const char __in_flash("helptext") hlp_text_mode[] =
     "  1 - VIC 6561 PAL/50 CVBS on Luma\n" 
     "  2 - VIC 6560 NTSC/60 S-VIDEO\n"
     "  3 - VIC 6561 PAL/50 S-VIDEO\n" 
-    "  4 - VIC 6560 NTSC/60 CVBS test screen\n"
-    "  5 - VIC 6561 PAL/50 CVBS test screen\n" 
-    "  6 - VIC 6560 NTSC/60 S-VIDEO test screen\n"
-    "  7 - VIC 6561 PAL/50 S-VIDEO test screen\n" 
+    "  4 - VIC44 PAL/50 CVBS on Luma\n"
+    "  5 - VIC 6560 NTSC/60 CVBS test screen\n"
+    "  6 - VIC 6561 PAL/50 CVBS test screen\n" 
+    "  7 - VIC 6560 NTSC/60 S-VIDEO test screen\n"
+    "  8 - VIC 6561 PAL/50 S-VIDEO test screen\n" 
+    "  9 - VIC44 PAL/50 CVBS on Luma test screen\n"
 #endif
 #ifdef OCULA
     "SET MODE selects how RAM works in the system\n"

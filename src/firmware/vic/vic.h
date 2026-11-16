@@ -9,16 +9,17 @@
 
 #include "vic/vic_dvi.h"
 
-#define VIC_MODE_COUNT 9
 #define VIC_MODE_NTSC 0
 #define VIC_MODE_PAL 1
 #define VIC_MODE_NTSC_SVIDEO 2
 #define VIC_MODE_PAL_SVIDEO 3
-#define VIC_MODE_TEST_NTSC 4
-#define VIC_MODE_TEST_PAL 5
-#define VIC_MODE_TEST_NTSC_SVIDEO 6
-#define VIC_MODE_TEST_PAL_SVIDEO 7
-#define VIC_MODE_VIC44_PAL 8
+#define VIC_MODE_VIC44_PAL 4
+#define VIC_MODE_TEST_NTSC 5
+#define VIC_MODE_TEST_PAL 6
+#define VIC_MODE_TEST_NTSC_SVIDEO 7
+#define VIC_MODE_TEST_PAL_SVIDEO 8
+#define VIC_MODE_TEST_VIC44_PAL 9
+#define VIC_MODE_COUNT 10
 
 // NOTE: VIC chip vs VIC 20 memory map is different. This is why we have
 // the control registers appearing at $1000. The Chip Select for reading

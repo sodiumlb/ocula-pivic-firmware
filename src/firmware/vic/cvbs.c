@@ -49,6 +49,20 @@ uint32_t pal_test_vsync[] = {
    PAL_SHORT_SYNC_L, PAL_SHORT_SYNC_H, PAL_SHORT_SYNC_L, PAL_SHORT_SYNC_H,
 };
 
+uint32_t vic44_pal_test_vsync[] = {
+   //Lines 310-312
+   VIC44_PAL_SHORT_SYNC_L, VIC44_PAL_SHORT_SYNC_H, VIC44_PAL_SHORT_SYNC_L, VIC44_PAL_SHORT_SYNC_H,
+   VIC44_PAL_SHORT_SYNC_L, VIC44_PAL_SHORT_SYNC_H, VIC44_PAL_SHORT_SYNC_L, VIC44_PAL_SHORT_SYNC_H,
+   VIC44_PAL_SHORT_SYNC_L, VIC44_PAL_SHORT_SYNC_H, VIC44_PAL_SHORT_SYNC_L, VIC44_PAL_SHORT_SYNC_H,
+
+   //Lines 1-5
+   VIC44_PAL_LONG_SYNC_L, VIC44_PAL_LONG_SYNC_H, VIC44_PAL_LONG_SYNC_L, VIC44_PAL_LONG_SYNC_H,
+   VIC44_PAL_LONG_SYNC_L, VIC44_PAL_LONG_SYNC_H, VIC44_PAL_LONG_SYNC_L, VIC44_PAL_LONG_SYNC_H,
+   VIC44_PAL_LONG_SYNC_L, VIC44_PAL_LONG_SYNC_H, VIC44_PAL_SHORT_SYNC_L, VIC44_PAL_SHORT_SYNC_H,
+   VIC44_PAL_SHORT_SYNC_L, VIC44_PAL_SHORT_SYNC_H, VIC44_PAL_SHORT_SYNC_L, VIC44_PAL_SHORT_SYNC_H,
+   VIC44_PAL_SHORT_SYNC_L, VIC44_PAL_SHORT_SYNC_H, VIC44_PAL_SHORT_SYNC_L, VIC44_PAL_SHORT_SYNC_H,
+};
+
 uint32_t ntsc_test_vsync[] = {
    //Lines 259-261
    NTSC_SHORT_SYNC_L, NTSC_SHORT_SYNC_H, NTSC_SHORT_SYNC_L, NTSC_SHORT_SYNC_H,
@@ -73,6 +87,14 @@ uint32_t pal_test_scanline_odd[] = {
    PAL_BACKPORCH,
 };
 
+uint32_t vic44_pal_test_scanline_odd[] = {
+   VIC44_PAL_FRONTPORCH,
+   VIC44_PAL_HSYNC,
+   VIC44_PAL_BREEZEWAY,
+   0,
+   VIC44_PAL_BACKPORCH_O,
+};
+
 uint32_t ntsc_test_scanline_odd[] = {
    NTSC_FRONTPORCH,
    NTSC_HSYNC,
@@ -87,6 +109,14 @@ uint32_t pal_test_scanline_even[] = {
    PAL_BREEZEWAY,
    0,
    PAL_BACKPORCH,
+};
+
+uint32_t vic44_pal_test_scanline_even[] = {
+   VIC44_PAL_FRONTPORCH,
+   VIC44_PAL_HSYNC,
+   VIC44_PAL_BREEZEWAY,
+   0,
+   VIC44_PAL_BACKPORCH_E,
 };
 
 uint32_t ntsc_test_scanline_even[] = {
@@ -104,6 +134,15 @@ uint32_t pal_test_blanking_line_odd[] = {
    0,
    PAL_BACKPORCH,
    PAL_BLANKING,
+};
+
+uint32_t vic44_pal_test_blanking_line_odd[] = {
+   VIC44_PAL_FRONTPORCH,
+   VIC44_PAL_HSYNC,
+   VIC44_PAL_BREEZEWAY,
+   0,
+   VIC44_PAL_BACKPORCH_O,
+   VIC44_PAL_BLANKING,
 };
 
 uint32_t ntsc_test_blanking_line_odd[] = {
@@ -124,6 +163,15 @@ uint32_t pal_test_blanking_line_even[] = {
    PAL_BLANKING,
 };
 
+uint32_t vic44_pal_test_blanking_line_even[] = {
+   VIC44_PAL_FRONTPORCH,
+   VIC44_PAL_HSYNC,
+   VIC44_PAL_BREEZEWAY,
+   0,
+   VIC44_PAL_BACKPORCH_E,
+   VIC44_PAL_BLANKING,
+};
+
 uint32_t ntsc_test_blanking_line_even[] = {
    NTSC_FRONTPORCH,
    NTSC_HSYNC,
@@ -135,7 +183,7 @@ uint32_t ntsc_test_blanking_line_even[] = {
 
 #define CVBS_FIFO_SIZE_BITS (CVBS_FIFO_LEN_BITS+2)
 #define CVBS_FIFO_SIZE (1<<CVBS_FIFO_SIZE_BITS)
-uint32_t cvbs_fifo[CVBS_FIFO_LEN] __attribute__ ((aligned(CVBS_FIFO_SIZE)));
+volatile uint32_t cvbs_fifo[CVBS_FIFO_LEN] __attribute__ ((aligned(CVBS_FIFO_SIZE)));
 volatile uint32_t cvbs_fifo_idx = 0;
 
 static dma_channel_hw_t *cvbs_dma_chan;
@@ -167,6 +215,17 @@ void cvbs_fifo_enable(void){
    cvbs_dma_chan->ctrl_trig = cvbs_dma_chan->al1_ctrl;
 }
 
+bool cvbs_fifo_full(void){
+   return ((cvbs_fifo_idx + 1) & (CVBS_FIFO_LEN-1)) == ((cvbs_dma_chan->read_addr >> 2) & (CVBS_FIFO_LEN-1));
+}
+
+void cvbs_push_cmd_blocking(uint32_t cmd){
+   while(cvbs_fifo_full()){
+      tight_loop_contents();
+   }
+   cvbs_push_cmd(cmd);
+}
+
 void cvbs_pio_mode_init(void){ 
    pio_set_gpio_base (CVBS_PIO, CVBS_PIN_OFFS);
    uint offset, entry;
@@ -189,6 +248,7 @@ void cvbs_pio_mode_init(void){
       case(VIC_MODE_PAL):
       case(VIC_MODE_TEST_PAL):
       case(VIC_MODE_VIC44_PAL):
+      case(VIC_MODE_TEST_VIC44_PAL):
       default:
          is_pal = true;
          offset = pio_add_program(CVBS_PIO, &cvbs_pal_program);
@@ -236,7 +296,7 @@ void cvbs_pio_mode_init(void){
    //cvbs_push_cmd(0x84210FFF);    
    pio_sm_exec_wait_blocking(CVBS_PIO, CVBS_SM, pio_encode_jmp(entry));
    pio_sm_set_enabled(CVBS_PIO, CVBS_SM, true);   
-   printf("CVBS mode init done\n");
+   //printf("CVBS mode init done\n");
 }
 
 void cvbs_test_img_pal(void){
@@ -280,6 +340,63 @@ void cvbs_test_img_pal(void){
             cvbs_push_cmd(pal_test_blanking_line_even[i++]);
          }
          if(i >= count_of(pal_test_blanking_line_odd)){ //Assuming same length
+            i = 0;
+            lines++;
+         }
+      }else{
+         i = 0;
+         lines = 0;
+      }
+   }
+}
+
+void cvbs_test_img_pal44(void){
+   static uint32_t i = 0;
+   static uint32_t j = 0;
+   static uint32_t lines = 0;
+   while(true){
+      //cvbs_push_cmd(CVBS_CMD(i,i,i,i,6,40));
+      if(lines < 285){
+         if(i < count_of(vic44_pal_test_scanline_odd)){   //Assuming same length  
+            if(lines & 1u){
+               cvbs_push_cmd_blocking(vic44_pal_test_scanline_odd[i++]);
+            }else{
+               cvbs_push_cmd_blocking(vic44_pal_test_scanline_even[i++]);
+            }
+         }else{
+            if(j >= 234){
+               i = 0;
+               j = 0;
+               lines++;
+            }else{
+               if(lines & 1u){
+                  // cvbs_push_cmd_blocking(cvbs_palette[0][(j>>3)&0xF]);
+                  // cvbs_push_cmd_blocking(cvbs_palette[1][(j>>3)&0xF]);
+                  cvbs_push_cmd_blocking(cvbs_palette[0][(j)&0xF]);
+                  cvbs_push_cmd_blocking(cvbs_palette[1][(j)&0xF]);
+               }else{
+                  // cvbs_push_cmd_blocking(cvbs_palette[2][(j>>3)&0xF]);
+                  // cvbs_push_cmd_blocking(cvbs_palette[3][(j>>3)&0xF]);
+                  cvbs_push_cmd_blocking(cvbs_palette[2][(j)&0xF]);
+                  cvbs_push_cmd_blocking(cvbs_palette[3][(j)&0xF]);
+               }
+               j++;
+            }
+         }
+      }else if(lines < 293){ 
+         //8 lines block
+         cvbs_push_cmd_blocking(vic44_pal_test_vsync[i++]);
+         if(i >= count_of(vic44_pal_test_vsync)){
+            i = 0;
+            lines+=8;
+         }
+      }else if(lines < 312){
+         if(lines & 1u){
+            cvbs_push_cmd_blocking(vic44_pal_test_blanking_line_odd[i++]);
+         }else{
+            cvbs_push_cmd_blocking(vic44_pal_test_blanking_line_even[i++]);
+         }
+         if(i >= count_of(vic44_pal_test_blanking_line_odd)){ //Assuming same length
             i = 0;
             lines++;
          }
@@ -368,6 +485,17 @@ void cvbs_test_loop_pal(void){
    }
 }
 
+void cvbs_test_loop_pal44(void){
+   vic44_pal_test_scanline_odd[3] = cvbs_burst_cmd_odd;
+   vic44_pal_test_scanline_even[3] = cvbs_burst_cmd_even;
+   vic44_pal_test_blanking_line_odd[3] = cvbs_burst_cmd_odd;
+   vic44_pal_test_blanking_line_even[3] = cvbs_burst_cmd_even;   
+   cvbs_fifo_enable();
+   while(1){
+         cvbs_test_img_pal44();
+   }
+}
+
 uint8_t cvbs_luma_chroma_to_dac(uint8_t luma, int8_t chroma, bool is_svideo){
    //Assumes luma is a 5 bit limit and chroma is 3 bit.
    if(is_svideo){
@@ -404,22 +532,38 @@ uint32_t cvbs_colour_to_pixel_pal(cvbs_colour_t col, bool is_odd, bool is_svideo
    return CVBS_CMD_PAL_PIXEL(L0, delay0, L1, delay1, truncate);
 }
 
-uint32_t cvbs_colour_to_pixel_vic44_pal(cvbs_colour_t col, bool is_odd, bool is_svideo, uint8_t truncate){
+uint32_t cvbs_colour_to_pixel_vic44_pal(cvbs_colour_t col, bool is_odd, bool is_svideo, bool is_phase2){
    uint8_t L0;
    uint8_t L1;
+   uint8_t tmp;
    uint8_t delay0;
    uint8_t delay1;
-   if(is_odd || col.delay == 36){
-      delay0 = col.delay;
-      L0 = cvbs_luma_chroma_to_dac(col.luma, +col.chroma, is_svideo);
-      L1 = cvbs_luma_chroma_to_dac(col.luma, -col.chroma, is_svideo);
+   if(col.delay == 36){ //Perfectly synched pixel does not have a mid phase transition 
+      delay0 = 18;   //Some half way point
+      if(is_phase2){
+         L0 = cvbs_luma_chroma_to_dac(col.luma, -col.chroma, is_svideo);
+      }else{
+         L0 = cvbs_luma_chroma_to_dac(col.luma, +col.chroma, is_svideo);
+      }
+      L1 = L0;
    }else{
-      delay0 = 36 - col.delay;
-      L0 = cvbs_luma_chroma_to_dac(col.luma, -col.chroma, is_svideo);
-      L1 = cvbs_luma_chroma_to_dac(col.luma, +col.chroma, is_svideo);
+      if(is_odd){
+         delay0 = col.delay;
+         L0 = cvbs_luma_chroma_to_dac(col.luma, +col.chroma, is_svideo);
+         L1 = cvbs_luma_chroma_to_dac(col.luma, -col.chroma, is_svideo);
+      }else{
+         delay0 = 36 - col.delay;
+         L0 = cvbs_luma_chroma_to_dac(col.luma, -col.chroma, is_svideo);
+         L1 = cvbs_luma_chroma_to_dac(col.luma, +col.chroma, is_svideo);
+      }
+      if(is_phase2){
+         tmp = L0;
+         L0 = L1;
+         L1 = tmp;
+      }
    }
    delay1 = 6;    //Special value to not output L0 again. VIC44 mode only ouputs half period pixels
-   return CVBS_CMD_PAL_PIXEL(L0, delay0, L1, delay1, truncate);
+   return CVBS_CMD_PAL_PIXEL(L0, delay0, L1, delay1, 0);
 }
 
 
@@ -495,6 +639,7 @@ bool cvbs_calc_palette(uint8_t mode, cvbs_palette_t *src){
    cvbs_colour_t col;
    switch(mode){
       case(VIC_MODE_NTSC_SVIDEO):
+      case(VIC_MODE_TEST_NTSC_SVIDEO):
          for(int i=0; i<8; i++){
             for(int j=0; j<16; j++){
                col = src->colours[j];
@@ -505,6 +650,7 @@ bool cvbs_calc_palette(uint8_t mode, cvbs_palette_t *src){
          cvbs_burst_cmd_even = cvbs_colour_to_burst_ntsc(src->burst, false, true);
          break;
       case(VIC_MODE_NTSC):
+      case(VIC_MODE_TEST_NTSC):
          for(int i=0; i<8; i++){
             for(int j=0; j<16; j++){
                col = src->colours[j];
@@ -515,6 +661,7 @@ bool cvbs_calc_palette(uint8_t mode, cvbs_palette_t *src){
          cvbs_burst_cmd_even = cvbs_colour_to_burst_ntsc(src->burst, false, false);
          break;
       case(VIC_MODE_PAL_SVIDEO):
+      case(VIC_MODE_TEST_PAL_SVIDEO):
          //memcpy(&cvbs_source_palette, &palette_default_pal, sizeof(cvbs_palette_t));
          for(int i=0; i<16; i++){
             col = src->colours[i];
@@ -527,6 +674,7 @@ bool cvbs_calc_palette(uint8_t mode, cvbs_palette_t *src){
          cvbs_burst_cmd_even = cvbs_colour_to_burst_pal(src->burst, false, true);
          break;
       case(VIC_MODE_PAL):
+      case(VIC_MODE_TEST_PAL):
          //memcpy(&cvbs_source_palette, &palette_default_pal, sizeof(cvbs_palette_t));
          for(int i=0; i<16; i++){
             col = src->colours[i];
@@ -539,11 +687,13 @@ bool cvbs_calc_palette(uint8_t mode, cvbs_palette_t *src){
          cvbs_burst_cmd_even = cvbs_colour_to_burst_pal(src->burst, false, false);
          break;
       case(VIC_MODE_VIC44_PAL):
+      case(VIC_MODE_TEST_VIC44_PAL):
          for(int i=0; i<16; i++){
             col = src->colours[i];
             cvbs_palette[0][i] = cvbs_colour_to_pixel_vic44_pal(col,true,false,false);
-            cvbs_palette[1][i] = cvbs_colour_to_pixel_vic44_pal(col,false,false,false);
-            cvbs_palette[2][i] = cvbs_colour_to_pixel_vic44_pal(col,true,false,false);    //Wrap-around lookup table
+            cvbs_palette[1][i] = cvbs_colour_to_pixel_vic44_pal(col,true,false,true);
+            cvbs_palette[2][i] = cvbs_colour_to_pixel_vic44_pal(col,false,false,false);
+            cvbs_palette[3][i] = cvbs_colour_to_pixel_vic44_pal(col,false,false,true);   
          }
          cvbs_burst_cmd_odd  = cvbs_colour_to_burst_pal(src->burst, true, false);
          cvbs_burst_cmd_even = cvbs_colour_to_burst_pal(src->burst, false, false);
@@ -600,6 +750,7 @@ bool cvbs_load_palette(uint8_t mode, const char *path){
             case(VIC_MODE_PAL):
             case(VIC_MODE_TEST_PAL):
             case(VIC_MODE_VIC44_PAL):
+            case(VIC_MODE_TEST_VIC44_PAL):
                memcpy(&cvbs_source_palette, &palette_default_pal, sizeof(cvbs_palette_t));
                break;
          default:
@@ -650,6 +801,9 @@ void cvbs_init(void){
       case(VIC_MODE_TEST_NTSC):
       case(VIC_MODE_TEST_NTSC_SVIDEO):
          multicore_launch_core1(cvbs_test_loop_ntsc);
+         break;
+      case(VIC_MODE_TEST_VIC44_PAL):
+         multicore_launch_core1(cvbs_test_loop_pal44);
          break;
       default:             //Don't run test screens in normal modes
          break;
@@ -812,9 +966,37 @@ bool active = false;
 void cvbs_print_status(void){
    printf("CVBS FIFO debug:%08x level:%d\n", CVBS_PIO->fdebug, pio_sm_get_tx_fifo_level(CVBS_PIO, (CVBS_SM)));
    CVBS_PIO->fdebug = CVBS_PIO->fdebug;            //Clear FIFO status
-   printf("CVBS DMA FIFO idx:%d ba:%08x ra:%08x\n", cvbs_fifo_idx, &cvbs_fifo[0], cvbs_dma_chan->read_addr);
+   printf("CVBS DMA FIFO idx:%d ba:%08x ra:%08x ridx:%d", cvbs_fifo_idx & (CVBS_FIFO_LEN-1), &cvbs_fifo[0], cvbs_dma_chan->read_addr, (cvbs_dma_chan->read_addr >> 2) & (CVBS_FIFO_LEN-1));
    for(int i=0; i<CVBS_FIFO_LEN; i++){
-      printf(" %02d: %08x\n", i, cvbs_fifo[i]);
+      if((i & 0x3) == 0){
+         printf("\n %02d:", i);
+      }
+      printf(" %08x", cvbs_fifo[i]);
+   }
+   printf("\n");
+
+   printf("CVBS palette cmd buffer data:");
+   for(int j=0; j<8; j++){
+      printf("\n[%d]:",j);
+      for(int i=0; i<16; i++){
+         printf(" %08x", cvbs_palette[j][i]);
+      }
+   }
+   printf("\n");
+
+   printf("CVBS pixel cmd:");
+   for(int j=0; j<4; j++){
+      printf("\n[%d]", j);
+      for(int i=0; i<8; i++){
+         uint32_t cmd = cvbs_palette[j][i];
+         printf(" |%d L0:%02d d0:%02d L1:%02d d1:%02d",
+            i,
+            (cmd>> 5) & 0x7F,
+            (cmd>>12) & 0x3F,
+            (cmd>>18) & 0x7F,
+            (cmd>>25) & 0x3F
+         );
+      }
    }
 
    printf("Default palettes:\n");

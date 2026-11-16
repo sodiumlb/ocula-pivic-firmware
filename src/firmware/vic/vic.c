@@ -84,6 +84,7 @@ void vic_pio_init(void) {
             dot_div = 72;
             break;
         case(VIC_MODE_VIC44_PAL):
+        case(VIC_MODE_TEST_VIC44_PAL):
             offset = pio_add_program(VIC_PIO, &clkgen_pal_program);
             config = clkgen_pal_program_get_default_config(offset);
             dot_div = 36;

@@ -71,6 +71,7 @@ void pen_init(void){
         case(VIC_MODE_PAL_SVIDEO):
         case(VIC_MODE_TEST_PAL_SVIDEO):
         case(VIC_MODE_VIC44_PAL):
+        case(VIC_MODE_TEST_VIC44_PAL):
             pwm_config_set_clkdiv_int(&config, 144);         //Assuming 319.2MHz 
         break;
         default:

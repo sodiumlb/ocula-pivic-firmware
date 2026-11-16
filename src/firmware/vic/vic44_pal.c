@@ -30,16 +30,14 @@
 
 // Colour command defines in cvbs_pal.h
 // Palette structure loaded in cvbs.c
-// In VIC44 mode each pixel is a half period of the colour carrier, which happends 
-// to map to the odd/even line palettes, so we reuse them for looking up alternating pixels
-// The VIC44 palette set is thus set up with 3 palettes where the 3rd is a mirror of the 1st (odd)
-// This gives us a wrap-around effect when we pick the two palettes to choose pixel commands from
-// and palette slices to set for odd and even lines
+// In VIC44 mode each pixel is a half period of the colour carrier, 
 typedef uint32_t palette_slice[16]; 
-palette_slice *pal_palette_o = (palette_slice*)&cvbs_palette[0];    //[0]=odd  [1]=even
-palette_slice *pal_palette_e = (palette_slice*)&cvbs_palette[1];    //[0]=even [1]=odd
+palette_slice *pal_palette_o = (palette_slice*)&cvbs_palette[0];    //[0]=phase1  [1]=phase2
+palette_slice *pal_palette_e = (palette_slice*)&cvbs_palette[2];    //[2]=phase1 [3]=phase2
 
 extern volatile uint32_t overruns;
+
+uint32_t dots = 0;
 
 /**
  * Core 1 entry function for PAL VIC44 emulation.
@@ -100,8 +98,12 @@ void vic44_core1_loop_pal(void) {
     uint16_t charDataOffset = 0;
 
     //FIFO Back pressure. Preemtively added - uncomment and adjust if chroma stretching issues show up
-    cvbs_push_cmd(CVBS_CMD_PAL_DC_RUN( 9,10)); 
+    cvbs_push_cmd(CVBS_CMD_PAL_DC_RUN( 9,6)); 
+    cvbs_push_cmd(CVBS_CMD_PAL_DC_RUN( 9,6)); 
+    cvbs_push_cmd(CVBS_CMD_PAL_DC_RUN( 9,6)); 
+    cvbs_push_cmd(CVBS_CMD_PAL_DC_RUN( 9,6)); 
     cvbs_fifo_enable();
+    static uint32_t kill_cnt = 200;
 
     while (1) {
         // Poll for PIO IRQ 1. This is the rising edge of F1.
@@ -132,6 +134,10 @@ void vic44_core1_loop_pal(void) {
                 hiresMode = false;
                 colourData = 0x08;
                 charData = charDataLatch = 0x55;
+
+                // if(dots!=568)
+                // printf("%03d %03d\n", verticalCounter, dots);
+                // dots = 0;
 
                 // Simplified state updates for HC=0. Counters and states still need to 
                 // change as appropriate, regardless of it being during blanking.
@@ -225,51 +231,67 @@ void vic44_core1_loop_pal(void) {
                 if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
                     // In HC=1 for visible lines, we start with output the full sequence of CVBS
                     // commands for horizontal blanking, including the hsync and colour burst.
-                    cvbs_push_cmd(VIC44_PAL_FRONTPORCH_2);
-                    cvbs_push_cmd(VIC44_PAL_HSYNC);
-                    cvbs_push_cmd(VIC44_PAL_BREEZEWAY);
+                    cvbs_push_cmd(VIC44_PAL_FRONTPORCH_2); //dots+=4;
+                    cvbs_push_cmd(VIC44_PAL_HSYNC_4); //dots+=10;
+                    cvbs_push_cmd(VIC44_PAL_HSYNC_4); //dots+=10;
+                    cvbs_push_cmd(VIC44_PAL_HSYNC_4); //dots+=10;
+                    cvbs_push_cmd(VIC44_PAL_HSYNC_4); //dots+=10;
+                    cvbs_push_cmd(VIC44_PAL_BREEZEWAY); //dots+=6;
                     if (verticalCounter & 1) {
                         // Odd line. Switch colour palettes.
                         pal_palette = pal_palette_o;
-                        cvbs_push_cmd(cvbs_burst_cmd_odd);
+                        cvbs_push_cmd(cvbs_burst_cmd_odd); //dots+=34;
+                        cvbs_push_cmd(VIC44_PAL_BACKPORCH_O);  //dots+=8;
                     } else {
                         // Even line. Switch colour palettes.
                         pal_palette = pal_palette_e;
-                        cvbs_push_cmd(cvbs_burst_cmd_even);
+                        cvbs_push_cmd(cvbs_burst_cmd_even);  //dots+=34;
+                        cvbs_push_cmd(VIC44_PAL_BACKPORCH_E);  //dots+=8;
                     }
-                    cvbs_push_cmd(VIC44_PAL_BACKPORCH);
                 }
                 else {
                     // Vertical blanking and sync - Lines 1-9.
                     if (verticalCounter < PAL_VSYNC_START) {
                         // Lines 1, 2, 3.
-                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_L);
-                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H1);
-                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H2);
-                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_L);
-                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H1);
-                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H2);
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_L);  //dots+=18;
+                        // cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H);
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H1); //dots+=88;
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H2); //dots+=88;
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H3); //dots+=90;
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_L);  //dots+=18;
+                        // cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H);
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H1); //dots+=88;
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H2); //dots+=88;
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H3); //dots+=90;
                     }
                     else if (verticalCounter <= PAL_VSYNC_END) {
                         // Vertical sync, lines 4, 5, 6.
-                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L1);
-                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L2);
-                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_H);
-                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L1);
-                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L2);
-                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_H);
+                        // cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L);
+                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L1); //dots+=88;
+                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L2); //dots+=88;
+                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L3); //dots+=90;
+                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_H); //dots+=18;
+                        // cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L);
+                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L1); //dots+=88;
+                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L2); //dots+=88;
+                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L3); //dots+=90;
+                        cvbs_push_cmd(VIC44_PAL_LONG_SYNC_H); //dots+=18;
 
                         // Vertical sync is what resets the video matrix latch.
                         videoMatrixLatch = videoMatrixCounter = 0;
                     }
                     else {
                         // Lines 7, 8, 9.
-                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_L);
-                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H1);
-                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H2);
-                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_L);
-                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H1);
-                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H2);
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_L); //dots+=18;
+                        // cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H);
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H1); //dots+=88;
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H2); //dots+=88;
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H3); //dots+=90;
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_L); //dots+=18;
+                        // cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H);
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H1); //dots+=88;
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H2); //dots+=88;
+                        cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H3); //dots+=90;
                     }
                 }
 
@@ -482,6 +504,7 @@ void vic44_core1_loop_pal(void) {
                                 cvbs_push_cmd(pal_palette[1][borderColour]);
                                 cvbs_push_cmd(pal_palette[0][borderColour]);
                                 cvbs_push_cmd(pal_palette[1][borderColour]);    //TODO Trunc
+                                //dots+=8;
                                 break;
 
                             case FETCH_MATRIX_LINE:
@@ -498,6 +521,7 @@ void vic44_core1_loop_pal(void) {
                                 cvbs_push_cmd(pal_palette[1][borderColour]);
                                 cvbs_push_cmd(pal_palette[0][borderColour]);
                                 cvbs_push_cmd(pal_palette[1][borderColour]);    //TODO Trunc
+                                //dots+=8;                                
                                 break;
                                 
                             case FETCH_MATRIX_DLY_1:
@@ -515,6 +539,7 @@ void vic44_core1_loop_pal(void) {
                                 cvbs_push_cmd(pal_palette[1][borderColour]);
                                 cvbs_push_cmd(pal_palette[0][borderColour]);
                                 cvbs_push_cmd(pal_palette[1][borderColour]);    //TODO Trunc
+                                //dots+=8; 
                                 break;
                                 
                             case FETCH_SCREEN_CODE:
@@ -526,6 +551,7 @@ void vic44_core1_loop_pal(void) {
                                 // First 3 wholes pixels are from end of current character.
                                 cvbs_push_cmd(pal_palette[0][multiColourTable[pixel6]]);
                                 cvbs_push_cmd(pal_palette[1][multiColourTable[pixel7]]);
+                                //dots+=2; 
 
                                 // We only need to calculate 8th & 1st pixel in this scenario. Hblanking is about to start.
                                 if (non_reverse_mode != 0) {
@@ -570,11 +596,13 @@ void vic44_core1_loop_pal(void) {
                                 
                                 // The 3rd pixel is from the previous character with new reverse mode applied (see above).
                                 cvbs_push_cmd(pal_palette[0][multiColourTable[pixel8]]);
+                                //dots+=1; 
                                 
                                 // Look up foreground colour before outputting first pixel of new character.
                                 multiColourTable[2] = (colourData & 0x07);
                                 
                                 cvbs_push_cmd(pal_palette[1][multiColourTable[pixel1]]);
+                                //dots+=1; 
                                 
                                 fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                                 __attribute__((fallthrough));
@@ -614,6 +642,7 @@ void vic44_core1_loop_pal(void) {
                         
                         // After the 3.66 visible pixels, we now output the start of horiz blanking.
                         cvbs_push_cmd(VIC44_PAL_FRONTPORCH_1);
+                        //dots+=10; 
                         
                         // Reset HC to start a new line.
                         prevHorizontalCounter = horizontalCounter;
@@ -647,9 +676,11 @@ void vic44_core1_loop_pal(void) {
                                         cvbs_push_cmd(pal_palette[1][borderColour]);
                                         cvbs_push_cmd(pal_palette[0][borderColour]);
                                         cvbs_push_cmd(pal_palette[1][borderColour]);
+                                        //dots+=6; 
                                     }
                                     cvbs_push_cmd(pal_palette[0][borderColour]);
                                     cvbs_push_cmd(pal_palette[1][borderColour]);
+                                    //dots+=2; 
                                 }
                                 break;
                                 
@@ -664,6 +695,7 @@ void vic44_core1_loop_pal(void) {
                                     if (horizontalCounter > PAL_HBLANK_END) {
                                         cvbs_push_cmd(pal_palette[0][multiColourTable[pixel6]]);
                                         cvbs_push_cmd(pal_palette[1][multiColourTable[pixel7]]);
+                                        //dots+=2; 
                                     }
             
                                     // Handle the last pixel of the last char of the current matrix row.
@@ -685,6 +717,7 @@ void vic44_core1_loop_pal(void) {
                                     if (horizontalCounter > PAL_HBLANK_END) {
                                         cvbs_push_cmd(pal_palette[0][multiColourTable[pixel8]]);
                                         cvbs_push_cmd(pal_palette[1][multiColourTable[pixel1]]);
+                                        //dots+=2; 
                                     }
 
                                     pixel6 = pixel2 = pixel1;
@@ -694,10 +727,11 @@ void vic44_core1_loop_pal(void) {
                                     if (horizontalCounter > PAL_HBLANK_END) {
                                         cvbs_push_cmd(pal_palette[0][multiColourTable[pixel2]]);
                                         cvbs_push_cmd(pal_palette[1][multiColourTable[pixel3]]);
+                                        //dots+=2;
                                     }
                                     cvbs_push_cmd(pal_palette[0][multiColourTable[pixel4]]);
                                     cvbs_push_cmd(pal_palette[1][multiColourTable[pixel5]]);
-        
+                                    //dots+=2;
                                     if (prevHorizontalCounter == screen_origin_x) {
                                         // Last 4 pixels before first char renders are still border.
                                         fetchState = FETCH_MATRIX_DLY_1;
@@ -727,9 +761,11 @@ void vic44_core1_loop_pal(void) {
                                         cvbs_push_cmd(pal_palette[1][borderColour]);
                                         cvbs_push_cmd(pal_palette[0][borderColour]);
                                         cvbs_push_cmd(pal_palette[1][borderColour]);
+                                        //dots+=6;
                                     }
                                     cvbs_push_cmd(pal_palette[0][borderColour]);
                                     cvbs_push_cmd(pal_palette[1][borderColour]);
+                                    //dots+=2;
                                 }
                                 else {
                                     pixel2 = pixel3 = pixel4 = pixel5 = pixel6 = pixel7 = pixel8 = 1;
@@ -759,6 +795,7 @@ void vic44_core1_loop_pal(void) {
                                     // to the switch delay in hblank turning off.
                                     cvbs_push_cmd(pal_palette[0][multiColourTable[pixel6]]);
                                     cvbs_push_cmd(pal_palette[1][multiColourTable[pixel7]]);
+                                    //dots+=2;
                                 }
 
                                 if (non_reverse_mode != 0) {
@@ -810,6 +847,7 @@ void vic44_core1_loop_pal(void) {
                                 // The 3rd pixel is from the previous character with new reverse mode applied (see above).
                                 if (horizontalCounter > PAL_HBLANK_END) {
                                     cvbs_push_cmd(pal_palette[0][multiColourTable[pixel8]]);
+                                    //dots+=1;
                                 }
                               
                                 // Look up foreground colour before outputting first pixel.
@@ -838,6 +876,7 @@ void vic44_core1_loop_pal(void) {
                                 // that relates to the cell index and colour data fetched above.
                                 if (horizontalCounter > PAL_HBLANK_END) {
                                     cvbs_push_cmd(pal_palette[1][multiColourTable[pixel1]]);
+                                    //dots+=1;
                                 }
 
                                 // Toggle fetch state. Close matrix if HCC hits zero.
@@ -859,6 +898,7 @@ void vic44_core1_loop_pal(void) {
                                 if (horizontalCounter > PAL_HBLANK_END) {
                                     cvbs_push_cmd(pal_palette[0][multiColourTable[pixel2]]);
                                     cvbs_push_cmd(pal_palette[1][multiColourTable[pixel3]]);
+                                    //dots+=2;
                                 }
                                 
                                 // Calculate offset of data.
@@ -900,6 +940,7 @@ void vic44_core1_loop_pal(void) {
                                 if (horizontalCounter >= PAL_HBLANK_END) {
                                     cvbs_push_cmd(pal_palette[0][multiColourTable[pixel4]]);
                                     cvbs_push_cmd(pal_palette[1][multiColourTable[pixel5]]);
+                                    //dots+=2;
                                 }
 
                                 if (fetchState == FETCH_MATRIX_END) {
@@ -969,7 +1010,17 @@ void vic44_core1_loop_pal(void) {
                 }
                 break;
         }
+        // if(verticalCounter == 9){
+        //     if(0 == kill_cnt--){
+        //         pio_sm_set_enabled(CVBS_PIO,CVBS_SM,false);
+        //         while(true){
+        //             tight_loop_contents();
+        //         }
+        //     }
+        // }
 
-        aud_tick_inline((uint32_t*)&vic_cra);
+
+
+        //aud_tick_inline((uint32_t*)&vic_cra);
     }
 }
