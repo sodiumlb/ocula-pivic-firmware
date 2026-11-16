@@ -6,6 +6,7 @@
 
 #include "main.h"
 #include "sys/clk.h"
+#include "sys/com.h"
 #include "sys/cfg.h"
 #include "vic/vic.h"
 #include "pico/stdlib.h"
@@ -58,7 +59,7 @@ void clk_init(void){
     set_sys_clock_khz(276000, true);
     //clock_configure(clk_hstx, 0, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 276000000, 276000000/2);
 #endif
-    
+    com_reclock();
 }
 void clk_print_status(void){
     printf("CLK sys_clk %ld\n",clock_get_hz(clk_sys));
