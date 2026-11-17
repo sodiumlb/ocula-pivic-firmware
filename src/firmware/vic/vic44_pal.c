@@ -248,24 +248,20 @@ void vic44_core1_loop_pal(void) {
                     if (verticalCounter < PAL_VSYNC_START) {
                         // Lines 1, 2, 3.
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_L);
-                        // cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H1);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H2);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H3);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_L);
-                        // cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H1);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H2);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H3);
                     }
                     else if (verticalCounter <= PAL_VSYNC_END) {
                         // Vertical sync, lines 4, 5, 6.
-                        // cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L);
                         cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L1);
                         cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L2);
                         cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L3);
                         cvbs_push_cmd(VIC44_PAL_LONG_SYNC_H);
-                        // cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L);
                         cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L1);
                         cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L2);
                         cvbs_push_cmd(VIC44_PAL_LONG_SYNC_L3);
@@ -277,12 +273,10 @@ void vic44_core1_loop_pal(void) {
                     else {
                         // Lines 7, 8, 9.
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_L);
-                        // cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H1);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H2);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H3);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_L);
-                        // cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H1);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H2);
                         cvbs_push_cmd(VIC44_PAL_SHORT_SYNC_H3);
