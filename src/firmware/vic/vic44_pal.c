@@ -16,6 +16,7 @@
 #include "pico/multicore.h"
 #include "hardware/dma.h"
 #include "hardware/pio.h"
+#include "hardware/structs/m33.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -36,11 +37,17 @@ palette_slice *pal_palette_o = (palette_slice*)&cvbs_palette[0];    //[0]=phase1
 palette_slice *pal_palette_e = (palette_slice*)&cvbs_palette[2];    //[2]=phase1 [3]=phase2
 
 extern volatile uint32_t overruns;
+volatile uint32_t vic44_max_cycles[128];   // read and print from core 0, e.g. in vic_task()
 
 /**
  * Core 1 entry function for PAL VIC44 emulation.
  */
 void vic44_core1_loop_pal(void) {
+
+    // Once, at the start of vic44_core1_loop_pal() (DWT is per core, so this must run on core 1):
+    m33_hw->demcr     |= M33_DEMCR_TRCENA_BITS;
+    m33_hw->dwt_cyccnt = 0;
+    m33_hw->dwt_ctrl  |= M33_DWT_CTRL_CYCCNTENA_BITS;
 
     //
     // START OF VIC CHIP STATE
@@ -101,16 +108,17 @@ void vic44_core1_loop_pal(void) {
     cvbs_push_cmd(CVBS_CMD_PAL_DC_RUN( 9,6)); 
     cvbs_push_cmd(CVBS_CMD_PAL_DC_RUN( 9,6)); 
     cvbs_fifo_enable();
-    static uint32_t kill_cnt = 200;
 
     while (1) {
         // Poll for PIO IRQ 1. This is the rising edge of F1.
         while (!pio_interrupt_get(VIC_PIO, 1)) {
             tight_loop_contents();
         }
-        
+
+        const uint32_t t0 = m33_hw->dwt_cyccnt;
         // Clear the IRQ 1 flag immediately for now. 
         pio_interrupt_clear(VIC_PIO, 1);
+        const uint32_t hc = horizontalCounter;   // HC this iteration emulates
 
         // VERTICAL TIMINGS:
         // Lines 1-9:    Vertical blanking
@@ -982,5 +990,14 @@ void vic44_core1_loop_pal(void) {
 
         // TODO: Commented out in VIC44 for now. Add back in when Pico 2 cycle budget allows.
         //aud_tick_inline((uint32_t*)&vic_cra);
+
+        const uint32_t dt = m33_hw->dwt_cyccnt - t0;
+        if (dt > vic44_max_cycles[hc]) {
+            vic44_max_cycles[hc] = dt;
+        }
+
+        if (pio_interrupt_get(VIC_PIO, 1)) {
+            overruns++;   // the next F1 edge arrived before this iteration finished
+        }
     }
 }

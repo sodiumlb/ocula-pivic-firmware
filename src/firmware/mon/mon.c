@@ -17,6 +17,7 @@
 #include "sys/tst.h"
 #include "sys/vga.h"
 #include "vic/cvbs.h"
+#include "vic/vic.h"
 #include "pico/stdlib.h"
 #include <stdio.h>
 
@@ -46,6 +47,7 @@ static struct
     {5, "color", cvbs_mon_colour},
     {4, "save", cvbs_mon_save},
     {4, "load", cvbs_mon_load},
+    {6, "cycles", vic_mon_cycles},
 #endif
 };
 static const size_t COMMANDS_COUNT = sizeof COMMANDS / sizeof *COMMANDS;

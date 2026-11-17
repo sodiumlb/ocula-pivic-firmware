@@ -212,6 +212,28 @@ void vic_task(void) {
     }
 }
 
+extern volatile uint32_t vic44_max_cycles[128];
+
+static void vic44_print_max_cycles(void) {
+    uint32_t worst = 0, worst_hc = 0;
+    for (uint32_t hc = 0; hc < 128; hc++) {
+        uint32_t v = vic44_max_cycles[hc];
+        if (v) printf("HC%3lu:%4lu%s", hc, v, (hc % 8 == 7) ? "\n" : "  ");
+        if (v > worst) { worst = v; worst_hc = hc; }
+    }
+    printf("\nmax %lu at HC=%lu (budget 288)\n", worst, worst_hc);
+}
+
+void vic_mon_cycles(const char *args, size_t len) {
+    vic44_print_max_cycles();
+    if (len >= 5 && strncmp(args, "clear", 5) == 0) {
+        for (uint32_t hc = 0; hc < 128; hc++) {
+            vic44_max_cycles[hc] = 0;
+        }
+        printf("cleared\n");
+    }
+}
+
 void vic_print_status(void){
     printf("VIC registers\n");
         printf(" CR0 %02x %d X-Orig %s\n", vic_cr0, vic_cr0 & 0x7F, (vic_cr0 & 0x80 ? "(intl)" : "" ));
@@ -230,5 +252,7 @@ void vic_print_status(void){
         printf(" CRD %02x %d No E:%d\n", vic_crd, vic_crd & 0x7F, (vic_crd >> 7));
         printf(" CRE %02x %d Vol CA:%d\n", vic_cre, vic_cre & 0x0F, (vic_cre >> 4));
         printf(" CRF %02x CB:%d R:%d CE:%d\n", vic_crf, (vic_crf >> 4), (vic_crf >> 3) & 1u, (vic_crf & 0x7));
+
+        vic44_print_max_cycles();
 }
 
