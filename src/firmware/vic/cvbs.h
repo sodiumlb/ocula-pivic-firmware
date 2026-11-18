@@ -22,7 +22,6 @@ extern volatile uint32_t cvbs_fifo_idx;
 static inline __attribute__((always_inline)) void cvbs_push_cmd(uint32_t cmd){
    cvbs_fifo[cvbs_fifo_idx & (CVBS_FIFO_LEN-1)] = cmd;
    cvbs_fifo_idx++;
-   __dmb();
 } 
 
 void cvbs_fifo_enable(void);
