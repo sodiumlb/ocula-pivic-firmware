@@ -205,9 +205,12 @@ void vic_init(void) {
     }
 }
 
+static uint32_t overrun_total = 0;
+
 void vic_task(void) {
     if (overruns > 0) {
-        printf("X.");
+        // TEMP: restore printf("X.") once VIC44 is within budget 
+        overrun_total += overruns;   // was: printf("X.");
         overruns = 0;
     }
 }
@@ -226,10 +229,12 @@ static void vic44_print_max_cycles(void) {
 
 void vic_mon_cycles(const char *args, size_t len) {
     vic44_print_max_cycles();
+    printf("overruns %lu\n", overrun_total);
     if (len >= 5 && strncmp(args, "clear", 5) == 0) {
         for (uint32_t hc = 0; hc < 128; hc++) {
             vic44_max_cycles[hc] = 0;
         }
+        overrun_total = 0;
         printf("cleared\n");
     }
 }
