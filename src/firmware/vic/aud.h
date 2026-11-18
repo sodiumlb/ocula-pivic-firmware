@@ -18,10 +18,10 @@ typedef union {
 } aud_union_t;
 
 
-extern volatile aud_union_t aud_counters;
-extern volatile aud_union_t aud_ticks;
-extern volatile aud_union_t aud_regs;
-extern volatile aud_union_t aud_sr;
+typedef struct {
+    aud_union_t tick, cntr, regs, sr;
+} aud_state_t;
+extern volatile aud_state_t aud_state;
 
  void aud_init(void);
  void aud_task(void);
@@ -35,6 +35,8 @@ extern volatile aud_union_t aud_sr;
     uint32_t tmp,tmp2,zero,one,upd;
     const uint32_t mask = 0x0103070F;
     //uint32_t *regs = (uint32_t*)(&xram[0x100a]);
+    aud_state_t *s = (aud_state_t *)&aud_state;     // core 1 is the only writer
+    uint32_t tick = s->tick.all, cntr = s->cntr.all, aregs = s->regs.all, sr = s->sr.all;
     asm volatile (
         "mov %[zero], #0x00000000\n\t"              //Create 4x zero vector
         "mov %[one],  #0x01010101\n\t"              //Create 4x one vector
@@ -57,20 +59,25 @@ extern volatile aud_union_t aud_sr;
         "bic %[tmp], %[sr], %[one], lsl 7\n\t"      //Clear SR MSBs in preparatin for shifting
         "orr %[tmp], %[tmp2], %[tmp], lsl 1\n\t"    //Shift SR up 1 bit then OR in new SR LSBs
         "sel %[sr], %[sr], %[tmp]\n\t"              //Update SR for channels where counter has overflown
-        : [tick] "+r" (aud_ticks.all),
-          [cntr] "+r" (aud_counters.all),
-          [aregs]"+r" (aud_regs.all),
-          [sr]   "+r" (aud_sr.all),
-          [tmp]  "=r" (tmp),
+        : [tick] "+r" (tick),
+          [cntr] "+r" (cntr),
+          [aregs]"+r" (aregs),
+          [sr]   "+r" (sr),
+          [tmp]  "=&r" (tmp),
           [tmp2] "=r" (tmp2),
           [upd]  "=r" (upd),
-          [zero] "=r" (zero),
-          [one]  "=r" (one)
+          [zero] "=&r" (zero),
+          [one]  "=&r" (one)
         : [mask] "r"  (mask),
           [regs] "m" (*(uint32_t(*))regs)
         : "cc"                                      //Conditional flags clobbered
     );
     //sio_hw->doorbell_out_set = upd & 0xF;           //Using RP2350 doorbells 0-3 to signal updates needed
-    sio_hw->fifo_wr = (aud_regs.all & 0xFFFFFFF0) | (upd & 0xF);
+    s->tick.all = tick;
+    s->cntr.all = cntr;
+    s->regs.all = aregs;
+    s->sr.all = sr;
+    __asm volatile ("" ::: "memory");   // stores above must not move after the FIFO write
+    sio_hw->fifo_wr = (aregs & 0xFFFFFFF0) | (upd & 0xF);
 }
  #endif /* _AUD_H_ */

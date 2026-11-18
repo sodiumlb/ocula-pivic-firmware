@@ -828,8 +828,7 @@ void vic44_core1_loop_pal(void) {
                 break;
         }
 
-        // TODO: Commented out in VIC44 for now. Add back in when Pico 2 cycle budget allows.
-        //aud_tick_inline((uint32_t*)&vic_cra);
+        aud_tick_inline((uint32_t*)&vic_cra);
 
         const uint32_t dt = m33_hw->dwt_cyccnt - t0;
         if (dt > vic44_max_cycles[hc]) {

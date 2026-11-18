@@ -20,14 +20,11 @@
 #include <stdio.h>
 
 //Audio shift registers
-uint8_t aud_noise_sr;    //Ch 0-2 SR are kept in aud_sr
+uint8_t aud_noise_sr;    //Ch 0-2 SR are kept in aud_state.sr
 uint8_t aud_val[4];
 uint16_t aud_lfsr;
 
-volatile aud_union_t aud_counters;
-volatile aud_union_t aud_ticks;
-volatile aud_union_t aud_regs;
-volatile aud_union_t aud_sr;
+volatile aud_state_t aud_state;
 
 //TODO Unify with/import vic/vic.c/h definitions
 #define VIC_CRA xram[0x100A]
@@ -38,7 +35,7 @@ volatile aud_union_t aud_sr;
 
 void aud_calc_voice(uint8_t idx, uint8_t reg){
     uint8_t enable = reg >> 7;  //Keep enable bit in LSB
-    uint8_t next_bit = aud_sr.ch[idx] & 0x01;
+    uint8_t next_bit = aud_state.sr.ch[idx] & 0x01;
     aud_val[idx] = (enable ? (next_bit ? 4 : 0) : 1);  //High=4 ,half=1, low=0
 }
 
@@ -95,7 +92,7 @@ void aud_init(void){
 
     // Init the three voices to zero
     for(int i=0; i < 3; i++){
-        aud_sr.ch[i] = 0;
+        aud_state.sr.ch[i] = 0;
         aud_val[i] = 0;
     }
     // Init noise separately
@@ -104,7 +101,7 @@ void aud_init(void){
     aud_lfsr = 0xFFFF;
 
     //Init tick system
-    aud_ticks.all = 0;
+    aud_state.tick.all = 0;
 
     //VIC audio registers reset values. TODO: should be done central in vic.c?
     VIC_CRA = 0x00;
@@ -126,9 +123,9 @@ static uint32_t lost_samples = 0;
 void aud_task(void){
     while(multicore_fifo_rvalid()){
         uint32_t upd = sio_hw->fifo_rd;
-        aud_calc_voice(0, aud_regs.ch[0]);
-        aud_calc_voice(1, aud_regs.ch[1]);
-        aud_calc_voice(2, aud_regs.ch[2]);
+        aud_calc_voice(0, aud_state.regs.ch[0]);
+        aud_calc_voice(1, aud_state.regs.ch[1]);
+        aud_calc_voice(2, aud_state.regs.ch[2]);
         if(upd & 0x08)
             aud_step_noise(upd >> 24);
     }
@@ -136,11 +133,11 @@ void aud_task(void){
 
 void aud_print_status(void){
     printf("Aud sr:%02x %02x %02x %02x  val:%02d %02d %02d %02d lfsr:%04x\n", 
-            aud_sr.ch[0], aud_sr.ch[1], aud_sr.ch[2], aud_noise_sr, 
+            aud_state.sr.ch[0], aud_state.sr.ch[1], aud_state.sr.ch[2], aud_noise_sr, 
             aud_val[0], aud_val[1], aud_val[2], aud_val[3],
             aud_lfsr
         );
-    printf("    tck:%08x cnt:%08x upd:%01x\n", aud_ticks.all, aud_counters.all, sio_hw->doorbell_in_set);
+    printf("    tck:%08x cnt:%08x upd:%01x\n", aud_state.tick.all, aud_state.cntr.all, sio_hw->doorbell_in_set);
     printf("    pwm intr:%08x cc:%d top:%d\n", pwm_hw->intr, pwm_hw->slice[AUDIO_PWM_SLICE].cc, pwm_hw->slice[AUDIO_PWM_SLICE].top);
     // printf("    last_sample_periode_us: %lld\n", last_sample_time_diff);
     // printf("    DVI lost samples: %d\n", lost_samples);
