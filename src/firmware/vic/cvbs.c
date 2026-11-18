@@ -12,6 +12,7 @@
 #include "vic/cvbs_ntsc.h"
 #include "vic/cvbs_pal.h"
 #include "vic/cvbs_vic44_pal.h"
+#include "vic/vic44_pal.h"
 #include "sys/cfg.h"
 #include "sys/lfs.h"
 #include "sys/mem.h"
@@ -697,6 +698,8 @@ bool cvbs_calc_palette(uint8_t mode, cvbs_palette_t *src){
          }
          cvbs_burst_cmd_odd  = cvbs_colour_to_burst_pal(src->burst, true, false);
          cvbs_burst_cmd_even = cvbs_colour_to_burst_pal(src->burst, false, false);
+         vic44_pal_build_tables();
+         break;
       default:
          return false;
    }
@@ -946,6 +949,7 @@ void cvbs_mon_load(const char *args, size_t len){
       char full_path[LFS_NAME_MAX+1];
       if(args[0] == '-'){
          cvbs_load_palette(cvbs_mode, 0); //Load hardcoded default
+         cvbs_calc_palette(cvbs_mode, &cvbs_source_palette);
          return;
       }else if(args[0] == '/'){
          snprintf(full_path, LFS_NAME_MAX, "/palettes%s", args);

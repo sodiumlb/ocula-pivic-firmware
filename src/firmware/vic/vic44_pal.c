@@ -103,6 +103,17 @@ static void vic44_build_hires_pairs(void) {
     }
 }
 
+// Interleaved even/odd palettes for odd and even lines.
+static cmd_pair_t palPairO[16], palPairE[16];
+
+void vic44_pal_build_tables(void) {
+    for (int c = 0; c < 16; c++) {
+        palPairO[c].e = pal_palette_o[0][c]; palPairO[c].o = pal_palette_o[1][c];
+        palPairE[c].e = pal_palette_e[0][c]; palPairE[c].o = pal_palette_e[1][c];
+    }
+    vic44_build_hires_pairs();
+}
+
 extern volatile uint32_t overruns;
 volatile uint32_t vic44_max_cycles[128];   // read and print from core 0, e.g. in vic_task()
 
@@ -154,18 +165,11 @@ void vic44_core1_loop_pal(void) {
     // Temporary variables, not a core part of the state.
     uint16_t charDataOffset = 0;
 
-    // Interleaved even/odd palettes for odd and even lines.
-    cmd_pair_t palPairO[16], palPairE[16];
-    for (int c = 0; c < 16; c++) {
-        palPairO[c].e = pal_palette_o[0][c]; palPairO[c].o = pal_palette_o[1][c];
-        palPairE[c].e = pal_palette_e[0][c]; palPairE[c].o = pal_palette_e[1][c];
-    }
-
     const cmd_pair_t *pp = palPairE;      // current line's pair palette (matches pal_palette)
     cmd_pair_t multiPairs[4];             // pairs for codes 0..3: bg, border, fg, aux
     uint32_t multiKey = 0xFFFFFFFFu;      // colour cache key; invalid forces a rebuild
     uint32_t pset = 1;                    // hiresPairs palette set: 0 = odd line, 1 = even line (matches pp).
-    vic44_build_hires_pairs();
+    vic44_pal_build_tables();
 
     //FIFO Back pressure. Preemtively added - uncomment and adjust if chroma stretching issues show up
     cvbs_push_cmd(CVBS_CMD_PAL_DC_RUN( 9,6)); 

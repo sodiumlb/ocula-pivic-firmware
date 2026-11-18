@@ -8,5 +8,6 @@
 #define _VIC44_PAL_H_
 
 void vic44_core1_loop_pal(void);
+void vic44_pal_build_tables(void);
  
 #endif /* _VIC44_PAL_H_ */
