@@ -50,17 +50,11 @@ typedef struct { uint32_t e, o; } cmd_pair_t;
     }                                                                              \
     uint32_t _cd = (CD), _col = (COL);                                             \
     const cmd_pair_t *_t = multiPairs;                                             \
-    cmd_pair_t _hp[4];                                                             \
     if (_col & 0x08) {                             /* multicolour */               \
         multiPairs[2] = pp[_col & 7];                                              \
     } else {                                       /* hires */                     \
         if ((_crf & 0x08) == 0) _cd ^= 0xFF;       /* reverse */                   \
-        cmd_pair_t _b = multiPairs[0], _f = pp[_col & 7];                          \
-        _hp[0] = _b;                                                               \
-        _hp[1].e = _b.e; _hp[1].o = _f.o;                                          \
-        _hp[2].e = _f.e; _hp[2].o = _b.o;                                          \
-        _hp[3] = _f;                                                               \
-        _t = _hp;                                                                  \
+        _t = hiresPairs[pset][_crf >> 4][_col & 7];                                \
     }                                                                              \
     uint32_t _raw = cvbs_fifo_idx;                 /* free-running index */        \
     uint32_t _idx = _raw & (CVBS_FIFO_LEN - 1);    /* position in the ring */      \
@@ -89,6 +83,25 @@ typedef struct { uint32_t e, o; } cmd_pair_t;
 
 palette_slice *pal_palette_o = (palette_slice*)&cvbs_palette[0];    //[0]=phase1  [1]=phase2
 palette_slice *pal_palette_e = (palette_slice*)&cvbs_palette[2];    //[2]=phase1 [3]=phase2
+
+// Hires pairs for every background/foreground combination:
+// [palette set: 0 = odd, 1 = even][bg][fg][bit pair b1b0]. 8 KB static RAM.
+static cmd_pair_t hiresPairs[2][16][8][4];
+
+static void vic44_build_hires_pairs(void) {
+    for (int set = 0; set < 2; set++) {
+        palette_slice *pal = set ? pal_palette_e : pal_palette_o;
+        for (int bg = 0; bg < 16; bg++) {
+            for (int fg = 0; fg < 8; fg++) {
+                cmd_pair_t *t = hiresPairs[set][bg][fg];
+                t[0].e = pal[0][bg]; t[0].o = pal[1][bg];   // 00: bg, bg
+                t[1].e = pal[0][bg]; t[1].o = pal[1][fg];   // 01: bg, fg
+                t[2].e = pal[0][fg]; t[2].o = pal[1][bg];   // 10: fg, bg
+                t[3].e = pal[0][fg]; t[3].o = pal[1][fg];   // 11: fg, fg
+            }
+        }
+    }
+}
 
 extern volatile uint32_t overruns;
 volatile uint32_t vic44_max_cycles[128];   // read and print from core 0, e.g. in vic_task()
@@ -147,9 +160,12 @@ void vic44_core1_loop_pal(void) {
         palPairO[c].e = pal_palette_o[0][c]; palPairO[c].o = pal_palette_o[1][c];
         palPairE[c].e = pal_palette_e[0][c]; palPairE[c].o = pal_palette_e[1][c];
     }
+
     const cmd_pair_t *pp = palPairE;      // current line's pair palette (matches pal_palette)
     cmd_pair_t multiPairs[4];             // pairs for codes 0..3: bg, border, fg, aux
     uint32_t multiKey = 0xFFFFFFFFu;      // colour cache key; invalid forces a rebuild
+    uint32_t pset = 1;                    // hiresPairs palette set: 0 = odd line, 1 = even line (matches pp).
+    vic44_build_hires_pairs();
 
     //FIFO Back pressure. Preemtively added - uncomment and adjust if chroma stretching issues show up
     cvbs_push_cmd(CVBS_CMD_PAL_DC_RUN( 9,6)); 
@@ -291,6 +307,7 @@ void vic44_core1_loop_pal(void) {
                         pal_palette = pal_palette_o;
                         pp = palPairO;
                         multiKey = 0xFFFFFFFFu;
+                        pset = 0;
                         cvbs_push_cmd(cvbs_burst_cmd_odd);
                         cvbs_push_cmd(VIC44_PAL_BACKPORCH_O);
                     } else {
@@ -298,6 +315,7 @@ void vic44_core1_loop_pal(void) {
                         pal_palette = pal_palette_e;
                         pp = palPairE;
                         multiKey = 0xFFFFFFFFu;
+                        pset = 1;
                         cvbs_push_cmd(cvbs_burst_cmd_even);
                         cvbs_push_cmd(VIC44_PAL_BACKPORCH_E);
                     }
