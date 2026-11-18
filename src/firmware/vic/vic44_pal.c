@@ -37,6 +37,56 @@ typedef uint32_t palette_slice[16];
 // Even/odd CVBS command pair for one colour (one pixel pair at fixed palette phases).
 typedef struct { uint32_t e, o; } cmd_pair_t;
 
+// Output one whole character (8 commands) from char data CD and colour data COL.
+// FULL == 0 outputs only the last pair (HC=12, where the first 3 "pixels" are in hblank).
+#define VIC44_OUT_CHAR(CD, COL, FULL) do {                                         \
+    uint32_t _crf = vic_crf;                       /* one read: bg, border, rev */ \
+    uint32_t _key = _crf | ((uint32_t)vic_cre << 8);                               \
+    if (_key != multiKey) {                        /* bg/border/aux changed */     \
+        multiKey = _key;                                                           \
+        multiPairs[0] = pp[_crf >> 4];                                             \
+        multiPairs[1] = pp[_crf & 7];                                              \
+        multiPairs[3] = pp[(_key >> 12) & 0xF];                                    \
+    }                                                                              \
+    uint32_t _cd = (CD), _col = (COL);                                             \
+    const cmd_pair_t *_t = multiPairs;                                             \
+    cmd_pair_t _hp[4];                                                             \
+    if (_col & 0x08) {                             /* multicolour */               \
+        multiPairs[2] = pp[_col & 7];                                              \
+    } else {                                       /* hires */                     \
+        if ((_crf & 0x08) == 0) _cd ^= 0xFF;       /* reverse */                   \
+        cmd_pair_t _b = multiPairs[0], _f = pp[_col & 7];                          \
+        _hp[0] = _b;                                                               \
+        _hp[1].e = _b.e; _hp[1].o = _f.o;                                          \
+        _hp[2].e = _f.e; _hp[2].o = _b.o;                                          \
+        _hp[3] = _f;                                                               \
+        _t = _hp;                                                                  \
+    }                                                                              \
+    uint32_t _raw = cvbs_fifo_idx;                 /* free-running index */        \
+    uint32_t _idx = _raw & (CVBS_FIFO_LEN - 1);    /* position in the ring */      \
+    if (FULL) {                                                                    \
+        if (_idx <= CVBS_FIFO_LEN - 8) {           /* no wrap: 4 pair copies */    \
+            cmd_pair_t *_d = (cmd_pair_t *)(uintptr_t)&cvbs_fifo[_idx];            \
+            _d[0] = _t[(_cd >> 6) & 3];                                            \
+            _d[1] = _t[(_cd >> 4) & 3];                                            \
+            _d[2] = _t[(_cd >> 2) & 3];                                            \
+            _d[3] = _t[_cd & 3];                                                   \
+        } else {                                   /* wraps: one word at a time */ \
+            for (int _i = 6; _i >= 0; _i -= 2) {                                   \
+                cmd_pair_t _p = _t[(_cd >> _i) & 3];                               \
+                cvbs_fifo[_idx] = _p.e; _idx = (_idx + 1) & (CVBS_FIFO_LEN - 1);   \
+                cvbs_fifo[_idx] = _p.o; _idx = (_idx + 1) & (CVBS_FIFO_LEN - 1);   \
+            }                                                                      \
+        }                                                                          \
+        cvbs_fifo_idx = _raw + 8;                                                  \
+    } else {                                                                       \
+        cmd_pair_t _p = _t[_cd & 3];                                               \
+        cvbs_fifo[_idx] = _p.e;                                                    \
+        cvbs_fifo[(_idx + 1) & (CVBS_FIFO_LEN - 1)] = _p.o;                        \
+        cvbs_fifo_idx = _raw + 2;                                                  \
+    }                                                                              \
+} while (0)
+
 palette_slice *pal_palette_o = (palette_slice*)&cvbs_palette[0];    //[0]=phase1  [1]=phase2
 palette_slice *pal_palette_e = (palette_slice*)&cvbs_palette[2];    //[2]=phase1 [3]=phase2
 
@@ -149,11 +199,9 @@ void vic44_core1_loop_pal(void) {
                 // 15:8=VC/2 7:0=0 
                 *pen_xy = (verticalCounter & 0xFC) << 7;
               
-                // Reset pixel output buffer to be all border colour at start of line.
-                pixel1 = pixel2 = pixel3 = pixel4 = pixel5 = pixel6 = pixel7 = pixel8 = 1;
-                hiresMode = false;
-                colourData = 0x08;
-                charData = charDataLatch = 0x55;
+                // Reset pixel output to be all border colour at start of line.
+                colourData = 0x08;      // multicolour
+                charDataLatch = 0x55;   // all code 1 = border colour
 
                 // Simplified state updates for HC=0. Counters and states still need to 
                 // change as appropriate, regardless of it being during blanking.
@@ -521,19 +569,9 @@ void vic44_core1_loop_pal(void) {
                                 break;
 
                             case FETCH_MATRIX_LINE:
-                                // Look up latest background, border and auxiliary colours.
-                                multiColourTable[0] = background_colour_index;
-                                multiColourTable[1] = borderColour = border_colour_index;
-                                multiColourTable[3] = auxiliary_colour_index;
-
-                                cvbs_push_cmd(pal_palette[0][multiColourTable[pixel2]]);
-                                cvbs_push_cmd(pal_palette[1][multiColourTable[pixel3]]);
-                                cvbs_push_cmd(pal_palette[0][multiColourTable[pixel4]]);
-                                cvbs_push_cmd(pal_palette[1][multiColourTable[pixel5]]);
-                                cvbs_push_cmd(pal_palette[0][borderColour]);
-                                cvbs_push_cmd(pal_palette[1][borderColour]);
-                                cvbs_push_cmd(pal_palette[0][borderColour]);
-                                cvbs_push_cmd(pal_palette[1][borderColour]);    //TODO Trunc
+                                VIC44_OUT_CHAR(charDataLatch, colourData, 1);
+                                charDataLatch = 0x55;
+                                colourData = 0x08;
                                 break;
                                 
                             case FETCH_MATRIX_DLY_1:
@@ -554,95 +592,23 @@ void vic44_core1_loop_pal(void) {
                                 break;
                                 
                             case FETCH_SCREEN_CODE:
-                                // Look up latest background, border and auxiliary colours.
-                                multiColourTable[0] = background_colour_index;
-                                multiColourTable[1] = border_colour_index;
-                                multiColourTable[3] = auxiliary_colour_index;
-                                
-                                // First 3 wholes pixels are from end of current character.
-                                cvbs_push_cmd(pal_palette[0][multiColourTable[pixel6]]);
-                                cvbs_push_cmd(pal_palette[1][multiColourTable[pixel7]]);
-
-                                // We only need to calculate 8th & 1st pixel in this scenario. Hblanking is about to start.
-                                if (non_reverse_mode != 0) {
-                                    // New non-reversed mode value kicks in a pixel before new character.
-                                    if (hiresMode) {
-                                        pixel8 = ((charData & 0x01)? 2 : 0);
-                                    } else {
-                                        pixel8 = (charData & 0x03);
-                                    }
-                                    
-                                    // Update the operating hires state and char data immediately prior to
-                                    // shifting out new character pixel.
-                                    hiresMode = ((colourData & 0x08) == 0);
-                                    charData = charDataLatch;
-                                    
-                                    // Pixel 1 should be same non-reversed mode but pick up the new hires mode.
-                                    if (hiresMode) {
-                                        pixel1 = ((charData & 0x80)? 2 : 0);
-                                    } else {
-                                        pixel1 = ((charData >> 6) & 0x03);
-                                    }
-                                } else {
-                                    // New reversed mode value kicks in a pixel before new character.
-                                    if (hiresMode) {
-                                        pixel8 = ((charData & 0x01)? 0 : 2);
-                                    } else {
-                                        pixel8 = (charData & 0x03);
-                                    }
-                                    
-                                    // Update the operating hires state and char data immediately prior to
-                                    // shifting out new character pixel.
-                                    hiresMode = ((colourData & 0x08) == 0);
-                                    charData = charDataLatch;
-                                    
-                                    // Pixel 1 should be same reversed mode but pick up the new hires mode.
-                                    if (hiresMode) {
-                                        pixel1 = ((charData & 0x80)? 0 : 2);
-                                    } else {
-                                        pixel1 = ((charData >> 6) & 0x03);
-                                    }
-                                }
-                                
-                                // The 3rd pixel is from the previous character with new reverse mode applied (see above).
-                                cvbs_push_cmd(pal_palette[0][multiColourTable[pixel8]]);
-                                
-                                // Look up foreground colour before outputting first pixel of new character.
-                                multiColourTable[2] = (colourData & 0x07);
-                                
-                                cvbs_push_cmd(pal_palette[1][multiColourTable[pixel1]]);
-                                
-                                fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_END);
+                                VIC44_OUT_CHAR(charDataLatch, colourData, 1);
+                                fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                                 __attribute__((fallthrough));
-                                
+
                             case FETCH_CHAR_DATA:
                             case FETCH_MATRIX_END:
-                                // TODO: Remove, as this is now redundant. No need to look it up twice.
-                                // Look up latest background, border and auxiliary colours.
-                                //multiColourTable[0] = background_colour_index;
-                                //multiColourTable[1] = border_colour_index;
-                                //multiColourTable[3] = auxiliary_colour_index;
-                                
-                                // Output the three whole pixels.
-                                cvbs_push_cmd(pal_palette[0][multiColourTable[pixel2]]);
-                                cvbs_push_cmd(pal_palette[1][multiColourTable[pixel3]]);
-                                cvbs_push_cmd(pal_palette[0][multiColourTable[pixel4]]);
-
-                                // The 4th pixel is a partial pixel before horizontal blanking kicks in.
-                                cvbs_push_cmd(pal_palette[1][multiColourTable[pixel5]]);    //TODO Trunc
-                                
-                                // If the matrix hasn't yet closed, then in the FETCH_CHAR_DATA 
+                                // If the matrix hasn't yet closed, then in the FETCH_CHAR_DATA
                                 // state, we need to keep incrementing the video matrix counter
                                 // until it is closed, which at the latest could be HC=1 on the
                                 // next line.
-
                                 if (fetchState == FETCH_MATRIX_END) {
                                     // Leaving the matrix
                                     fetchState = FETCH_MATRIX_LINE;
                                 } else {
                                     // Increment the video matrix counter to next cell.
                                     videoMatrixCounter++;
-                                    
+
                                     // Toggle fetch state. For efficiency, HCC deliberately not checked here.
                                     fetchState = FETCH_SCREEN_CODE;
                                 }
@@ -693,49 +659,12 @@ void vic44_core1_loop_pal(void) {
                             case FETCH_IN_MATRIX_Y:
                             case FETCH_MATRIX_LINE:
                                 if (horizontalCounter >= PAL_HBLANK_END) {
-                                    // Look up very latest background, border and auxiliary colour values.
-                                    multiColourTable[0] = background_colour_index;
-                                    multiColourTable[1] = border_colour_index;
-                                    multiColourTable[3] = auxiliary_colour_index;
-            
-                                    if (horizontalCounter > PAL_HBLANK_END) {
-                                        cvbs_push_cmd(pal_palette[0][multiColourTable[pixel6]]);
-                                        cvbs_push_cmd(pal_palette[1][multiColourTable[pixel7]]);
-                                    }
-            
-                                    // Handle the last pixel of the last char of the current matrix row.
-                                    if (hiresMode) {
-                                        if (non_reverse_mode != 0) {
-                                            pixel8 = ((charData & 0x01) > 0? 2 : 0);
-                                        } else {
-                                            pixel8 = ((charData & 0x01) > 0? 0 : 2);
-                                        }
-                                    } else {
-                                        pixel8 = (charData & 0x03);
-                                    }
-                                    
-                                    hiresMode = false;
+                                    // Outputs the latch, which is normally border (0x55 multicolour) here,
+                                    // then resets it to border.
+                                    VIC44_OUT_CHAR(charDataLatch, colourData, horizontalCounter > PAL_HBLANK_END);
+                                    charDataLatch = 0x55;
                                     colourData = 0x08;
-                                    charData = charDataLatch = 0x55;
-                                    pixel1 = ((charData >> 6) & 0x03);
-                                    
-                                    if (horizontalCounter > PAL_HBLANK_END) {
-                                        cvbs_push_cmd(pal_palette[0][multiColourTable[pixel8]]);
-                                        cvbs_push_cmd(pal_palette[1][multiColourTable[pixel1]]);
-                                    }
-
-                                    pixel6 = pixel2 = pixel1;
-                                    pixel7 = pixel3 = ((charData >> 4) & 0x03);
-                                    pixel8 = pixel1 = pixel2 = pixel3 = pixel4 = pixel5 = 1;
-                                    
-                                    if (horizontalCounter > PAL_HBLANK_END) {
-                                        cvbs_push_cmd(pal_palette[0][multiColourTable[pixel2]]);
-                                        cvbs_push_cmd(pal_palette[1][multiColourTable[pixel3]]);
-                                    }
-                                    cvbs_push_cmd(pal_palette[0][multiColourTable[pixel4]]);
-                                    cvbs_push_cmd(pal_palette[1][multiColourTable[pixel5]]);
                                     if (prevHorizontalCounter == screen_origin_x) {
-                                        // Last 4 pixels before first char renders are still border.
                                         fetchState = FETCH_MATRIX_DLY_1;
                                     }
                                 }
@@ -767,94 +696,24 @@ void vic44_core1_loop_pal(void) {
                                     cvbs_push_cmd(pal_palette[0][borderColour]);
                                     cvbs_push_cmd(pal_palette[1][borderColour]);
                                 }
-                                else {
-                                    pixel2 = pixel3 = pixel4 = pixel5 = pixel6 = pixel7 = pixel8 = 1;
-                                }
 
                                 // Prime the pixel output queue with border pixels in multicolour 
                                 // mode. Not quite what the real chip does but is functionally equivalent.
-                                hiresMode = false;
                                 colourData = 0x08;
                                 charDataLatch = 0x55;
 
                                 fetchState++;
                                 break;
                                 
-                            case FETCH_SCREEN_CODE:                       
-                                 
-                                // Look up very latest background, border and auxiliary colour values.
-                                multiColourTable[0] = background_colour_index;
-                                multiColourTable[1] = border_colour_index;
-                                multiColourTable[3] = auxiliary_colour_index;
-                            
-                                // Output last 3 pixels of the last character. These had already left 
-                                // the shift register but in the delay path to the colour lookup.
-                                if (horizontalCounter > PAL_HBLANK_END) {
-                                    // Note: These 3 pixels are not output for HC=12, as first three "pixels"
-                                    // are part of the horizontal blanking. Note that the third one is due
-                                    // to the switch delay in hblank turning off.
-                                    cvbs_push_cmd(pal_palette[0][multiColourTable[pixel6]]);
-                                    cvbs_push_cmd(pal_palette[1][multiColourTable[pixel7]]);
-                                }
-
-                                if (non_reverse_mode != 0) {
-                                    // New non-reversed mode value kicks in a pixel before new character.
-                                    if (hiresMode) {
-                                        pixel8 = ((charData & 0x01)? 2 : 0);
-                                    } else {
-                                        pixel8 = (charData & 0x03);
-                                    }
-                                    
-                                    // Update the operating hires state and char data immediately prior to
-                                    // shifting out new character pixel.
-                                    hiresMode = ((colourData & 0x08) == 0);
-                                    charData = charDataLatch;
-                                    
-                                    // Pixel 1 should be same non-reversed mode but pick up the new hires mode.
-                                    if (hiresMode) {
-                                        pixel1 = ((charData & 0x80)? 2 : 0);
-                                        pixel2 = ((charData & 0x40)? 2 : 0);
-                                        pixel3 = ((charData & 0x20)? 2 : 0);
-                                    } else {
-                                        pixel1 = pixel2 = ((charData >> 6) & 0x03);
-                                        pixel3 = ((charData >> 4) & 0x03);
-                                    }
-                                } else {
-                                    // New reversed mode value kicks in a pixel before new character.
-                                    if (hiresMode) {
-                                        pixel8 = ((charData & 0x01)? 0 : 2);
-                                    } else {
-                                        pixel8 = (charData & 0x03);
-                                    }
-                                    
-                                    // Update the operating hires state and char data immediately prior to
-                                    // shifting out new character pixel.
-                                    hiresMode = ((colourData & 0x08) == 0);
-                                    charData = charDataLatch;
-                                    
-                                    // Pixel 1 should be same reversed mode but pick up the new hires mode.
-                                    if (hiresMode) {
-                                        pixel1 = ((charData & 0x80)? 0 : 2);
-                                        pixel2 = ((charData & 0x40)? 0 : 2);
-                                        pixel3 = ((charData & 0x20)? 0 : 2);
-                                    } else {
-                                        pixel1 = pixel2 = ((charData >> 6) & 0x03);
-                                        pixel3 = ((charData >> 4) & 0x03);
-                                    }
-                                }
-                                
-                                // The 3rd pixel is from the previous character with new reverse mode applied (see above).
-                                if (horizontalCounter > PAL_HBLANK_END) {
-                                    cvbs_push_cmd(pal_palette[0][multiColourTable[pixel8]]);
-                                }
-                              
-                                // Look up foreground colour before outputting first pixel.
-                                multiColourTable[2] = (colourData & 0x07);
+                            case FETCH_SCREEN_CODE:
+                                // Output all 8 pixels of the character fetched in the previous cycle
+                                // (charDataLatch / colourData). Colours, reverse and hires are sampled now.
+                                VIC44_OUT_CHAR(charDataLatch, colourData, horizontalCounter > PAL_HBLANK_END);
 
                                 // Calculate address within video memory and fetch cell index.
-                                //Assuming 0x0---, 0x3---- and 0x20-- as connected address space
+                                // Assuming 0x0---, 0x3---- and 0x20-- as connected address space
                                 uint16_t screen_addr = screen_mem_start + videoMatrixCounter;
-                                switch((screen_addr >> 10) & 0xF){
+                                switch ((screen_addr >> 10) & 0xF) {
                                     case  4 ... 7:
                                     case  9 ... 11:
                                         cellIndex = XUNCON_REG;
@@ -866,85 +725,41 @@ void vic44_core1_loop_pal(void) {
 
                                 // Due to the way the colour memory is wired up, the above fetch of the cell index
                                 // also happens to automatically fetch the foreground colour from the Colour Matrix
-                                // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from 
+                                // via the top 4 lines of the data bus (DB8-DB11), which are wired directly from
                                 // colour RAM in to the VIC chip.
                                 colourData = xram[0x1400 + (screen_addr & 0x3ff)];
 
-                                // Output the 1st pixel of next character. Note that this is not the character
-                                // that relates to the cell index and colour data fetched above.
-                                if (horizontalCounter > PAL_HBLANK_END) {
-                                    cvbs_push_cmd(pal_palette[1][multiColourTable[pixel1]]);
-                                }
-
                                 // Toggle fetch state. Close matrix if HCC hits zero.
-                                fetchState = ((horizontalCellCounter-- > 0)? FETCH_CHAR_DATA : FETCH_MATRIX_END);
+                                fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
                                 __attribute__((fallthrough));
 
                             case FETCH_CHAR_DATA:
                             case FETCH_MATRIX_END:
-                                // TODO: Remove, as this is now redundant. No need to look it up twice.
-                                // Look up very latest background, border and auxiliary colour values.
-                                //multiColourTable[0] = background_colour_index;
-                                //multiColourTable[1] = border_colour_index;
-                                //multiColourTable[3] = auxiliary_colour_index;
-                                
-                                // Output only one visible pixel for HC=12, as first three "pixels"
-                                // are part of the horizontal blanking. Note that the third one is due
-                                // to the switch delay in hblank turning off. This is why we skip these
-                                // pixels for HC=12.
-                                if (horizontalCounter > PAL_HBLANK_END) {
-                                    cvbs_push_cmd(pal_palette[0][multiColourTable[pixel2]]);
-                                    cvbs_push_cmd(pal_palette[1][multiColourTable[pixel3]]);
-                                }
-                                
                                 // Calculate offset of data.
                                 charDataOffset = char_mem_start + (cellIndex << char_size_shift) + cellDepthCounter;
                                 
                                 // Fetch cell data.  It can wrap around, which is why we & with 0x3FFF.
                                 // Initially latched to the side until it is needed.
-                                //Assuming 0x0---, 0x3---- and 0x20-- as connected address space
-                                switch((charDataOffset >> 10) & 0xF ){
+                                // Assuming 0x0---, 0x3---- and 0x20-- as connected address space
+                                switch ((charDataOffset >> 10) & 0xF) {
                                     case  4 ... 7:
                                     case  9 ... 11:
-                                         charDataLatch = XUNCON_REG;
-                                         break;
+                                        charDataLatch = XUNCON_REG;
+                                        break;
                                     default:
-                                         charDataLatch = xram[(charDataOffset & 0x3FFF)];
-                                         break;
-                                }
-                                
-                                // Determine next character pixels.
-                                if (hiresMode) {
-                                    if (non_reverse_mode != 0) {
-                                        pixel4 = ((charData & 0x10)? 2 : 0);
-                                        pixel5 = ((charData & 0x08)? 2 : 0);
-                                        pixel6 = ((charData & 0x04)? 2 : 0);
-                                        pixel7 = ((charData & 0x02)? 2 : 0);
-                                    } else {
-                                        pixel4 = ((charData & 0x10)? 0 : 2);
-                                        pixel5 = ((charData & 0x08)? 0 : 2);
-                                        pixel6 = ((charData & 0x04)? 0 : 2);
-                                        pixel7 = ((charData & 0x02)? 0 : 2);
-                                    }
-                                } else {
-                                    // Multicolour graphics.
-                                    pixel4 = ((charData >> 4) & 0x03);
-                                    pixel5 = pixel6 = ((charData >> 2) & 0x03);
-                                    pixel7 = (charData & 0x03);
-                                }
-                                
-                                if (horizontalCounter >= PAL_HBLANK_END) {
-                                    cvbs_push_cmd(pal_palette[0][multiColourTable[pixel4]]);
-                                    cvbs_push_cmd(pal_palette[1][multiColourTable[pixel5]]);
+                                        charDataLatch = xram[(charDataOffset & 0x3FFF)];
+                                        break;
                                 }
 
                                 if (fetchState == FETCH_MATRIX_END) {
-                                    // Leaving the matrix
+                                    // The character fetched in the MATRIX_END cycle is never displayed.
+                                    charDataLatch = 0x55;
+                                    colourData = 0x08;
                                     fetchState = FETCH_MATRIX_LINE;
                                 } else {
                                     // Increment the video matrix counter to next cell.
                                     videoMatrixCounter++;
-                                    
+
                                     // Toggle fetch state. For efficiency, HCC deliberately not checked here.
                                     fetchState = FETCH_SCREEN_CODE;
                                 }
