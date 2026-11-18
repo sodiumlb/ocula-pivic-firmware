@@ -119,26 +119,11 @@ void vic44_core1_loop_pal(void) {
 
     // Values normally fetched externally, from screen mem, colour RAM and char mem.
     uint8_t  cellIndex = 0;              // 8 bits fetched from screen memory.
-    uint8_t  charData = 0;               // 8 bits of bitmap data fetched from character memory.
     uint8_t  charDataLatch = 0;          // 8 bits of bitmap data fetched from character memory (latched)
     uint8_t  colourData = 0;             // 4 bits fetched from colour memory (top bit multi/hires mode)
-    uint8_t  hiresMode = 0;
 
     // Palette index for the current border colour.
     uint8_t borderColour = 0;
-
-    // Holds the palette index for each of the current multi colour colours.
-    uint8_t multiColourTable[4] = { 0, 0, 0, 0};
-
-    // Every cpu cycle, we output four pixels. The values are temporarily stored in these vars.
-    uint8_t pixel1 = 0;
-    uint8_t pixel2 = 0;
-    uint8_t pixel3 = 0;
-    uint8_t pixel4 = 0;
-    uint8_t pixel5 = 0;
-    uint8_t pixel6 = 0;
-    uint8_t pixel7 = 0;
-    uint8_t pixel8 = 0;
 
     // Pointer that alternates on each line between even and odd PAL palettes.
     palette_slice *pal_palette = pal_palette_e;
