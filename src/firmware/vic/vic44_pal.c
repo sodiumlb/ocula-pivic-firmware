@@ -728,8 +728,10 @@ void vic44_core1_loop_pal(void) {
                             case FETCH_SCREEN_CODE: {
                                 // Output all 8 pixels of the character fetched in the previous cycle
                                 // (charDataLatch / colourData). Colours, reverse and hires are sampled now.
-                                if (horizontalCounter >= PAL_HBLANK_END) {
-                                    VIC44_OUT_CHAR(charDataLatch, colourData, horizontalCounter > PAL_HBLANK_END);
+                                if (horizontalCounter > PAL_HBLANK_END) {
+                                    VIC44_OUT_CHAR(charDataLatch, colourData, 1);
+                                } else if (horizontalCounter == PAL_HBLANK_END) {
+                                    VIC44_OUT_CHAR(charDataLatch, colourData, 0);
                                 }
 
                                 // Read the control registers once for this cycle.
