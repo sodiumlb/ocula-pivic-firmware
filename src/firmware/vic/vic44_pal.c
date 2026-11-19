@@ -746,9 +746,6 @@ void vic44_core1_loop_pal(void) {
                                 // colour RAM in to the VIC chip.
                                 colourData = xram[0x1400 + (screen_addr & 0x3ff)];
 
-                                // Toggle fetch state. Close matrix if HCC hits zero.
-                                fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
-
                                 // Calculate offset of data.
                                 charDataOffset = ((cr5 & 0x0F) << 10) + (cellIndex << (3 + (cr3 & 0x01))) + cellDepthCounter;
 
@@ -757,17 +754,15 @@ void vic44_core1_loop_pal(void) {
                                 // Assuming 0x0---, 0x3---- and 0x20-- as connected address space
                                 charDataLatch = vic44_bus_read((charDataOffset >> 10) & 0xF, charDataOffset & 0x3FFF);
 
-                                if (fetchState == FETCH_MATRIX_END) {
-                                    // The character fetched in the MATRIX_END cycle is never displayed.
+                                // Close matrix if HCC hits zero.
+                                if (__builtin_expect(horizontalCellCounter-- == 0, 0)) {
+                                    // Matrix closes. The character fetched is never displayed.
                                     charDataLatch = 0x55;
                                     colourData = 0x08;
                                     fetchState = FETCH_MATRIX_LINE;
                                 } else {
-                                    // Increment the video matrix counter to next cell.
+                                    // Increment the video matrix counter to next cell. fetchState stays FETCH_SCREEN_CODE.
                                     videoMatrixCounter++;
-
-                                    // Toggle fetch state. For efficiency, HCC deliberately not checked here.
-                                    fetchState = FETCH_SCREEN_CODE;
                                 }
                                 break;
                             }
