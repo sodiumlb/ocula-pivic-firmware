@@ -114,6 +114,16 @@ void vic44_pal_build_tables(void) {
     vic44_build_hires_pairs();
 }
 
+// 1K banks 4-7 and 9-11 are not connected on the VIC bus.
+#define VIC44_UNCONNECTED_BANKS  0x0EF0u   // bits 4,5,6,7,9,10,11
+
+static inline __attribute__((always_inline)) uint32_t vic44_bus_read(uint32_t bank, uint32_t index) {
+    if (__builtin_expect((VIC44_UNCONNECTED_BANKS >> bank) & 1u, 0)) {
+        return (uint8_t)XUNCON_REG;
+    }
+    return xram[index];
+}
+
 extern volatile uint32_t overruns;
 volatile uint32_t vic44_max_cycles[128];   // read and print from core 0, e.g. in vic_task()
 
@@ -132,22 +142,22 @@ void vic44_core1_loop_pal(void) {
     //
 
     // Counters.
-    uint16_t videoMatrixCounter = 0;     // 12-bit video matrix counter (VMC)
-    uint16_t videoMatrixLatch = 0;       // 12-bit latch that VMC is stored to and loaded from
-    uint16_t verticalCounter = 0;        // 9-bit vertical counter (i.e. raster lines)
-    uint8_t  horizontalCounter = 0;      // 8-bit horizontal counter (although top bit isn't used)
-    uint8_t  prevHorizontalCounter = 0;  // 8-bit previous value of horizontal counter.
-    uint8_t  horizontalCellCounter = 0;  // 8-bit horizontal cell counter (down counter)
-    uint8_t  verticalCellCounter = 0;    // 6-bit vertical cell counter (down counter)
-    uint8_t  cellDepthCounter = 0;       // 4-bit cell depth counter (counts either from 0-7, or 0-15)
+    uint32_t videoMatrixCounter = 0;     // 12-bit video matrix counter (VMC)
+    uint32_t videoMatrixLatch = 0;       // 12-bit latch that VMC is stored to and loaded from
+    uint32_t verticalCounter = 0;        // 9-bit vertical counter (i.e. raster lines)
+    uint32_t horizontalCounter = 0;      // 8-bit horizontal counter (although top bit isn't used)
+    uint32_t prevHorizontalCounter = 0;  // 8-bit previous value of horizontal counter.
+    uint32_t horizontalCellCounter = 0;  // 8-bit horizontal cell counter (down counter)
+    uint32_t verticalCellCounter = 0;    // 6-bit vertical cell counter (down counter)
+    uint32_t cellDepthCounter = 0;       // 4-bit cell depth counter (counts either from 0-7, or 0-15)
 
     // Values normally fetched externally, from screen mem, colour RAM and char mem.
-    uint8_t  cellIndex = 0;              // 8 bits fetched from screen memory.
-    uint8_t  charDataLatch = 0;          // 8 bits of bitmap data fetched from character memory (latched)
-    uint8_t  colourData = 0;             // 4 bits fetched from colour memory (top bit multi/hires mode)
+    uint32_t cellIndex = 0;              // 8 bits fetched from screen memory.
+    uint32_t charDataLatch = 0;          // 8 bits of bitmap data fetched from character memory (latched)
+    uint32_t colourData = 0;             // 4 bits fetched from colour memory (top bit multi/hires mode)
 
     // Palette index for the current border colour.
-    uint8_t borderColour = 0;
+    uint32_t borderColour = 0;
 
     // Pointer that alternates on each line between even and odd PAL palettes.
     palette_slice *pal_palette = pal_palette_e;
@@ -155,7 +165,7 @@ void vic44_core1_loop_pal(void) {
     // Optimisation to represent "in matrix", "address output enabled", and "pixel output enabled" 
     // all with one simple state variable. It might not be 100% accurate but should work for most 
     // cases.
-    uint8_t fetchState = FETCH_OUTSIDE_MATRIX;
+    uint32_t fetchState = FETCH_OUTSIDE_MATRIX;
     
     //
     // END OF VIC CHIP STATE
@@ -163,7 +173,9 @@ void vic44_core1_loop_pal(void) {
 
 
     // Temporary variables, not a core part of the state.
-    uint16_t charDataOffset = 0;
+    uint32_t charDataOffset = 0;
+
+    uint32_t lineVisible = 1;             // set at HC=1: 1 if this line is outside vblank
 
     const cmd_pair_t *pp = palPairE;      // current line's pair palette (matches pal_palette)
     cmd_pair_t multiPairs[4];             // pairs for codes 0..3: bg, border, fg, aux
@@ -297,7 +309,8 @@ void vic44_core1_loop_pal(void) {
                     vic_cr3 |= 0x80;
                 }
 
-                if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
+                lineVisible = (verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END);
+                if (lineVisible) {
                     // In HC=1 for visible lines, we start with output the full sequence of CVBS
                     // commands for horizontal blanking, including the hsync and colour burst.
                     cvbs_push_cmd(VIC44_PAL_FRONTPORCH_2);
@@ -547,7 +560,7 @@ void vic44_core1_loop_pal(void) {
             default:
 
                 // Line 0, and Lines after 9, are "visible", i.e. not within the vertical blanking.
-                if ((verticalCounter == 0) || (verticalCounter > PAL_VBLANK_END)) {
+                if (lineVisible) {
                     // Is the visible part of the line ending now and horizontal blanking starting?
                     if (horizontalCounter == PAL_HBLANK_START) {
                         // Horizontal blanking doesn't start until 3.66 pixels in. What exactly those
@@ -712,23 +725,20 @@ void vic44_core1_loop_pal(void) {
                                 fetchState++;
                                 break;
                                 
-                            case FETCH_SCREEN_CODE:
+                            case FETCH_SCREEN_CODE: {
                                 // Output all 8 pixels of the character fetched in the previous cycle
                                 // (charDataLatch / colourData). Colours, reverse and hires are sampled now.
                                 VIC44_OUT_CHAR(charDataLatch, colourData, horizontalCounter > PAL_HBLANK_END);
 
+                                // Read the control registers once for this cycle.
+                                const uint32_t cr5 = vic_cr5;
+                                const uint32_t cr2 = vic_cr2;
+                                const uint32_t cr3 = vic_cr3;
+
                                 // Calculate address within video memory and fetch cell index.
                                 // Assuming 0x0---, 0x3---- and 0x20-- as connected address space
-                                uint16_t screen_addr = screen_mem_start + videoMatrixCounter;
-                                switch ((screen_addr >> 10) & 0xF) {
-                                    case  4 ... 7:
-                                    case  9 ... 11:
-                                        cellIndex = XUNCON_REG;
-                                        break;
-                                    default:
-                                        cellIndex = xram[screen_addr];
-                                        break;
-                                }
+                                const uint32_t screen_addr = ((((cr5 & 0xF0) << 6) | ((cr2 & 0x80) << 2)) + videoMatrixCounter) & 0xFFFF;
+                                cellIndex = vic44_bus_read((screen_addr >> 10) & 0xF, screen_addr);
 
                                 // Due to the way the colour memory is wired up, the above fetch of the cell index
                                 // also happens to automatically fetch the foreground colour from the Colour Matrix
@@ -738,25 +748,14 @@ void vic44_core1_loop_pal(void) {
 
                                 // Toggle fetch state. Close matrix if HCC hits zero.
                                 fetchState = ((horizontalCellCounter-- > 0) ? FETCH_CHAR_DATA : FETCH_MATRIX_END);
-                                __attribute__((fallthrough));
 
-                            case FETCH_CHAR_DATA:
-                            case FETCH_MATRIX_END:
                                 // Calculate offset of data.
-                                charDataOffset = char_mem_start + (cellIndex << char_size_shift) + cellDepthCounter;
-                                
+                                charDataOffset = ((cr5 & 0x0F) << 10) + (cellIndex << (3 + (cr3 & 0x01))) + cellDepthCounter;
+
                                 // Fetch cell data.  It can wrap around, which is why we & with 0x3FFF.
                                 // Initially latched to the side until it is needed.
                                 // Assuming 0x0---, 0x3---- and 0x20-- as connected address space
-                                switch ((charDataOffset >> 10) & 0xF) {
-                                    case  4 ... 7:
-                                    case  9 ... 11:
-                                        charDataLatch = XUNCON_REG;
-                                        break;
-                                    default:
-                                        charDataLatch = xram[(charDataOffset & 0x3FFF)];
-                                        break;
-                                }
+                                charDataLatch = vic44_bus_read((charDataOffset >> 10) & 0xF, charDataOffset & 0x3FFF);
 
                                 if (fetchState == FETCH_MATRIX_END) {
                                     // The character fetched in the MATRIX_END cycle is never displayed.
@@ -771,6 +770,38 @@ void vic44_core1_loop_pal(void) {
                                     fetchState = FETCH_SCREEN_CODE;
                                 }
                                 break;
+                            }
+
+                            case FETCH_CHAR_DATA:
+                            case FETCH_MATRIX_END: {
+                                // Reached when a cycle starts in this state, e.g. when the matrix is still
+                                // open across the end of the line, so the registers are read again here.
+                                // (FETCH_SCREEN_CODE does this fetch itself and no longer falls through.)
+                                const uint32_t cr5 = vic_cr5;
+                                const uint32_t cr3 = vic_cr3;
+
+                                // Calculate offset of data.
+                                charDataOffset = ((cr5 & 0x0F) << 10) + (cellIndex << (3 + (cr3 & 0x01))) + cellDepthCounter;
+
+                                // Fetch cell data.  It can wrap around, which is why we & with 0x3FFF.
+                                // Initially latched to the side until it is needed.
+                                // Assuming 0x0---, 0x3---- and 0x20-- as connected address space
+                                charDataLatch = vic44_bus_read((charDataOffset >> 10) & 0xF, charDataOffset & 0x3FFF);
+
+                                if (fetchState == FETCH_MATRIX_END) {
+                                    // The character fetched in the MATRIX_END cycle is never displayed.
+                                    charDataLatch = 0x55;
+                                    colourData = 0x08;
+                                    fetchState = FETCH_MATRIX_LINE;
+                                } else {
+                                    // Increment the video matrix counter to next cell.
+                                    videoMatrixCounter++;
+
+                                    // Toggle fetch state. For efficiency, HCC deliberately not checked here.
+                                    fetchState = FETCH_SCREEN_CODE;
+                                }
+                                break;
+                            }
                         }
                         
                         prevHorizontalCounter = horizontalCounter++;
