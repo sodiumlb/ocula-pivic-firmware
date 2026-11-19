@@ -127,6 +127,38 @@ static inline __attribute__((always_inline)) uint32_t vic44_bus_read(uint32_t ba
 extern volatile uint32_t overruns;
 volatile uint32_t vic44_max_cycles[128];   // read and print from core 0, e.g. in vic_task()
 
+// TEMP: line-length check. Counts the CVBS commands pushed per line (HC=1 to HC=1) and
+// counts lines whose length differs from the first line of the same kind since the last reset.
+volatile uint32_t vic44_len_reset = 1;        // core 0 sets this to 1 to clear the stats
+volatile uint32_t vic44_len_ref[2];           // reference length: [0] = vblank line, [1] = visible line
+volatile uint32_t vic44_len_bad[2];           // lines whose length differed from the reference
+volatile uint32_t vic44_len_bad_vc;           // last differing line (vertical counter)
+volatile uint32_t vic44_len_bad_len;          // ...and its length
+static uint32_t vic44_len_last_idx;
+
+// Call at the very start of HC=1, before lineVisible and verticalCounter are updated,
+// so that VIS and VC describe the line that has just finished.
+static inline __attribute__((always_inline)) void vic44_line_check(uint32_t vis, uint32_t vc) {
+    const uint32_t idx = cvbs_fifo_idx;
+    const uint32_t len = idx - vic44_len_last_idx;
+    vic44_len_last_idx = idx;
+    if (__builtin_expect(vic44_len_reset, 0)) {
+        vic44_len_ref[0] = vic44_len_ref[1] = 0;
+        vic44_len_bad[0] = vic44_len_bad[1] = 0;
+        vic44_len_bad_vc = vic44_len_bad_len = 0;
+        vic44_len_reset = 0;
+    } else if (__builtin_expect(len != vic44_len_ref[vis], 0)) {
+        if (vic44_len_ref[vis] == 0) {
+            vic44_len_ref[vis] = len;             // first line of this kind since the reset
+        } else {
+            vic44_len_bad[vis]++;
+            vic44_len_bad_vc = vc;
+            vic44_len_bad_len = len;
+        }
+    }
+}
+
+
 /**
  * Core 1 entry function for PAL VIC44 emulation.
  */
@@ -271,7 +303,10 @@ void vic44_core1_loop_pal(void) {
             // during which we queue the horiz blanking, horiz sync, colour burst, vertical 
             // blanking and vsync, all up front for efficiency reasons.
             case 1:
-          
+
+                // TEMP: line-length check for the line that has just finished.
+                vic44_line_check(lineVisible, verticalCounter);
+
                 // This needs to be checked before the vertical counter is updated.
                 if (fetchState == FETCH_OUTSIDE_MATRIX) {
                     if ((verticalCounter >> 1) == screen_origin_y) {
