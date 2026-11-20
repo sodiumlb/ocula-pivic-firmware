@@ -216,8 +216,6 @@ void vic_task(void) {
 }
 
 extern volatile uint32_t vic44_max_cycles[128];
-extern volatile uint32_t vic44_len_reset, vic44_len_ref[2], vic44_len_bad[2];
-extern volatile uint32_t vic44_len_bad_vc, vic44_len_bad_len;
 
 static void vic44_print_max_cycles(void) {
     uint32_t worst = 0, worst_hc = 0;
@@ -232,15 +230,11 @@ static void vic44_print_max_cycles(void) {
 void vic_mon_cycles(const char *args, size_t len) {
     vic44_print_max_cycles();
     printf("overruns %lu\n", overrun_total);
-    printf("line len: visible ref %lu bad %lu, vblank ref %lu bad %lu, last bad VC=%lu len=%lu\n",
-       vic44_len_ref[1], vic44_len_bad[1], vic44_len_ref[0], vic44_len_bad[0],
-       vic44_len_bad_vc, vic44_len_bad_len);
     if (len >= 5 && strncmp(args, "clear", 5) == 0) {
         for (uint32_t hc = 0; hc < 128; hc++) {
             vic44_max_cycles[hc] = 0;
         }
         overrun_total = 0;
-        vic44_len_reset = 1;
         printf("cleared\n");
     }
 }
